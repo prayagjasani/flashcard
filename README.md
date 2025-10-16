@@ -26,8 +26,21 @@ docker run -p 8000:8000 -v %CD%/csv:/app/csv -v %CD%/audio:/app/audio flashcards
 ## Deploy options
 
 ### Railway
-- Link repo and set Start Command: `uvicorn app:app --host 0.0.0.0 --port $PORT`.
-- Add a Volume for persistence and mount to `/app/audio` and `/app/csv` or `/data`.
+Quick deploy from GitHub:
+
+- Click `New Project` → `Deploy from GitHub repo`.
+- Select this repo: `prayagjasani/flashcard` and choose `Deploy Now`.
+- The included `railway.json` sets the start command and health check.
+
+Optional persistence:
+
+- Add a Volume in the service settings and mount to `/app/audio` and `/app/csv` (or `/data`).
+- These directories store generated MP3s and deck CSVs across deployments.
+
+Notes:
+
+- The Dockerfile now honors `$PORT` automatically (`${PORT:-8000}` fallback).
+- Health check path is `/` so Railway marks deploys healthy when the index loads.
 
 ### Render
 - Web Service: Build `pip install -r requirements.txt`.
