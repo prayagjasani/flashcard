@@ -634,8 +634,6 @@
             currentCard = words.shift();
             card.innerText = currentCard[frontLang];
             showingFront = true;
-            // Preload audio for current word to remove delay on speak
-            prefetchAudio(currentCard.de);
         }
 
         let recentlyTouched = false;
@@ -689,9 +687,8 @@
         let germanVoice = null;
         const audioCache = new Map();
         const audioPlayer = new Audio();
-        audioPlayer.preload = 'auto';
+        audioPlayer.preload = 'none';
         let lastObjectUrl = null;
-        let currentAudioText = null;
 
         function cleanupObjectUrl() {
             if (lastObjectUrl) {
@@ -702,10 +699,12 @@
         audioPlayer.addEventListener('ended', () => {
             speakBtn.disabled = false;
             speakBtn.textContent = 'Speak';
+            cleanupObjectUrl();
         });
         audioPlayer.addEventListener('error', () => {
             speakBtn.disabled = false;
             speakBtn.textContent = 'Speak';
+            cleanupObjectUrl();
         });
 
         function safeFileName(text) {
@@ -728,66 +727,11 @@
             }
             selectGermanVoice();
         }
-        async function prefetchAudio(text) {
-            try {
-                if (!text) return;
-                currentAudioText = text;
-                const fileName = safeFileName(text);
-                const staticUrl = `/audio/de/${fileName}.mp3`;
-                // Try static first
-                const resp = await fetch(staticUrl);
-                if (resp.ok) {
-                    const blob = await resp.blob();
-                    const objUrl = URL.createObjectURL(blob);
-                    // Guard against races
-                    if (currentAudioText !== text) {
-                        URL.revokeObjectURL(objUrl);
-                        return;
-                    }
-                    cleanupObjectUrl();
-                    lastObjectUrl = objUrl;
-                    audioCache.set(text, { src: objUrl, isObjectUrl: true });
-                    audioPlayer.pause();
-                    audioPlayer.src = objUrl;
-                    try { audioPlayer.load(); } catch {}
-                    return;
-                }
-                // Fallback to backend TTS (generates and caches for next time)
-                const ttsUrl = `/tts?text=${encodeURIComponent(text)}&lang=de`;
-                const resp2 = await fetch(ttsUrl);
-                if (resp2.ok) {
-                    const blob2 = await resp2.blob();
-                    const objUrl2 = URL.createObjectURL(blob2);
-                    if (currentAudioText !== text) {
-                        URL.revokeObjectURL(objUrl2);
-                        return;
-                    }
-                    cleanupObjectUrl();
-                    lastObjectUrl = objUrl2;
-                    audioCache.set(text, { src: objUrl2, isObjectUrl: true });
-                    audioPlayer.pause();
-                    audioPlayer.src = objUrl2;
-                    try { audioPlayer.load(); } catch {}
-                }
-            } catch (e) {
-                // Silently ignore prefetch errors; speak handler will fallback
-            }
-        }
         speakBtn.addEventListener('click', async() => {
             if (!currentCard.de) return;
             const text = currentCard.de;
             const fileName = safeFileName(text);
             const staticUrl = `/audio/de/${fileName}.mp3`;
-            // If preloaded and ready, play immediately
-            if (currentAudioText === text && audioPlayer.src) {
-                try {
-                    speakBtn.disabled = true;
-                    speakBtn.textContent = 'Speaking...';
-                    audioPlayer.currentTime = 0;
-                    await audioPlayer.play();
-                    return;
-                } catch {}
-            }
             speakBtn.disabled = true;
             speakBtn.textContent = 'Speaking...';
 
@@ -802,7 +746,7 @@
                     audioPlayer.src = lastObjectUrl;
                     audioPlayer.currentTime = 0;
                     await audioPlayer.play();
-                    audioCache.set(text, { src: lastObjectUrl, isObjectUrl: true });
+                    audioCache.set(text, staticUrl);
                     return;
                 }
             } catch (e) {
