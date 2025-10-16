@@ -325,9 +325,23 @@
             transform: translateY(-2px);
             box-shadow: 0 12px 28px rgba(2, 8, 23, 0.08);
         }
-        
+
         #card:active {
             transform: translateY(0);
+        }
+        /* Restore tap pop animation similar to earlier hover feel */
+        @keyframes tapPop {
+            0% {
+                transform: translateY(-2px) scale(1.01);
+                box-shadow: 0 12px 28px rgba(2, 8, 23, 0.08);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                box-shadow: var(--shadow);
+            }
+        }
+        #card.tap-pop {
+            animation: tapPop 180ms ease-out;
         }
         /* Simulated press feedback for touch devices */
         #card.is-pressed {
@@ -635,6 +649,7 @@
             // prevent synthetic click and any default touch feedback
             e.preventDefault();
             card.classList.add('is-pressed');
+            card.classList.add('tap-pop');
             flipCard();
             // reset the flag shortly after touch sequence completes
             setTimeout(() => {
@@ -643,9 +658,11 @@
         }, { passive: false });
         card.addEventListener('touchend', () => {
             card.classList.remove('is-pressed');
+            card.classList.remove('tap-pop');
         });
         card.addEventListener('touchcancel', () => {
             card.classList.remove('is-pressed');
+            card.classList.remove('tap-pop');
         });
         // Click for mouse/non-touch; ignore if a touch just happened
         card.addEventListener('click', (e) => {
