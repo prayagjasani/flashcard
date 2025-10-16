@@ -617,20 +617,28 @@
             showingFront = true;
         }
 
+        let recentlyTouched = false;
         function flipCard() {
             if (currentCard[backLang]) {
                 card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
                 showingFront = !showingFront;
             }
         }
-        // Click for desktop/mouse
-        card.addEventListener('click', flipCard);
-        // Touch: prevent default tap feedback and flip immediately
-        card.addEventListener('pointerdown', (e) => {
-            if (e.pointerType === 'touch') {
-                e.preventDefault();
-                flipCard();
-            }
+        // Touch-first: flip immediately and suppress synthetic click
+        card.addEventListener('touchstart', (e) => {
+            recentlyTouched = true;
+            // prevent synthetic click and any default touch feedback
+            e.preventDefault();
+            flipCard();
+            // reset the flag shortly after touch sequence completes
+            setTimeout(() => {
+                recentlyTouched = false;
+            }, 400);
+        }, { passive: false });
+        // Click for mouse/non-touch; ignore if a touch just happened
+        card.addEventListener('click', (e) => {
+            if (recentlyTouched) return;
+            flipCard();
         });
 
         wrongBtn.addEventListener('click', () => {
