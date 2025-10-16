@@ -19,6 +19,7 @@
         
         * {
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         
         body {
@@ -315,6 +316,7 @@
             /* Remove mobile tap/selection highlight overlays */
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
+            touch-action: manipulation;
             outline: none;
             transition: transform 160ms ease, box-shadow 160ms ease;
         }
