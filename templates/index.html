@@ -617,10 +617,19 @@
             showingFront = true;
         }
 
-        card.addEventListener('click', () => {
+        function flipCard() {
             if (currentCard[backLang]) {
                 card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
                 showingFront = !showingFront;
+            }
+        }
+        // Click for desktop/mouse
+        card.addEventListener('click', flipCard);
+        // Touch: prevent default tap feedback and flip immediately
+        card.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'touch') {
+                e.preventDefault();
+                flipCard();
             }
         });
 
