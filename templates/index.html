@@ -309,6 +309,13 @@
             font-weight: 600;
             cursor: pointer;
             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            /* Remove mobile tap/selection highlight overlays */
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            outline: none;
             transition: transform 160ms ease, box-shadow 160ms ease;
         }
         
