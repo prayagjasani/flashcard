@@ -329,6 +329,11 @@
         #card:active {
             transform: translateY(0);
         }
+        /* Simulated press feedback for touch devices */
+        #card.is-pressed {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 8px 20px rgba(2, 8, 23, 0.06);
+        }
         
         .buttons,
         .actions {
@@ -629,12 +634,19 @@
             recentlyTouched = true;
             // prevent synthetic click and any default touch feedback
             e.preventDefault();
+            card.classList.add('is-pressed');
             flipCard();
             // reset the flag shortly after touch sequence completes
             setTimeout(() => {
                 recentlyTouched = false;
             }, 400);
         }, { passive: false });
+        card.addEventListener('touchend', () => {
+            card.classList.remove('is-pressed');
+        });
+        card.addEventListener('touchcancel', () => {
+            card.classList.remove('is-pressed');
+        });
         // Click for mouse/non-touch; ignore if a touch just happened
         card.addEventListener('click', (e) => {
             if (recentlyTouched) return;
