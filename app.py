@@ -14,14 +14,7 @@ app = FastAPI()
 # Serve cached audio files directly from /audio
 app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 
-words = []
-def load_words():
-    words.clear()
-    with open('list.csv', 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) >= 2 and row[0].strip() and row[1].strip():
-                words.append({'en': row[0].strip(), 'de': row[1].strip()})
+# Legacy loader removed: decks are loaded on demand via /cards
 
 @app.get("/")
 def read_root():
@@ -29,9 +22,20 @@ def read_root():
 
 @app.get("/decks")
 def list_decks():
-    files = [f for f in os.listdir('.') if f.lower().endswith('.csv')]
-    files.sort()
-    return [{"name": os.path.splitext(f)[0], "file": f} for f in files]
+    # Collect deck names from csv/ and project root for backward compatibility
+    names = set()
+    csv_dir = os.path.join('.', 'csv')
+    try:
+        for f in os.listdir(csv_dir):
+            if f.lower().endswith('.csv'):
+                names.add(os.path.splitext(f)[0])
+    except FileNotFoundError:
+        pass
+    for f in os.listdir('.'):
+        if f.lower().endswith('.csv'):
+            names.add(os.path.splitext(f)[0])
+
+    return [{"name": n, "file": f"{n}.csv"} for n in sorted(names)]
 
 @app.get("/cards")
 def get_cards(deck: str | None = None):
@@ -43,12 +47,20 @@ def get_cards(deck: str | None = None):
             raise HTTPException(status_code=400, detail="Invalid deck name")
         target = safe if safe.lower().endswith('.csv') else f"{safe}.csv"
 
-    if not os.path.exists(target):
+    # Prefer csv/ folder; fallback to project root for legacy decks
+    csv_dir = os.path.join('.', 'csv')
+    target_in_csv = os.path.join(csv_dir, target)
+    path_to_open = None
+    if os.path.exists(target_in_csv):
+        path_to_open = target_in_csv
+    elif os.path.exists(target):
+        path_to_open = target
+    else:
         raise HTTPException(status_code=404, detail="Deck not found")
 
     # Read words from target CSV
     result = []
-    with open(target, 'r', encoding='utf-8') as f:
+    with open(path_to_open, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
             if len(row) >= 2 and row[0].strip() and row[1].strip():
@@ -66,7 +78,10 @@ def create_deck(payload: DeckCreate):
         raise HTTPException(status_code=400, detail="Deck name required")
     # Allow letters, numbers, underscore and dash
     safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", name)[:50]
-    file_path = f"{safe_name}.csv"
+    # Ensure csv directory exists and write deck CSV inside it
+    csv_dir = os.path.join('.', 'csv')
+    os.makedirs(csv_dir, exist_ok=True)
+    file_path = os.path.join(csv_dir, f"{safe_name}.csv")
 
     lines = (payload.data or "").splitlines()
     rows = []
@@ -90,10 +105,37 @@ def create_deck(payload: DeckCreate):
         with open(file_path, "w", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
             writer.writerows(rows)
+
+        # Prefetch audio for German words so Speak is instant next time
+        try:
+            cache_dir = os.path.join("audio", "de")
+            os.makedirs(cache_dir, exist_ok=True)
+            # Use a set to avoid duplicate generation
+            unique_de = set(de for _, de in rows)
+            generated = 0
+            skipped = 0
+            for text in unique_de:
+                # Sanitize filename similar to /tts endpoint
+                safe_text = re.sub(r"[^a-zA-Z0-9äöüÄÖÜß]+", "_", text.strip())[:100]
+                target_path = os.path.join(cache_dir, f"{safe_text}.mp3")
+                if os.path.exists(target_path):
+                    skipped += 1
+                    continue
+                try:
+                    tts = gTTS(text=text, lang="de", slow=False)
+                    tts.save(target_path)
+                    generated += 1
+                except Exception:
+                    # Best-effort: skip failures and continue
+                    pass
+        except Exception:
+            # Do not fail deck creation if audio prefetch has issues
+            generated = 0
+            skipped = 0
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    return {"ok": True, "file": file_path, "rows": len(rows)}
+    return {"ok": True, "file": file_path, "rows": len(rows), "audio_generated": generated, "audio_skipped": skipped}
 
 @app.get("/tts")
 def tts(text: str, lang: str = "de", slow: bool = False):
@@ -118,5 +160,4 @@ def tts(text: str, lang: str = "de", slow: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    load_words()
     uvicorn.run(app, host="0.0.0.0", port=8000)

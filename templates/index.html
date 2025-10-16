@@ -3,6 +3,7 @@
 
 <head>
     <title>Flashcards</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <style>
          :root {
             --bg: #f6f7fb;
@@ -31,29 +32,41 @@
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             padding: 24px;
         }
-
         /* Responsive, animated header (Cosmos-style) */
+        
         .site-header {
             position: fixed;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             z-index: 50;
             backdrop-filter: saturate(180%) blur(8px);
             -webkit-backdrop-filter: saturate(180%) blur(8px);
-            background: rgba(255,255,255,0.6);
-            border-bottom: 1px solid rgba(226,232,240,0.7);
+            background: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.7);
             transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
         }
+        
         @media (prefers-color-scheme: dark) {
-            .site-header { background: rgba(17,24,39,0.45); border-bottom-color: rgba(55,65,81,0.5); }
+            .site-header {
+                background: rgba(17, 24, 39, 0.45);
+                border-bottom-color: rgba(55, 65, 81, 0.5);
+            }
         }
+        
         .site-header.is-solid {
-            background: rgba(255,255,255,0.85);
-            border-bottom-color: rgba(226,232,240,1);
-            box-shadow: 0 6px 20px rgba(2,8,23,0.10);
+            background: rgba(255, 255, 255, 0.85);
+            border-bottom-color: rgba(226, 232, 240, 1);
+            box-shadow: 0 6px 20px rgba(2, 8, 23, 0.10);
         }
+        
         @media (prefers-color-scheme: dark) {
-            .site-header.is-solid { background: rgba(17,24,39,0.8); border-bottom-color: rgba(55,65,81,0.9); }
+            .site-header.is-solid {
+                background: rgba(17, 24, 39, 0.8);
+                border-bottom-color: rgba(55, 65, 81, 0.9);
+            }
         }
+        
         .header__inner {
             max-width: 1100px;
             margin: 0 auto;
@@ -63,8 +76,20 @@
             align-items: center;
             gap: 12px;
         }
-        .header__logo { font-weight: 700; color: inherit; text-decoration: none; }
-        .header__nav { display: flex; grid-column: 2; justify-content: center; gap: 18px; }
+        
+        .header__logo {
+            font-weight: 700;
+            color: inherit;
+            text-decoration: none;
+        }
+        
+        .header__nav {
+            display: flex;
+            grid-column: 2;
+            justify-content: center;
+            gap: 18px;
+        }
+        
         .nav__link {
             position: relative;
             display: inline-block;
@@ -74,8 +99,8 @@
             text-decoration: none;
             font-weight: 600;
         }
-
         /* Make the header action button visually identical to nav links */
+        
         .nav__link--button {
             background: transparent;
             border: 0;
@@ -86,52 +111,181 @@
             cursor: pointer;
         }
         /* Ensure header button aligns perfectly with nav link sizing */
-        .nav__link--button { font: inherit; border-radius: 0; }
-        .link__text { display: block; line-height: 20px; transition: transform 220ms ease; will-change: transform; }
-        .link__text--primary { transform: translateY(0%); }
-        .link__text--hover { position: absolute; left: 0; top: 100%; transform: translateY(0%); opacity: 0.9; }
-        .nav__link:hover .link__text--primary { transform: translateY(-100%); }
-        .nav__link:hover .link__text--hover { transform: translateY(-100%); opacity: 1; }
-        .header__actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
-        .btn { appearance: none; border: 1px solid var(--card-border); background: #ffffff; color: #0f172a; padding: 8px 12px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease; }
-        .btn:hover { transform: translateY(-1px); }
-        .btn--login { opacity: 0.9; }
-        .btn--signup { background: var(--accent); color: #fff; border-color: rgba(59,130,246,0.5); box-shadow: 0 4px 12px rgba(59,130,246,0.35); }
-        .btn--signup:hover { filter: brightness(1.05); transform: translateY(-1px) scale(1.03); }
-        .hamburger { display: inline-flex; flex-direction: column; gap: 3px; width: 36px; height: 32px; justify-content: center; align-items: center; border: 1px solid var(--card-border); border-radius: 10px; background: #ffffff; cursor: pointer; }
-        @media (prefers-color-scheme: dark) {
-            .btn { background: #0b1224; color: #e5e7eb; border-color: #1f2937; }
-            .hamburger { background: #0b1224; border-color: #1f2937; }
+        
+        .nav__link--button {
+            font: inherit;
+            border-radius: 0;
         }
-        .hamburger span { display: block; width: 18px; height: 2px; background: currentColor; border-radius: 2px; transition: transform 200ms ease, opacity 200ms ease; }
-        .hamburger.is-open span:nth-child(1) { transform: translateY(4px) rotate(45deg); }
-        .hamburger.is-open span:nth-child(2) { opacity: 0; }
-        .hamburger.is-open span:nth-child(3) { transform: translateY(-4px) rotate(-45deg); }
+        
+        .link__text {
+            display: block;
+            line-height: 20px;
+            transition: transform 220ms ease;
+            will-change: transform;
+        }
+        
+        .link__text--primary {
+            transform: translateY(0%);
+        }
+        
+        .link__text--hover {
+            position: absolute;
+            left: 0;
+            top: 100%;
+            transform: translateY(0%);
+            opacity: 0.9;
+        }
+        
+        .nav__link:hover .link__text--primary {
+            transform: translateY(-100%);
+        }
+        
+        .nav__link:hover .link__text--hover {
+            transform: translateY(-100%);
+            opacity: 1;
+        }
+        
+        .header__actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            grid-column: 2;
+        }
+        
+        .btn {
+            appearance: none;
+            border: 1px solid var(--card-border);
+            background: #ffffff;
+            color: #0f172a;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn--login {
+            opacity: 0.9;
+        }
+        
+        .btn--signup {
+            background: var(--accent);
+            color: #fff;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        }
+        
+        .btn--signup:hover {
+            filter: brightness(1.05);
+            transform: translateY(-1px) scale(1.03);
+        }
+        
+        .hamburger {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 3px;
+            width: 36px;
+            height: 32px;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .btn {
+                background: #0b1224;
+                color: #e5e7eb;
+                border-color: #1f2937;
+            }
+            .hamburger {
+                background: #0b1224;
+                border-color: #1f2937;
+            }
+        }
+        
+        .hamburger span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 2px;
+            transition: transform 200ms ease, opacity 200ms ease;
+        }
+        
+        .hamburger.is-open span:nth-child(1) {
+            transform: translateY(4px) rotate(45deg);
+        }
+        
+        .hamburger.is-open span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .hamburger.is-open span:nth-child(3) {
+            transform: translateY(-4px) rotate(-45deg);
+        }
+        
         .mobile__menu {
-            position: fixed; top: 56px; left: 0; right: 0;
-            background: rgba(255,255,255,0.92);
-            border-bottom: 1px solid rgba(226,232,240,1);
+            position: fixed;
+            top: 56px;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.92);
+            border-bottom: 1px solid rgba(226, 232, 240, 1);
             backdrop-filter: saturate(180%) blur(8px);
             -webkit-backdrop-filter: saturate(180%) blur(8px);
             padding: 12px 20px;
             display: none;
-            flex-direction: column; gap: 10px; z-index: 49;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 49;
         }
+        
         @media (prefers-color-scheme: dark) {
-            .mobile__menu { background: rgba(17,24,39,0.9); border-bottom-color: rgba(55,65,81,0.9); }
+            .mobile__menu {
+                background: rgba(17, 24, 39, 0.9);
+                border-bottom-color: rgba(55, 65, 81, 0.9);
+            }
         }
-        .mobile__menu.is-open { display: flex; animation: menuFade 180ms ease; }
-        @keyframes menuFade { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .mobile__menu.is-open {
+            display: flex;
+            animation: menuFade 180ms ease;
+        }
+        
+        @keyframes menuFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         @media (min-width: 768px) {
-            .hamburger { display: none; }
-            .mobile__menu { display: none !important; }
+            .hamburger {
+                display: none;
+            }
+            .mobile__menu {
+                display: none !important;
+            }
         }
         
         .app {
             width: 100%;
             max-width: 640px;
             text-align: center;
-            margin-top: 80px; /* avoid overlap under fixed header */
+            margin-top: 80px;
+            /* avoid overlap under fixed header */
         }
         
         h1 {
@@ -223,42 +377,136 @@
         .footer-actions {
             margin-top: 8px;
         }
-        .deck-select { width: 380px; margin: 8px auto 0; text-align: center; }
-        .deck-select label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; color: var(--muted); }
-        .deck-select select { width: 100%; border: 1px solid var(--card-border); border-radius: 10px; padding: 8px 10px; background: var(--card-bg); color: var(--text); }
+        
+        .deck-select {
+            width: 380px;
+            margin: 8px auto 0;
+            text-align: center;
+        }
+        
+        .deck-select label {
+            font-weight: 600;
+            font-size: 14px;
+            display: block;
+            margin-bottom: 6px;
+            color: var(--muted);
+        }
+        
+        .deck-select select {
+            width: 100%;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: var(--card-bg);
+            color: var(--text);
+        }
         /* Deck Modal */
-        .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 60; }
-        .modal.is-open { display: flex; }
-        .modal__backdrop { position: absolute; inset: 0; background: rgba(2,8,23,0.5); backdrop-filter: blur(2px); }
-        .modal__dialog { position: relative; width: 90%; max-width: 640px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; }
-        .modal__title { margin: 0 0 12px; font-weight: 700; }
-        .modal__field { margin-bottom: 10px; text-align: left; }
-        .modal__field label { font-weight: 600; display: block; margin-bottom: 6px; }
-        .modal__field input, .modal__field textarea { width: 100%; border: 1px solid var(--card-border); border-radius: 10px; padding: 8px 10px; font-family: inherit; font-size: 14px; }
-        .modal__field textarea { min-height: 180px; resize: vertical; }
-        .modal__actions { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
-        .modal__status { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: left; }
+        
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+        }
+        
+        .modal.is-open {
+            display: flex;
+        }
+        
+        .modal__backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 8, 23, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        .modal__dialog {
+            position: relative;
+            width: 90%;
+            max-width: 640px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 16px;
+        }
+        
+        .modal__title {
+            margin: 0 0 12px;
+            font-weight: 700;
+        }
+        
+        .modal__field {
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        
+        .modal__field label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 6px;
+        }
+        
+        .modal__field input,
+        .modal__field textarea {
+            width: 100%;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        
+        .modal__field textarea {
+            min-height: 180px;
+            resize: vertical;
+        }
+        
+        .modal__actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        
+        .modal__status {
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--muted);
+            text-align: left;
+        }
+        /* Mobile tweaks */
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+                align-items: flex-start;
+            }
+            .app {
+                margin-top: 60px;
+            }
+            .deck-select {
+                width: 92vw;
+            }
+            #card {
+                width: 92vw;
+                max-width: 380px;
+                height: auto;
+                aspect-ratio: 19 / 12;
+            }
+            .buttons button,
+            .actions button {
+                width: 46%;
+            }
+        }
     </style>
 </head>
 
 <body>
     <header class="site-header" role="banner">
         <div class="header__inner">
-            <a href="#" class="header__logo">Flashcards</a>
-            <nav class="header__nav" aria-label="Main navigation">
-                <a class="nav__link" href="#">
-                    <span class="link__text link__text--primary">Manifesto</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Manifesto</span>
-                </a>
-                <a class="nav__link" href="#">
-                    <span class="link__text link__text--primary">Careers</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Careers</span>
-                </a>
-                <a class="nav__link" href="#">
-                    <span class="link__text link__text--primary">Discover</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Discover</span>
-                </a>
-            </nav>
             <div class="header__actions">
                 <button class="nav__link nav__link--button" id="createDeckBtn" type="button">
                     <span class="link__text link__text--primary">Create Deck</span>
@@ -266,7 +514,6 @@
                 </button>
             </div>
         </div>
-        
     </header>
     <div class="modal" id="deckModal" aria-hidden="true">
         <div class="modal__backdrop" data-close="true"></div>
@@ -302,265 +549,281 @@
             <button id="reset">Reset</button>
             <button id="speak">Speak</button>
         </div>
+    </div>
 
-        <script>
-            const card = document.getElementById('card');
-            const wrongBtn = document.getElementById('wrong');
-            const rightBtn = document.getElementById('right');
-            const resetBtn = document.getElementById('reset');
-            const speakBtn = document.getElementById('speak');
-            const header = document.querySelector('.site-header');
+    <script>
+        const card = document.getElementById('card');
+        const wrongBtn = document.getElementById('wrong');
+        const rightBtn = document.getElementById('right');
+        const resetBtn = document.getElementById('reset');
+        const speakBtn = document.getElementById('speak');
+        const header = document.querySelector('.site-header');
 
-            let currentCard = {};
-            let words = [];
-            let originalWords = [];
-            let showingFront = true;
-            let frontLang = 'de';
-            let backLang = 'en';
+        let currentCard = {};
+        let words = [];
+        let originalWords = [];
+        let showingFront = true;
+        let frontLang = 'de';
+        let backLang = 'en';
 
-            const deckSelect = document.getElementById('deckSelect');
+        const deckSelect = document.getElementById('deckSelect');
 
-            async function loadWordsForDeck(deckName) {
-                const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
-                const response = await fetch(url);
-                originalWords = await response.json();
-                words = [...originalWords];
-                getNewCard();
-                if (deckName) localStorage.setItem('selectedDeck', deckName);
+        async function loadWordsForDeck(deckName) {
+            const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
+            const response = await fetch(url);
+            originalWords = await response.json();
+            words = [...originalWords];
+            getNewCard();
+            if (deckName) localStorage.setItem('selectedDeck', deckName);
+        }
+
+        async function loadDecks() {
+            try {
+                const resp = await fetch('/decks');
+                const list = await resp.json();
+                deckSelect.innerHTML = '';
+                const preferred = localStorage.getItem('selectedDeck') || 'list';
+                list.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.name;
+                    opt.textContent = d.name;
+                    deckSelect.appendChild(opt);
+                });
+                const hasPreferred = list.some(d => d.name === preferred);
+                deckSelect.value = hasPreferred ? preferred : (list.length ? list[0].name : '');
+                await loadWordsForDeck(deckSelect.value);
+            } catch (e) {
+                // Fall back to default
+                await loadWordsForDeck('list');
             }
+        }
 
-            async function loadDecks() {
-                try {
-                    const resp = await fetch('/decks');
-                    const list = await resp.json();
-                    deckSelect.innerHTML = '';
-                    const preferred = localStorage.getItem('selectedDeck') || 'list';
-                    list.forEach(d => {
-                        const opt = document.createElement('option');
-                        opt.value = d.name;
-                        opt.textContent = d.name;
-                        deckSelect.appendChild(opt);
-                    });
-                    const hasPreferred = list.some(d => d.name === preferred);
-                    deckSelect.value = hasPreferred ? preferred : (list[0]?.name || '');
-                    await loadWordsForDeck(deckSelect.value);
-                } catch (e) {
-                    // Fall back to default
-                    await loadWordsForDeck('list');
-                }
+        function getNewCard() {
+            if (words.length === 0) {
+                card.innerText = 'You have learned all the words!';
+                return;
             }
+            currentCard = words.shift();
+            card.innerText = currentCard[frontLang];
+            showingFront = true;
+        }
 
-            function getNewCard() {
-                if (words.length === 0) {
-                    card.innerText = 'You have learned all the words!';
-                    return;
-                }
-                currentCard = words.shift();
-                card.innerText = currentCard[frontLang];
-                showingFront = true;
+        card.addEventListener('click', () => {
+            if (currentCard[backLang]) {
+                card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
+                showingFront = !showingFront;
             }
+        });
 
-            card.addEventListener('click', () => {
-                if (currentCard[backLang]) {
-                    card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
-                    showingFront = !showingFront;
-                }
-            });
+        wrongBtn.addEventListener('click', () => {
+            words.push(currentCard);
+            getNewCard();
+        });
 
-            wrongBtn.addEventListener('click', () => {
-                words.push(currentCard);
-                getNewCard();
-            });
+        rightBtn.addEventListener('click', () => {
+            getNewCard();
+        });
 
-            rightBtn.addEventListener('click', () => {
-                getNewCard();
-            });
+        resetBtn.addEventListener('click', () => {
+            words = [...originalWords];
+            getNewCard();
+        });
 
-            resetBtn.addEventListener('click', () => {
-                words = [...originalWords];
-                getNewCard();
-            });
+        let germanVoice = null;
+        const audioCache = new Map();
+        const audioPlayer = new Audio();
+        audioPlayer.preload = 'none';
+        let lastObjectUrl = null;
 
-            let germanVoice = null;
-            const audioCache = new Map();
-            const audioPlayer = new Audio();
-            audioPlayer.preload = 'none';
-            let lastObjectUrl = null;
-
-            function cleanupObjectUrl() {
-                if (lastObjectUrl) {
-                    URL.revokeObjectURL(lastObjectUrl);
-                    lastObjectUrl = null;
-                }
+        function cleanupObjectUrl() {
+            if (lastObjectUrl) {
+                URL.revokeObjectURL(lastObjectUrl);
+                lastObjectUrl = null;
             }
-            audioPlayer.addEventListener('ended', () => {
-                speakBtn.disabled = false;
-                speakBtn.textContent = 'Speak';
-                cleanupObjectUrl();
-            });
-            audioPlayer.addEventListener('error', () => {
-                speakBtn.disabled = false;
-                speakBtn.textContent = 'Speak';
-                cleanupObjectUrl();
-            });
+        }
+        audioPlayer.addEventListener('ended', () => {
+            speakBtn.disabled = false;
+            speakBtn.textContent = 'Speak';
+            cleanupObjectUrl();
+        });
+        audioPlayer.addEventListener('error', () => {
+            speakBtn.disabled = false;
+            speakBtn.textContent = 'Speak';
+            cleanupObjectUrl();
+        });
 
-            function safeFileName(text) {
-                return text.trim().replace(/[^a-zA-Z0-9äöüÄÖÜß]+/g, '_').substring(0, 100);
+        function safeFileName(text) {
+            return text.trim().replace(/[^a-zA-Z0-9äöüÄÖÜß]+/g, '_').substring(0, 100);
+        }
+
+        function selectGermanVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            // Try to find a voice with 'de' in lang and 'German' or 'Deutsch' in name
+            germanVoice = voices.find(v => v.lang.startsWith('de') && (v.name.toLowerCase().includes('german') || v.name.toLowerCase().includes('deutsch')));
+            // Fallback: any voice with 'de' in lang
+            if (!germanVoice) {
+                germanVoice = voices.find(v => v.lang.startsWith('de'));
             }
-
-            function selectGermanVoice() {
-                const voices = window.speechSynthesis.getVoices();
-                // Try to find a voice with 'de' in lang and 'German' or 'Deutsch' in name
-                germanVoice = voices.find(v => v.lang.startsWith('de') && (v.name.toLowerCase().includes('german') || v.name.toLowerCase().includes('deutsch')));
-                // Fallback: any voice with 'de' in lang
-                if (!germanVoice) {
-                    germanVoice = voices.find(v => v.lang.startsWith('de'));
-                }
+        }
+        // Ensure voices are loaded
+        if (typeof speechSynthesis !== 'undefined') {
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = selectGermanVoice;
             }
-            // Ensure voices are loaded
-            if (typeof speechSynthesis !== 'undefined') {
-                if (speechSynthesis.onvoiceschanged !== undefined) {
-                    speechSynthesis.onvoiceschanged = selectGermanVoice;
-                }
-                selectGermanVoice();
-            }
-            speakBtn.addEventListener('click', async() => {
-                if (!currentCard.de) return;
-                const text = currentCard.de;
-                const fileName = safeFileName(text);
-                const staticUrl = `/audio/de/${fileName}.mp3`;
-                speakBtn.disabled = true;
-                speakBtn.textContent = 'Speaking...';
+            selectGermanVoice();
+        }
+        speakBtn.addEventListener('click', async() => {
+            if (!currentCard.de) return;
+            const text = currentCard.de;
+            const fileName = safeFileName(text);
+            const staticUrl = `/audio/de/${fileName}.mp3`;
+            speakBtn.disabled = true;
+            speakBtn.textContent = 'Speaking...';
 
-                // Try static file first (GET -> blob -> play)
-                try {
-                    const resp = await fetch(staticUrl);
-                    if (resp.ok) {
-                        const blob = await resp.blob();
-                        cleanupObjectUrl();
-                        lastObjectUrl = URL.createObjectURL(blob);
-                        audioPlayer.pause();
-                        audioPlayer.src = lastObjectUrl;
-                        audioPlayer.currentTime = 0;
-                        await audioPlayer.play();
-                        audioCache.set(text, staticUrl);
-                        return;
-                    }
-                } catch (e) {
-                    // Ignore and fall back
-                }
-
-                // Fallback to backend TTS (will also create cache for next time)
-                try {
-                    const ttsUrl = `/tts?text=${encodeURIComponent(text)}&lang=de`;
-                    const resp2 = await fetch(ttsUrl);
-                    if (!resp2.ok) throw new Error('TTS failed');
-                    const blob2 = await resp2.blob();
+            // Try static file first (GET -> blob -> play)
+            try {
+                const resp = await fetch(staticUrl);
+                if (resp.ok) {
+                    const blob = await resp.blob();
                     cleanupObjectUrl();
-                    lastObjectUrl = URL.createObjectURL(blob2);
+                    lastObjectUrl = URL.createObjectURL(blob);
                     audioPlayer.pause();
                     audioPlayer.src = lastObjectUrl;
                     audioPlayer.currentTime = 0;
                     await audioPlayer.play();
-                    // After TTS, cache the static path for next use
                     audioCache.set(text, staticUrl);
-                } catch (err) {
-                    // Fallback to browser speech synthesis if audio fails
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'de-DE';
-                    if (germanVoice) utterance.voice = germanVoice;
-                    speechSynthesis.speak(utterance);
-                    speakBtn.disabled = false;
-                    speakBtn.textContent = 'Speak';
+                    return;
                 }
-            });
-
-            loadDecks();
-
-            // Header interactions
-            function updateHeaderSolid() {
-                if (window.scrollY > 10) header.classList.add('is-solid');
-                else header.classList.remove('is-solid');
-            }
-            updateHeaderSolid();
-            window.addEventListener('scroll', updateHeaderSolid, { passive: true });
-            // Mobile menu removed per design request; no toggle handlers.
-            deckSelect.addEventListener('change', (e) => {
-                const name = e.target.value;
-                loadWordsForDeck(name);
-            });
-
-            // Deck creation modal logic
-            const createDeckBtn = document.getElementById('createDeckBtn');
-            const deckModal = document.getElementById('deckModal');
-            const deckNameInput = document.getElementById('deckNameInput');
-            const deckDataInput = document.getElementById('deckDataInput');
-            const deckCancelBtn = document.getElementById('deckCancelBtn');
-            const deckSaveBtn = document.getElementById('deckSaveBtn');
-            const deckStatus = document.getElementById('deckStatus');
-
-            function openDeckModal() {
-                deckStatus.textContent = '';
-                deckNameInput.value = '';
-                deckDataInput.value = '';
-                deckModal.classList.add('is-open');
-                deckModal.setAttribute('aria-hidden', 'false');
-                deckNameInput.focus();
-            }
-            function closeDeckModal() {
-                deckModal.classList.remove('is-open');
-                deckModal.setAttribute('aria-hidden', 'true');
-            }
-            createDeckBtn?.addEventListener('click', openDeckModal);
-            deckCancelBtn?.addEventListener('click', closeDeckModal);
-            deckModal.addEventListener('click', (e) => {
-                if (e.target.dataset.close === 'true') closeDeckModal();
-            });
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') closeDeckModal();
-            });
-
-            function sanitizeDeckName(name) {
-                return name.trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50);
+            } catch (e) {
+                // Ignore and fall back
             }
 
-            deckSaveBtn?.addEventListener('click', async () => {
-                const rawName = deckNameInput.value;
-                const rawData = deckDataInput.value;
-                const name = sanitizeDeckName(rawName);
-                if (!name) { deckStatus.textContent = 'Please enter a deck name.'; return; }
-                if (!rawData.trim()) { deckStatus.textContent = 'Please paste deck data.'; return; }
+            // Fallback to backend TTS (will also create cache for next time)
+            try {
+                const ttsUrl = `/tts?text=${encodeURIComponent(text)}&lang=de`;
+                const resp2 = await fetch(ttsUrl);
+                if (!resp2.ok) throw new Error('TTS failed');
+                const blob2 = await resp2.blob();
+                cleanupObjectUrl();
+                lastObjectUrl = URL.createObjectURL(blob2);
+                audioPlayer.pause();
+                audioPlayer.src = lastObjectUrl;
+                audioPlayer.currentTime = 0;
+                await audioPlayer.play();
+                // After TTS, cache the static path for next use
+                audioCache.set(text, staticUrl);
+            } catch (err) {
+                // Fallback to browser speech synthesis if audio fails
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'de-DE';
+                if (germanVoice) utterance.voice = germanVoice;
+                speechSynthesis.speak(utterance);
+                speakBtn.disabled = false;
+                speakBtn.textContent = 'Speak';
+            }
+        });
 
-                deckSaveBtn.disabled = true;
-                deckSaveBtn.textContent = 'Saving...';
+        loadDecks();
 
+        // Header interactions
+        function updateHeaderSolid() {
+            if (window.scrollY > 10) header.classList.add('is-solid');
+            else header.classList.remove('is-solid');
+        }
+        updateHeaderSolid();
+        window.addEventListener('scroll', updateHeaderSolid, {
+            passive: true
+        });
+        // Mobile menu removed per design request; no toggle handlers.
+        deckSelect.addEventListener('change', (e) => {
+            const name = e.target.value;
+            loadWordsForDeck(name);
+        });
+
+        // Deck creation modal logic
+        const createDeckBtn = document.getElementById('createDeckBtn');
+        const deckModal = document.getElementById('deckModal');
+        const deckNameInput = document.getElementById('deckNameInput');
+        const deckDataInput = document.getElementById('deckDataInput');
+        const deckCancelBtn = document.getElementById('deckCancelBtn');
+        const deckSaveBtn = document.getElementById('deckSaveBtn');
+        const deckStatus = document.getElementById('deckStatus');
+
+        function openDeckModal() {
+            deckStatus.textContent = '';
+            deckNameInput.value = '';
+            deckDataInput.value = '';
+            deckModal.classList.add('is-open');
+            deckModal.setAttribute('aria-hidden', 'false');
+            deckNameInput.focus();
+        }
+
+        function closeDeckModal() {
+            deckModal.classList.remove('is-open');
+            deckModal.setAttribute('aria-hidden', 'true');
+        }
+        if (createDeckBtn) createDeckBtn.addEventListener('click', openDeckModal);
+        if (deckCancelBtn) deckCancelBtn.addEventListener('click', closeDeckModal);
+        deckModal.addEventListener('click', (e) => {
+            if (e.target.dataset.close === 'true') closeDeckModal();
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeDeckModal();
+        });
+
+        function sanitizeDeckName(name) {
+            return name.trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50);
+        }
+
+        if (deckSaveBtn) deckSaveBtn.addEventListener('click', async() => {
+            const rawName = deckNameInput.value;
+            const rawData = deckDataInput.value;
+            const name = sanitizeDeckName(rawName);
+            if (!name) {
+                deckStatus.textContent = 'Please enter a deck name.';
+                return;
+            }
+            if (!rawData.trim()) {
+                deckStatus.textContent = 'Please paste deck data.';
+                return;
+            }
+
+            deckSaveBtn.disabled = true;
+            deckSaveBtn.textContent = 'Saving...';
+
+            try {
+                const resp = await fetch('/deck/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        data: rawData
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) {
+                    throw new Error(out.detail || 'Failed to create deck');
+                }
+                // On success: select new deck, refresh list, and close modal automatically
+                deckSaveBtn.textContent = 'Saved';
                 try {
-                    const resp = await fetch('/deck/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, data: rawData })
-                    });
-                    const out = await resp.json().catch(() => ({ ok: false }));
-                    if (!resp.ok || !out.ok) {
-                        throw new Error(out.detail || 'Failed to create deck');
-                    }
-                    // On success: select new deck, refresh list, and close modal automatically
-                    deckSaveBtn.textContent = 'Saved';
-                    try {
-                        localStorage.setItem('selectedDeck', name);
-                        await loadDecks();
-                    } catch {}
-                    closeDeckModal();
-                    deckSaveBtn.disabled = false;
-                    deckSaveBtn.textContent = 'Create';
-                } catch (err) {
-                    deckStatus.textContent = String(err.message || err);
-                    deckSaveBtn.disabled = false;
-                    deckSaveBtn.textContent = 'Create';
-                }
-            });
-        </script>
-    </div>
+                    localStorage.setItem('selectedDeck', name);
+                    await loadDecks();
+                } catch {}
+                closeDeckModal();
+                deckSaveBtn.disabled = false;
+                deckSaveBtn.textContent = 'Create';
+            } catch (err) {
+                deckStatus.textContent = String(err.message || err);
+                deckSaveBtn.disabled = false;
+                deckSaveBtn.textContent = 'Create';
+            }
+        });
+    </script>
 </body>
 
 </html>
