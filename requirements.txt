@@ -3,3 +3,4 @@ uvicorn[standard]
 gTTS
 boto3
 python-dotenv
+Jinja2
