@@ -114,6 +114,43 @@ def get_r2_file(key: str):
         raise HTTPException(status_code=404, detail=f"File not found: {e}")
 
 # ----- Deck & Card Routes -----
+@app.get("/cards")
+async def get_cards(deck: Optional[str] = None):
+    """Fetch cards from a local CSV file or from R2."""
+    # Default to a local CSV file if no deck specified
+    deck_file = deck if deck else "list"
+    
+    # First try local file
+    local_path = f"csv/{deck_file}.csv" if not deck_file.endswith('.csv') else f"csv/{deck_file}"
+    if os.path.exists(local_path):
+        try:
+            cards = []
+            with open(local_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f, fieldnames=['en', 'de'])
+                for row in reader:
+                    if row.get('en') and row.get('de'):
+                        cards.append({"en": row['en'].strip(), "de": row['de'].strip()})
+            return cards
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error reading CSV: {e}")
+    
+    # If local file doesn't exist and R2 is configured, try R2
+    if s3_client:
+        try:
+            key = f"csv/{deck_file}.csv" if not deck_file.endswith('.csv') else f"csv/{deck_file}"
+            obj = s3_client.get_object(Bucket=R2_BUCKET, Key=key)
+            content = obj["Body"].read().decode('utf-8')
+            cards = []
+            reader = csv.DictReader(io.StringIO(content), fieldnames=['en', 'de'])
+            for row in reader:
+                if row.get('en') and row.get('de'):
+                    cards.append({"en": row['en'].strip(), "de": row['de'].strip()})
+            return cards
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Deck not found: {e}")
+    
+    raise HTTPException(status_code=404, detail="Deck not found")
+
 @app.post("/register_deck")
 async def register_deck(name: str = Form(...), csv_data: bytes = Form(...)):
     """Register new deck and upload to R2."""
@@ -121,17 +158,74 @@ async def register_deck(name: str = Form(...), csv_data: bytes = Form(...)):
     upload_to_r2(key, csv_data, "text/csv")
     return {"message": "Deck registered", "key": key}
 
-@app.get("/decks")
-async def list_decks():
-    """List all deck files in R2."""
-    if not s3_client:
-        raise HTTPException(status_code=503, detail="R2 not configured")
+@app.post("/deck/create")
+async def create_deck(request: Request):
+    """Create a new deck from JSON data (name + CSV text)."""
     try:
-        objects = s3_client.list_objects_v2(Bucket=R2_BUCKET, Prefix="csv/")
-        decks = [obj["Key"].split("/")[-1] for obj in objects.get("Contents", [])]
-        return {"decks": decks}
+        body = await request.json()
+        name = body.get("name", "").strip()
+        data = body.get("data", "").strip()
+        
+        if not name:
+            raise HTTPException(status_code=400, detail="Deck name is required")
+        if not data:
+            raise HTTPException(status_code=400, detail="Deck data is required")
+        
+        # Sanitize the deck name
+        safe_name = safe_key(name)
+        
+        # Save to local CSV file first
+        os.makedirs("csv", exist_ok=True)
+        local_path = f"csv/{safe_name}.csv"
+        with open(local_path, 'w', encoding='utf-8', newline='') as f:
+            f.write(data)
+        
+        # Also try to upload to R2 if configured
+        if s3_client:
+            try:
+                key = f"csv/{safe_name}.csv"
+                upload_to_r2(key, data.encode('utf-8'), "text/csv")
+            except Exception as e:
+                print(f"⚠️ Failed to upload to R2: {e}")
+        
+        return {"ok": True, "message": "Deck created", "name": safe_name}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/decks")
+async def list_decks():
+    """List all available deck files from local storage and R2."""
+    decks = []
+    deck_names = set()
+    
+    # First, check local CSV files
+    if os.path.exists("csv"):
+        try:
+            for filename in os.listdir("csv"):
+                if filename.endswith(".csv"):
+                    deck_name = filename[:-4]  # Remove .csv extension
+                    deck_names.add(deck_name)
+        except Exception as e:
+            print(f"⚠️ Error listing local CSVs: {e}")
+    
+    # Then check R2 if configured
+    if s3_client:
+        try:
+            objects = s3_client.list_objects_v2(Bucket=R2_BUCKET, Prefix="csv/")
+            for obj in objects.get("Contents", []):
+                filename = obj["Key"].split("/")[-1]
+                if filename.endswith(".csv"):
+                    deck_name = filename[:-4]  # Remove .csv extension
+                    deck_names.add(deck_name)
+        except Exception as e:
+            print(f"⚠️ Error listing R2 decks: {e}")
+    
+    # Convert set to list of objects with 'name' property
+    decks = [{"name": name} for name in sorted(deck_names)]
+    
+    return decks
 
 # -------------------------------
 # LOCAL UTIL ROUTES (OPTIONAL)
