@@ -12,6 +12,7 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import json
+from botocore.config import Config
 
 app = FastAPI()
 
@@ -40,6 +41,7 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT:
             aws_secret_access_key=R2_SECRET_ACCESS_KEY,
             endpoint_url=R2_ENDPOINT,
             region_name="auto",
+            config=Config(s3={"addressing_style": "path"}),
         )
     except Exception:
         r2_client = None
@@ -349,6 +351,238 @@ def tts(text: str, lang: str = "de", slow: bool = False):
         return StreamingResponse(io.BytesIO(buf.getvalue()), media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+def _safe_key(text: str, lang: str = "de"):
+    safe = re.sub(r"[^a-zA-Z0-9äöüÄÖÜß]+", "_", text.strip())[:100]
+    return f"tts/{lang}/{safe}.mp3"
+
+@app.get("/r2/tts")
+def r2_tts(text: str, lang: str = "de", slow: bool = False):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+
+    # Build a safe key for the object
+    safe_text = re.sub(r"[^A-Za-z0-9_\-]", "_", text).strip("_")
+    if not safe_text:
+        safe_text = "tts"
+    key = f"tts/{lang}/{safe_text}.mp3"
+
+    # Check if object exists
+    try:
+        r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=key)
+        exists = True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        exists = False if code in ("404", "NoSuchKey", "NotFound") else True
+
+    if exists:
+        try:
+            obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+            body = obj["Body"]
+            return StreamingResponse(body, media_type="audio/mpeg")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch object: {e}")
+
+    # Not exists: generate TTS and upload
+    try:
+        buf = io.BytesIO()
+        gtts = gTTS(text=text, lang=lang, slow=slow)
+        gtts.write_to_fp(buf)
+        buf.seek(0)
+
+        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=buf.getvalue(), ContentType="audio/mpeg")
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="audio/mpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate/upload TTS: {e}")
+
+
+@app.get("/r2/tts_url")
+def r2_tts_url(text: str, lang: str = "de", slow: bool = False, expires: int = 3600):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+
+    safe_text = re.sub(r"[^A-Za-z0-9_\-]", "_", text).strip("_")
+    if not safe_text:
+        safe_text = "tts"
+    key = f"tts/{lang}/{safe_text}.mp3"
+
+    # Check if object exists
+    exists = True
+    try:
+        r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=key)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            exists = False
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to check object: {e}")
+
+    # Generate and upload if missing
+    if not exists:
+        try:
+            buf = io.BytesIO()
+            gtts = gTTS(text=text, lang=lang, slow=slow)
+            gtts.write_to_fp(buf)
+            buf.seek(0)
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=buf.getvalue(), ContentType="audio/mpeg")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate/upload TTS: {e}")
+
+    # Always return a presigned URL for reliability; include public_url if configured
+    try:
+        presigned = r2_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": R2_BUCKET_NAME, "Key": key},
+            ExpiresIn=expires,
+        )
+        public_url = f"{R2_PUBLIC_URL_BASE.rstrip('/')}/{key}" if R2_PUBLIC_URL_BASE else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate URL: {e}")
+
+    return {"key": key, "url": presigned, "public_url": public_url}
+
+@app.get("/r2/get")
+def r2_get(key: str):
+    """Stream an audio object from Cloudflare R2 by key."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        stream = obj["Body"]
+        content_type = obj.get("ContentType", "application/octet-stream")
+        return StreamingResponse(stream, media_type=content_type)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=404, detail="Audio not found")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class FolderCreate(BaseModel):
+    prefix: str = "csv/"
+
+@app.post("/r2/folder/create")
+def r2_folder_create(payload: FolderCreate):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    prefix = payload.prefix.strip()
+    if not prefix:
+        raise HTTPException(status_code=400, detail="Prefix required")
+    if not prefix.endswith("/"):
+        prefix = prefix + "/"
+    marker_key = f"{prefix}.keep"
+    try:
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=marker_key,
+            Body=b"",
+            ContentType="application/octet-stream",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create folder marker: {e}")
+    # verify
+    try:
+        r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=marker_key)
+        exists = True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        exists = False if code in ("404", "NoSuchKey", "NotFound") else True
+    return {
+        "ok": True,
+        "bucket": R2_BUCKET_NAME,
+        "prefix": prefix,
+        "marker_key": marker_key,
+        "created": exists,
+    }
+
+@app.get("/r2/folder/status")
+def r2_folder_status(prefix: str = "csv/"):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    if not prefix.endswith("/"):
+        prefix = prefix + "/"
+    marker_key = f"{prefix}.keep"
+    exists = False
+    try:
+        r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=marker_key)
+        exists = True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        exists = False if code in ("404", "NoSuchKey", "NotFound") else True
+    # count keys under prefix (limited)
+    key_count = 0
+    try:
+        resp = r2_client.list_objects_v2(Bucket=R2_BUCKET_NAME, Prefix=prefix, MaxKeys=1000)
+        key_count = resp.get("KeyCount", 0)
+    except Exception:
+        pass
+    return {"prefix": prefix, "exists": exists, "key_count": key_count}
+
+@app.post("/decks/ingest_local")
+def ingest_local(name: str):
+    """Upload local csv/<name>.csv into R2 and update index."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", name).strip()[:50]
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+
+    local_path = os.path.join("csv", f"{safe}.csv")
+    if not os.path.exists(local_path):
+        raise HTTPException(status_code=404, detail="Local CSV not found")
+
+    # Upload the local CSV to R2
+    r2_csv_key = f"csv/{safe}.csv"
+    try:
+        with open(local_path, "rb") as f:
+            data_bytes = f.read()
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=r2_csv_key,
+            Body=data_bytes,
+            ContentType="text/csv",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload CSV to R2: {e}")
+
+    # Update R2 deck index (csv/index.json), similar to /decks/index/register
+    index_key = "csv/index.json"
+    index_list = []
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            index_list = parsed
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            index_list = []
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to read index: {e}")
+    except Exception:
+        index_list = []
+
+    updated = False
+    for d in index_list:
+        if isinstance(d, dict) and d.get("name") == safe:
+            d["file"] = r2_csv_key
+            updated = True
+            break
+    if not updated:
+        index_list.append({"name": safe, "file": r2_csv_key})
+
+    try:
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=index_key,
+            Body=json.dumps(index_list).encode("utf-8"),
+            ContentType="application/json",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update index: {e}")
+
+    return {"ok": True, "uploaded": True, "registered": safe, "file": r2_csv_key}
 
 def _safe_key(text: str, lang: str = "de"):
     safe = re.sub(r"[^a-zA-Z0-9äöüÄÖÜß]+", "_", text.strip())[:100]
