@@ -982,5 +982,40 @@ def r2_folder_status(prefix: str = "csv/"):
         pass
     return {"prefix": prefix, "exists": exists, "key_count": key_count}
 
+@app.post("/decks/index/rebuild")
+def rebuild_deck_index():
+    """Scan R2 for csv/*.csv and rebuild csv/index.json accordingly."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    try:
+        items = []
+        continuation = None
+        while True:
+            kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": "csv/"}
+            if continuation:
+                kwargs["ContinuationToken"] = continuation
+            resp = r2_client.list_objects_v2(**kwargs)
+            for obj in resp.get("Contents", []):
+                key = obj.get("Key", "")
+                if key.endswith(".csv") and key != "csv/index.json":
+                    # derive deck name from filename
+                    base = key.split("/")[-1]
+                    name = re.sub(r"[^a-zA-Z0-9_-]+", "_", base[:-4]).strip()
+                    if name:
+                        items.append({"name": name, "file": key})
+            if resp.get("IsTruncated"):
+                continuation = resp.get("NextContinuationToken")
+            else:
+                break
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key="csv/index.json",
+            Body=json.dumps(items).encode("utf-8"),
+            ContentType="application/json",
+        )
+        return {"ok": True, "count": len(items)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rebuild index: {e}")
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
