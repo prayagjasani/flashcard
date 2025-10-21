@@ -654,11 +654,23 @@
 
         async function loadWordsForDeck(deckName) {
             const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
-            const response = await fetch(url);
-            originalWords = await response.json();
-            words = [...originalWords];
+            let data = [];
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    data = await response.json().catch(() => []);
+                } else {
+                    data = [];
+                }
+            } catch {
+                data = [];
+            }
+            originalWords = Array.isArray(data) ? data : [];
+            words = originalWords.slice();
             getNewCard();
-            if (deckName) localStorage.setItem('selectedDeck', deckName);
+            if (deckName) {
+                try { localStorage.setItem('selectedDeck', deckName); } catch {}
+            }
         }
 
         async function loadDecks() {
@@ -673,12 +685,18 @@
                     opt.textContent = d.name;
                     deckSelect.appendChild(opt);
                 });
-                const hasPreferred = list.some(d => d.name === preferred);
-                deckSelect.value = hasPreferred ? preferred : (list.length ? list[0].name : '');
-                await loadWordsForDeck(deckSelect.value);
+                const hasPreferred = Array.isArray(list) && list.some(d => d.name === preferred);
+                const selected = hasPreferred ? preferred : (list.length ? list[0].name : preferred);
+                if (list.length) {
+                    deckSelect.value = selected;
+                } else {
+                    deckSelect.value = '';
+                }
+                await loadWordsForDeck(selected);
             } catch (e) {
-                // Fall back to default
-                await loadWordsForDeck('list');
+                // Fall back to preferred deck name when listing fails
+                const preferred = localStorage.getItem('selectedDeck') || 'list';
+                await loadWordsForDeck(preferred);
             }
         }
 
@@ -739,7 +757,7 @@
         });
 
         resetBtn.addEventListener('click', () => {
-            words = [...originalWords];
+            words = Array.isArray(originalWords) ? originalWords.slice() : [];
             getNewCard();
         });
 
@@ -789,49 +807,44 @@
         speakBtn.addEventListener('click', async() => {
             if (!currentCard.de) return;
             const text = currentCard.de;
-            const fileName = safeFileName(text);
-            const staticUrl = `/audio/de/${fileName}.mp3`;
             speakBtn.disabled = true;
             speakBtn.textContent = 'Speaking...';
 
-            // Try static file first (GET -> blob -> play)
-            try {
-                const resp = await fetch(staticUrl);
-                if (resp.ok) {
-                    const blob = await resp.blob();
-                    cleanupObjectUrl();
-                    lastObjectUrl = URL.createObjectURL(blob);
+            // Use cached URL first if available
+            const cached = audioCache.get(text);
+            if (cached) {
+                try {
                     audioPlayer.pause();
-                    audioPlayer.src = lastObjectUrl;
+                    audioPlayer.src = cached;
                     audioPlayer.currentTime = 0;
                     await audioPlayer.play();
-                    audioCache.set(text, staticUrl);
                     return;
-                }
-            } catch (e) {
-                // Ignore and fall back
+                } catch {}
             }
 
-            // Fallback to backend TTS (will also create cache for next time)
+            // Read-only: Prefer Cloudflare R2 via presigned URL
             try {
-                const ttsUrl = `/tts?text=${encodeURIComponent(text)}&lang=de`;
-                const resp2 = await fetch(ttsUrl);
-                if (!resp2.ok) throw new Error('TTS failed');
-                const blob2 = await resp2.blob();
-                cleanupObjectUrl();
-                lastObjectUrl = URL.createObjectURL(blob2);
-                audioPlayer.pause();
-                audioPlayer.src = lastObjectUrl;
-                audioPlayer.currentTime = 0;
-                await audioPlayer.play();
-                // After TTS, cache the static path for next use
-                audioCache.set(text, staticUrl);
-            } catch (err) {
-                // Fallback to browser speech synthesis if audio fails
+                const resp = await fetch(`/r2/tts_url?text=${encodeURIComponent(text)}&lang=de`);
+                if (resp.ok) {
+                    const out = await resp.json().catch(() => null);
+                    if (out && out.url) {
+                        audioPlayer.pause();
+                        audioPlayer.src = out.url; // play cross-origin URL directly
+                        audioPlayer.currentTime = 0;
+                        await audioPlayer.play();
+                        audioCache.set(text, out.url);
+                        return;
+                    }
+                }
+            } catch {}
+
+            // No write fallbacks: if R2 URL unavailable, use browser speechSynthesis
+            try {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'de-DE';
                 if (germanVoice) utterance.voice = germanVoice;
                 speechSynthesis.speak(utterance);
+            } finally {
                 speakBtn.disabled = false;
                 speakBtn.textContent = 'Speak';
             }
