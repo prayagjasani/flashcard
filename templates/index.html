@@ -896,20 +896,15 @@
                 } catch {}
             }
 
-            // Read-only: Prefer Cloudflare R2 via presigned URL
+            // Prefer same-origin streaming to avoid CORS
             try {
-                const resp = await fetch(`/r2/tts_url?text=${encodeURIComponent(text)}&lang=de`);
-                if (resp.ok) {
-                    const out = await resp.json().catch(() => null);
-                    if (out && out.url) {
-                        audioPlayer.pause();
-                        audioPlayer.src = out.url; // play cross-origin URL directly
-                        audioPlayer.currentTime = 0;
-                        await audioPlayer.play();
-                        audioCache.set(text, out.url);
-                        return;
-                    }
-                }
+                audioPlayer.pause();
+                const sameOriginUrl = `/r2/tts?text=${encodeURIComponent(text)}&lang=de`;
+                audioPlayer.src = sameOriginUrl;
+                audioPlayer.currentTime = 0;
+                await audioPlayer.play();
+                audioCache.set(text, sameOriginUrl);
+                return;
             } catch {}
 
             // No write fallbacks: if R2 URL unavailable, use browser speechSynthesis

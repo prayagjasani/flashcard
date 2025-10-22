@@ -608,12 +608,8 @@ def preload_deck_audio(deck: str, lang: str = "de", expires: int = 3600):
                     # Skip this audio if generation fails
                     continue
             
-            # Generate presigned URL
-            url = r2_client.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": R2_BUCKET_NAME, "Key": key},
-                ExpiresIn=expires,
-            )
+            # Use proxied same-origin URL to avoid CORS
+            url = f"/r2/get?key={key}"
             audio_urls[text] = url
             
         return {"audio_urls": audio_urls}
