@@ -703,6 +703,27 @@
                     localStorage.setItem('selectedDeck', deckName);
                 } catch {}
             }
+            
+            // Preload audio for all words in the deck
+            preloadDeckAudio(deckName);
+        }
+        
+        async function preloadDeckAudio(deckName) {
+            try {
+                const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deckName)}`);
+                const data = await resp.json();
+                
+                // Store all audio URLs in the cache
+                if (data && data.audio_urls) {
+                    Object.entries(data.audio_urls).forEach(([text, url]) => {
+                        audioCache.set(text, url);
+                    });
+                    console.log(`Preloaded ${Object.keys(data.audio_urls).length} audio files for deck ${deckName}`);
+                }
+            } catch (e) {
+                console.error('Error preloading audio:', e);
+                // Continue without preloaded audio - will fall back to on-demand loading
+            }
         }
 
         async function loadDecks() {

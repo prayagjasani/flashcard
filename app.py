@@ -568,6 +568,58 @@ def r2_tts_url(text: str, lang: str = "de", slow: bool = False, expires: int = 3
 
     return {"key": key, "url": presigned, "public_url": public_url}
 
+@app.get("/preload_deck_audio")
+def preload_deck_audio(deck: str, lang: str = "de", expires: int = 3600):
+    """Preload all audio files for a deck and return URLs."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    
+    # Get deck data
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+    
+    try:
+        # Get deck cards
+        cards = get_deck(safe)
+        audio_urls = {}
+        
+        # Generate or get presigned URLs for each German word
+        for card in cards:
+            text = card["de"]
+            key = _safe_tts_key(text, lang)
+            
+            try:
+                # Check if exists
+                r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=key)
+            except ClientError:
+                # Generate and upload if not exists
+                try:
+                    buf = io.BytesIO()
+                    gTTS(text=text, lang=lang).write_to_fp(buf)
+                    buf.seek(0)
+                    r2_client.put_object(
+                        Bucket=R2_BUCKET_NAME,
+                        Key=key,
+                        Body=buf.getvalue(),
+                        ContentType="audio/mpeg",
+                    )
+                except Exception as e:
+                    # Skip this audio if generation fails
+                    continue
+            
+            # Generate presigned URL
+            url = r2_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": R2_BUCKET_NAME, "Key": key},
+                ExpiresIn=expires,
+            )
+            audio_urls[text] = url
+            
+        return {"audio_urls": audio_urls}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to preload deck audio: {str(e)}")
+
 # -------------------------------
 # R2 UTILITIES
 # -------------------------------
