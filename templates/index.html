@@ -624,7 +624,7 @@
                 <label for="englishFrontToggle">English on front</label>
             </div>
         </div>
-        <div id="card">Click to start</div>
+        <div id="card">Welcome! Please select a deck.</div>
         <div class="buttons">
             <button id="wrong">✗ Wrong</button>
             <button id="right">✓ Right</button>
@@ -755,25 +755,34 @@
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 deckSelect.innerHTML = '';
-                const preferred = localStorage.getItem('selectedDeck') || 'list';
+                // Insert placeholder prompt
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Select deck';
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                deckSelect.appendChild(placeholder);
+
+                // Populate available decks
                 list.forEach(d => {
                     const opt = document.createElement('option');
                     opt.value = d.name;
                     opt.textContent = d.name;
                     deckSelect.appendChild(opt);
                 });
-                const hasPreferred = Array.isArray(list) && list.some(d => d.name === preferred);
-                const selected = hasPreferred ? preferred : (list.length ? list[0].name : preferred);
-                if (list.length) {
-                    deckSelect.value = selected;
-                } else {
-                    deckSelect.value = '';
-                }
-                await loadWordsForDeck(selected);
+
+                // Do not auto-select or auto-load; wait for user choice
+                card.innerText = 'Welcome! Please select a deck.';
             } catch (e) {
-                // Fall back to preferred deck name when listing fails
-                const preferred = localStorage.getItem('selectedDeck') || 'list';
-                await loadWordsForDeck(preferred);
+                // If listing fails, keep placeholder and show welcome message
+                deckSelect.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Select deck';
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                deckSelect.appendChild(placeholder);
+                card.innerText = 'Welcome! Please select a deck.';
             }
         }
 
@@ -947,6 +956,7 @@
         // Mobile menu removed per design request; no toggle handlers.
         deckSelect.addEventListener('change', (e) => {
             const name = e.target.value;
+            if (!name) return;
             loadWordsForDeck(name);
         });
 
