@@ -4,6 +4,7 @@
 <head>
     <title>Flashcards</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
          :root {
             --bg: #f6f7fb;
@@ -389,22 +390,51 @@
         }
         
         #right {
-            background: var(--success);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            background: #22C55E;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+            border-radius: 9999px;
+            border: none;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            padding: 12px 24px;
+            height: 50px;
         }
         
         #wrong {
-            background: var(--danger);
+            background: #EF4444;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+            border-radius: 9999px;
+            border: none;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            padding: 12px 24px;
+            height: 50px;
         }
         
         #reset {
-            background: var(--muted);
-            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.25);
+            background: #71717A;
+            box-shadow: 0 4px 12px rgba(113, 113, 122, 0.25);
+            border-radius: 9999px;
+            border: none;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            padding: 12px 24px;
+            height: 50px;
         }
         
         #speak {
-            background: var(--accent);
+            background: #FFB800;
+            box-shadow: 0 4px 12px rgba(255, 184, 0, 0.25);
+            border-radius: 9999px;
+            border: none;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            padding: 12px 24px;
+            height: 50px;
         }
         
         .footer-actions {
@@ -596,12 +626,12 @@
         </div>
         <div id="card">Click to start</div>
         <div class="buttons">
-            <button id="wrong">Wrong</button>
-            <button id="right">Right</button>
+            <button id="wrong">✗ Wrong</button>
+            <button id="right">✓ Right</button>
         </div>
         <div class="actions footer-actions">
-            <button id="reset">Reset</button>
-            <button id="speak">Speak</button>
+            <button id="reset">↺ Reset</button>
+            <button id="speak">▶ Speak</button>
         </div>
     </div>
 
@@ -669,7 +699,9 @@
             words = originalWords.slice();
             getNewCard();
             if (deckName) {
-                try { localStorage.setItem('selectedDeck', deckName); } catch {}
+                try {
+                    localStorage.setItem('selectedDeck', deckName);
+                } catch {}
             }
         }
 
