@@ -703,27 +703,47 @@
                     localStorage.setItem('selectedDeck', deckName);
                 } catch {}
             }
-            
+
             // Preload audio for all words in the deck
+            clearDeckPreloads();
             preloadDeckAudio(deckName);
         }
-        
+
         async function preloadDeckAudio(deckName) {
             try {
                 const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deckName)}`);
                 const data = await resp.json();
                 
-                // Store all audio URLs in the cache
+                // Store all audio URLs and prefetch them so playback is instant
                 if (data && data.audio_urls) {
-                    Object.entries(data.audio_urls).forEach(([text, url]) => {
+                    const entries = Object.entries(data.audio_urls);
+                    for (const [text, url] of entries) {
                         audioCache.set(text, url);
-                    });
-                    console.log(`Preloaded ${Object.keys(data.audio_urls).length} audio files for deck ${deckName}`);
+                        try {
+                            const a = new Audio();
+                            a.crossOrigin = 'anonymous';
+                            a.preload = 'auto';
+                            a.src = url;
+                            a.load();
+                            preloadedAudios.set(text, a);
+                        } catch (err) {
+                            // Ignore individual prefetch errors; playback will fall back to on-demand
+                        }
+                    }
+                    console.log(`Prefetching ${entries.length} audio files for deck ${deckName}`);
+                    console.log('Preloaded audio URL map:', data.audio_urls);
                 }
             } catch (e) {
                 console.error('Error preloading audio:', e);
                 // Continue without preloaded audio - will fall back to on-demand loading
             }
+        }
+
+        function clearDeckPreloads() {
+            try {
+                preloadedAudios.forEach((a) => { try { a.pause(); a.src = ''; } catch {} });
+                preloadedAudios.clear();
+            } catch {}
         }
 
         async function loadDecks() {
@@ -816,6 +836,7 @@
 
         let germanVoice = null;
         const audioCache = new Map();
+        const preloadedAudios = new Map();
         const audioPlayer = new Audio();
         audioPlayer.preload = 'none';
         let lastObjectUrl = null;
