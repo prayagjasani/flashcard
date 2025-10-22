@@ -714,20 +714,21 @@
                 const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deckName)}`);
                 const data = await resp.json();
                 
-                // Store all audio URLs and prefetch them so playback is instant
+                // Store object URLs in cache and prefetch bytes via same-origin proxy
                 if (data && data.audio_urls) {
                     const entries = Object.entries(data.audio_urls);
                     for (const [text, url] of entries) {
-                        audioCache.set(text, url);
                         try {
-                            const a = new Audio();
-                            a.crossOrigin = 'anonymous';
-                            a.preload = 'auto';
-                            a.src = url;
-                            a.load();
-                            preloadedAudios.set(text, a);
+                            const resp2 = await fetch(url);
+                            if (resp2.ok) {
+                                const blob = await resp2.blob();
+                                const objUrl = URL.createObjectURL(blob);
+                                audioCache.set(text, objUrl);
+                                audioBlobUrls.set(text, objUrl);
+                            }
                         } catch (err) {
-                            // Ignore individual prefetch errors; playback will fall back to on-demand
+                            // If prefetch fails, keep the same-origin URL as fallback
+                            audioCache.set(text, url);
                         }
                     }
                     console.log(`Prefetching ${entries.length} audio files for deck ${deckName}`);
@@ -743,6 +744,9 @@
             try {
                 preloadedAudios.forEach((a) => { try { a.pause(); a.src = ''; } catch {} });
                 preloadedAudios.clear();
+                audioBlobUrls.forEach((url) => { try { URL.revokeObjectURL(url); } catch {} });
+                audioBlobUrls.clear();
+                audioCache.clear();
             } catch {}
         }
 
@@ -837,13 +841,17 @@
         let germanVoice = null;
         const audioCache = new Map();
         const preloadedAudios = new Map();
+        const audioBlobUrls = new Map();
         const audioPlayer = new Audio();
         audioPlayer.preload = 'none';
         let lastObjectUrl = null;
 
         function cleanupObjectUrl() {
             if (lastObjectUrl) {
-                URL.revokeObjectURL(lastObjectUrl);
+                const isPreloaded = Array.from(audioBlobUrls.values()).includes(lastObjectUrl);
+                if (!isPreloaded) {
+                    try { URL.revokeObjectURL(lastObjectUrl); } catch {}
+                }
                 lastObjectUrl = null;
             }
         }
@@ -896,15 +904,21 @@
                 } catch {}
             }
 
-            // Prefer same-origin streaming to avoid CORS
+            // Prefer same-origin fetch as blob to avoid re-downloading
             try {
-                audioPlayer.pause();
-                const sameOriginUrl = `/r2/tts?text=${encodeURIComponent(text)}&lang=de`;
-                audioPlayer.src = sameOriginUrl;
-                audioPlayer.currentTime = 0;
-                await audioPlayer.play();
-                audioCache.set(text, sameOriginUrl);
-                return;
+                const resp2 = await fetch(`/r2/tts?text=${encodeURIComponent(text)}&lang=de`);
+                if (resp2.ok) {
+                    const blob = await resp2.blob();
+                    const objUrl = URL.createObjectURL(blob);
+                    audioPlayer.pause();
+                    audioPlayer.src = objUrl;
+                    audioPlayer.currentTime = 0;
+                    await audioPlayer.play();
+                    lastObjectUrl = objUrl;
+                    audioCache.set(text, objUrl);
+                    audioBlobUrls.set(text, objUrl);
+                    return;
+                }
             } catch {}
 
             // No write fallbacks: if R2 URL unavailable, use browser speechSynthesis

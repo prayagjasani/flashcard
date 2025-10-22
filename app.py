@@ -702,4 +702,4 @@ def r2_folder_status(prefix: str = "csv/"):
     return {"prefix": prefix, "exists": exists, "key_count": key_count}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
