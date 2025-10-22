@@ -581,7 +581,7 @@ def preload_deck_audio(deck: str, lang: str = "de", expires: int = 3600):
     
     try:
         # Get deck cards
-        cards = get_deck(safe)
+        cards = get_cards(deck)
         audio_urls = {}
         
         # Generate or get presigned URLs for each German word
