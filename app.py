@@ -392,6 +392,38 @@ def preload_deck_audio(deck: str, lang: str = "de"):
 # -------------------------------
 # R2 UTILITIES
 # -------------------------------
+
+@app.get("/debug/r2-config")
+def debug_r2_config():
+    """Debug endpoint to check R2 configuration in deployment."""
+    config_info = {
+        "r2_configured": bool(r2_client and R2_BUCKET_NAME),
+        "bucket_name": R2_BUCKET_NAME,
+        "endpoint": R2_ENDPOINT,
+        "has_credentials": bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY),
+        "account_id": R2_ACCOUNT_ID[:8] + "..." if R2_ACCOUNT_ID else None,
+    }
+    
+    # Test basic R2 connection
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            # Try to list objects with the bucket prefix
+            response = r2_client.list_objects_v2(
+                Bucket=R2_BUCKET_NAME,
+                Prefix=f"{R2_BUCKET_NAME}/csv/",
+                MaxKeys=5
+            )
+            config_info["r2_connection"] = "success"
+            config_info["objects_found"] = len(response.get("Contents", []))
+            config_info["sample_keys"] = [obj["Key"] for obj in response.get("Contents", [])[:3]]
+        except Exception as e:
+            config_info["r2_connection"] = "failed"
+            config_info["r2_error"] = str(e)
+    else:
+        config_info["r2_connection"] = "not_configured"
+    
+    return config_info
+
 @app.get("/r2/get")
 def r2_get(key: str):
     """Stream an object from Cloudflare R2 by key."""
@@ -409,4 +441,7 @@ def r2_get(key: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    import os
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host=host, port=port)
