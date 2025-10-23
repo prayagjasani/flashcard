@@ -713,7 +713,7 @@
             try {
                 const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deckName)}`);
                 const data = await resp.json();
-                
+
                 // Store object URLs in cache and prefetch bytes via same-origin proxy
                 if (data && data.audio_urls) {
                     const entries = Object.entries(data.audio_urls);
@@ -742,9 +742,18 @@
 
         function clearDeckPreloads() {
             try {
-                preloadedAudios.forEach((a) => { try { a.pause(); a.src = ''; } catch {} });
+                preloadedAudios.forEach((a) => {
+                    try {
+                        a.pause();
+                        a.src = '';
+                    } catch {}
+                });
                 preloadedAudios.clear();
-                audioBlobUrls.forEach((url) => { try { URL.revokeObjectURL(url); } catch {} });
+                audioBlobUrls.forEach((url) => {
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch {}
+                });
                 audioBlobUrls.clear();
                 audioCache.clear();
             } catch {}
@@ -772,7 +781,7 @@
                 });
 
                 // Do not auto-select or auto-load; wait for user choice
-                card.innerText = 'Welcome! Please select a deck.';
+                card.innerText = 'Welcome!\n Please select a deck.';
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
                 deckSelect.innerHTML = '';
@@ -782,7 +791,7 @@
                 placeholder.disabled = true;
                 placeholder.selected = true;
                 deckSelect.appendChild(placeholder);
-                card.innerText = 'Welcome! Please select a deck.';
+                card.innerText = 'Welcome!\n Please select a deck.';
             }
         }
 
@@ -859,7 +868,9 @@
             if (lastObjectUrl) {
                 const isPreloaded = Array.from(audioBlobUrls.values()).includes(lastObjectUrl);
                 if (!isPreloaded) {
-                    try { URL.revokeObjectURL(lastObjectUrl); } catch {}
+                    try {
+                        URL.revokeObjectURL(lastObjectUrl);
+                    } catch {}
                 }
                 lastObjectUrl = null;
             }
