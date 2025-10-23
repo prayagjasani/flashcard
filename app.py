@@ -342,8 +342,8 @@ def tts(text: str, lang: str = "de", slow: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/preload_deck_audio")
-def preload_deck_audio(deck: str, lang: str = "de"):
-    """Preload all audio files for a deck and return URLs."""
+async def preload_deck_audio(deck: str, lang: str = "de"):
+    """Preload all audio files for a deck and return URLs with concurrent processing."""
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
     
@@ -355,36 +355,64 @@ def preload_deck_audio(deck: str, lang: str = "de"):
     try:
         # Get deck cards
         cards = get_cards(deck)
-        audio_urls = {}
         
-        # Generate or get presigned URLs for each German word
-        for card in cards:
+        # Process all audio files concurrently
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        async def process_audio_file(card):
+            """Process a single audio file asynchronously."""
             text = card["de"]
             key = _safe_tts_key(text, lang)
             
-            try:
-                # Check if exists
-                r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=key)
-            except ClientError:
-                # Generate and upload if not exists
+            def check_and_generate():
                 try:
-                    buf = io.BytesIO()
-                    gTTS(text=text, lang=lang).write_to_fp(buf)
-                    buf.seek(0)
-                    r2_client.put_object(
-                        Bucket=R2_BUCKET_NAME,
-                        Key=key,
-                        Body=buf.getvalue(),
-                        ContentType="audio/mpeg",
-                    )
-                except Exception:
-                    # Skip this audio if generation fails
-                    continue
+                    # Check if exists
+                    r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=key)
+                    return text, f"/r2/get?key={key}"
+                except ClientError:
+                    # Generate and upload if not exists
+                    try:
+                        buf = io.BytesIO()
+                        gTTS(text=text, lang=lang).write_to_fp(buf)
+                        buf.seek(0)
+                        r2_client.put_object(
+                            Bucket=R2_BUCKET_NAME,
+                            Key=key,
+                            Body=buf.getvalue(),
+                            ContentType="audio/mpeg",
+                        )
+                        return text, f"/r2/get?key={key}"
+                    except Exception:
+                        # Skip this audio if generation fails
+                        return None, None
             
-            # Use proxied same-origin URL to avoid CORS
-            url = f"/r2/get?key={key}"
-            audio_urls[text] = url
-            
+            # Run the blocking operation in a thread pool
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                result = await loop.run_in_executor(executor, check_and_generate)
+                return result
+        
+        # Process all cards concurrently (limit to 10 concurrent operations)
+        semaphore = asyncio.Semaphore(10)
+        
+        async def process_with_semaphore(card):
+            async with semaphore:
+                return await process_audio_file(card)
+        
+        # Execute all tasks concurrently
+        tasks = [process_with_semaphore(card) for card in cards]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Build audio_urls from results
+        audio_urls = {}
+        for result in results:
+            if isinstance(result, Exception):
+                continue  # Skip failed operations
+            text, url = result
+            if text and url:
+                audio_urls[text] = url
+        
         return {"audio_urls": audio_urls}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to preload deck audio: {str(e)}")
