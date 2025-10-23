@@ -98,11 +98,10 @@ def r2_health():
 # -------------------------------
 @app.get("/decks")
 def list_decks():
-    """List decks from R2 csv/index.json only (no local fallback)."""
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
     try:
-        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key="csv/index.json")
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=f"{R2_BUCKET_NAME}/csv/index.json")
         data = obj["Body"].read().decode("utf-8")
         parsed = json.loads(data)
         if isinstance(parsed, list):
@@ -125,13 +124,12 @@ def list_decks():
 
 @app.get("/cards")
 def get_cards(deck: str = "list"):
-    """Return all cards (EN–DE pairs) from a CSV deck."""
     safe = _safe_deck_name(deck)
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid deck name")
 
     if r2_client and R2_BUCKET_NAME:
-        key = f"csv/{safe}.csv"
+        key = f"{R2_BUCKET_NAME}/csv/{safe}.csv"
         try:
             obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
             data = obj["Body"].read().decode("utf-8")
@@ -149,20 +147,8 @@ def get_cards(deck: str = "list"):
                 raise HTTPException(status_code=404, detail="Deck not found")
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Local fallback
-    path = os.path.join("csv", f"{safe}.csv")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Deck not found")
-
-    result = []
-    with open(path, "r", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) >= 2:
-                en, de = row[0].strip(), row[1].strip()
-                if en and de:
-                    result.append({"en": en, "de": de})
-    return result
+    # R2 required; no local file fallback
+    raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
 
 @app.post("/deck/create")
 def create_deck(payload: DeckCreate):
@@ -184,7 +170,7 @@ def create_deck(payload: DeckCreate):
         raise HTTPException(status_code=400, detail="No valid rows found")
 
     # Upload CSV to R2
-    r2_csv_key = f"csv/{name}.csv"
+    r2_csv_key = f"{R2_BUCKET_NAME}/csv/{name}.csv"
     try:
         buf = io.StringIO()
         csv.writer(buf).writerows(rows)
@@ -199,7 +185,7 @@ def create_deck(payload: DeckCreate):
         raise HTTPException(status_code=500, detail=f"Failed to upload deck CSV: {e}")
 
     # Update R2 deck index
-    index_key = "csv/index.json"
+    index_key = f"{R2_BUCKET_NAME}/csv/index.json"
     index_list = []
     try:
         idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
@@ -290,13 +276,13 @@ def rebuild_deck_index():
         items = []
         continuation = None
         while True:
-            kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": "csv/"}
+            kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": f"{R2_BUCKET_NAME}/csv/"}
             if continuation:
                 kwargs["ContinuationToken"] = continuation
             resp = r2_client.list_objects_v2(**kwargs)
             for obj in resp.get("Contents", []):
                 key = obj.get("Key", "")
-                if key.endswith(".csv") and key != "csv/index.json":
+                if key.endswith(".csv") and key != f"{R2_BUCKET_NAME}/csv/index.json":
                     base = key.split("/")[-1]
                     name = _safe_deck_name(base[:-4])
                     if name:
@@ -307,7 +293,7 @@ def rebuild_deck_index():
                 break
         r2_client.put_object(
             Bucket=R2_BUCKET_NAME,
-            Key="csv/index.json",
+            Key=f"{R2_BUCKET_NAME}/csv/index.json",
             Body=json.dumps(items).encode("utf-8"),
             ContentType="application/json",
         )
