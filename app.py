@@ -65,7 +65,7 @@ def _safe_tts_key(text: str, lang: str = "de") -> str:
     safe = re.sub(r"[^A-Za-z0-9_\-]", "_", text).strip("_")
     if not safe:
         safe = "tts"
-    return f"tts/{lang}/{safe}.mp3"
+    return f"{R2_BUCKET_NAME}/tts/{lang}/{safe}.mp3"
 
 # -------------------------------
 # BASIC ROUTES
