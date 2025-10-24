@@ -3,6 +3,7 @@ import os
 import re
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from gtts import gTTS
 import uvicorn
@@ -14,6 +15,9 @@ import json
 from botocore.config import Config
 
 app = FastAPI()
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Load environment variables from a local .env file if present
 load_dotenv()
@@ -77,6 +81,10 @@ def read_root():
 @app.head("/")
 def head_root():
     return Response(status_code=200)
+
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse('static/favicon.png')
 
 @app.get("/r2/health")
 def r2_health():
