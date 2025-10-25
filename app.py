@@ -118,7 +118,8 @@ def list_decks():
                 if isinstance(d, dict):
                     name = d.get("name")
                     file = d.get("file")
-                    if name and file and file.startswith("csv/") and file.lower().endswith(".csv"):
+                    # Accept both relative keys like "csv/foo.csv" and full keys like "<bucket>/csv/foo.csv"
+                    if name and file and file.lower().endswith(".csv") and (file.startswith("csv/") or "/csv/" in file):
                         items.append({"name": name, "file": file})
             return items
         return []

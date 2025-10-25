@@ -781,7 +781,7 @@
                     deckSelect.appendChild(opt);
                 });
 
-                // Do not auto-select or auto-load; wait for user choice
+                // Wait for user choice
                 card.innerText = 'Welcome!\n Please select a deck.';
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
@@ -1040,10 +1040,9 @@
                 if (!resp.ok || !out.ok) {
                     throw new Error(out.detail || 'Failed to create deck');
                 }
-                // On success: select new deck, refresh list, and close modal automatically
+                // On success: refresh list and close modal; user can select the new deck
                 deckSaveBtn.textContent = 'Saved';
                 try {
-                    localStorage.setItem('selectedDeck', name);
                     await loadDecks();
                 } catch {}
                 closeDeckModal();
