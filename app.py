@@ -264,6 +264,13 @@ def create_deck(payload: DeckCreate):
         except Exception:
             r2_errors += 1
 
+    # Rebuild the deck index at the end so dropdowns stay in sync
+    index_rebuild = None
+    try:
+        index_rebuild = rebuild_deck_index()
+    except Exception as e:
+        index_rebuild = {"ok": False, "error": str(e)}
+
     return {
         "ok": True,
         "r2_bucket": R2_BUCKET_NAME,
@@ -274,6 +281,7 @@ def create_deck(payload: DeckCreate):
         "r2_errors": r2_errors,
         "index_updated": index_updated,
         "index_error": index_error,
+        "index_rebuild": index_rebuild,
     }
 
 @app.post("/decks/index/rebuild")
