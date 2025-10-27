@@ -152,7 +152,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 20px;
             grid-column: 2;
         }
         
@@ -476,6 +476,30 @@
             justify-content: center;
             gap: 8px;
         }
+        /* Multi-deck modal styles */
+        
+        .multi-deck-list {
+            max-height: 320px;
+            overflow: auto;
+            margin-bottom: 16px;
+        }
+        
+        .multi-deck-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .multi-deck-item:last-child {
+            border-bottom: 0;
+        }
+        
+        .multi-deck-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
         
         .front-toggle input[type="checkbox"] {
             width: 18px;
@@ -593,6 +617,10 @@
                     <span class="link__text link__text--primary">Create Deck</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Create Deck</span>
                 </button>
+                <button class="nav__link nav__link--button" id="multiDeckBtn" type="button">
+                    <span class="link__text link__text--primary">Multi-Deck</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Multi-Deck</span>
+                </button>
             </div>
         </div>
     </header>
@@ -613,6 +641,18 @@
                 <button class="btn btn--signup" id="deckSaveBtn" type="button">Create</button>
             </div>
             <p class="modal__status" id="deckStatus"></p>
+        </div>
+    </div>
+    <div class="modal" id="multiDeckModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-multi="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="multiDeckModalTitle">
+            <h2 id="multiDeckModalTitle" class="modal__title">Select Multiple Decks</h2>
+            <div class="multi-deck-list" id="multiDeckList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="multiDeckCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--signup" id="multiDeckSaveBtn" type="button">Save</button>
+            </div>
+            <p class="modal__status" id="multiDeckStatus"></p>
         </div>
     </div>
     <div class="app">
@@ -956,6 +996,91 @@
 
         loadDecks();
 
+        // Simple dropdown change handler
+        deckSelect.addEventListener('change', (e) => {
+            const name = e.target.value;
+            if (!name) return;
+            loadWordsForDeck(name);
+        });
+
+        // Multi-deck modal interactions
+        const multiDeckBtn = document.getElementById('multiDeckBtn');
+        const multiDeckModal = document.getElementById('multiDeckModal');
+        const multiDeckList = document.getElementById('multiDeckList');
+        const multiDeckCancelBtn = document.getElementById('multiDeckCancelBtn');
+        const multiDeckSaveBtn = document.getElementById('multiDeckSaveBtn');
+        const multiDeckStatus = document.getElementById('multiDeckStatus');
+
+        async function openMultiDeckModal() {
+            multiDeckStatus.textContent = '';
+            // Populate checkboxes
+            try {
+                const resp = await fetch('/decks');
+                const list = await resp.json();
+                multiDeckList.innerHTML = '';
+                (Array.isArray(list) ? list : []).forEach(d => {
+                    const row = document.createElement('div');
+                    row.className = 'multi-deck-item';
+                    const label = document.createElement('span');
+                    label.textContent = d.name;
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = d.name;
+                    cb.className = 'multi-deck-checkbox';
+                    row.appendChild(label);
+                    row.appendChild(cb);
+                    multiDeckList.appendChild(row);
+                });
+            } catch (e) {
+                multiDeckList.innerHTML = '<p>Failed to load decks.</p>';
+            }
+            multiDeckModal.classList.add('is-open');
+            multiDeckModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeMultiDeckModal() {
+            multiDeckModal.classList.remove('is-open');
+            multiDeckModal.setAttribute('aria-hidden', 'true');
+        }
+
+        async function loadWordsForDecks(deckNames) {
+            const names = Array.isArray(deckNames) ? deckNames.filter(Boolean) : [];
+            if (!names.length) return;
+            try {
+                const promises = names.map((n) => fetch(`/cards?deck=${encodeURIComponent(n)}`).then(r => r.ok ? r.json() : []).catch(() => []));
+                const lists = await Promise.all(promises);
+                const combined = ([]).concat(...lists);
+                originalWords = Array.isArray(combined) ? combined : [];
+                words = originalWords.slice();
+                getNewCard();
+                // preload audio for each deck
+                clearDeckPreloads();
+                for (const n of names) {
+                    preloadDeckAudio(n);
+                }
+            } catch {
+                originalWords = [];
+                words = [];
+                card.innerText = 'Failed to load selected decks.';
+            }
+        }
+
+        if (multiDeckBtn) multiDeckBtn.addEventListener('click', openMultiDeckModal);
+        if (multiDeckCancelBtn) multiDeckCancelBtn.addEventListener('click', closeMultiDeckModal);
+        multiDeckModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeMulti === 'true') closeMultiDeckModal();
+        });
+
+        if (multiDeckSaveBtn) multiDeckSaveBtn.addEventListener('click', () => {
+            const selected = Array.from(document.querySelectorAll('.multi-deck-checkbox:checked')).map(cb => cb.value);
+            if (!selected.length) {
+                multiDeckStatus.textContent = 'Please select at least one deck.';
+                return;
+            }
+            closeMultiDeckModal();
+            loadWordsForDecks(selected);
+        });
+
         // Header interactions
         function updateHeaderSolid() {
             if (window.scrollY > 10) header.classList.add('is-solid');
@@ -966,11 +1091,6 @@
             passive: true
         });
         // Mobile menu removed per design request; no toggle handlers.
-        deckSelect.addEventListener('change', (e) => {
-            const name = e.target.value;
-            if (!name) return;
-            loadWordsForDeck(name);
-        });
 
         // Deck creation modal logic
         const createDeckBtn = document.getElementById('createDeckBtn');
