@@ -804,6 +804,7 @@
             try {
                 const resp = await fetch('/decks');
                 const list = await resp.json();
+                cachedDeckList = Array.isArray(list) ? list : [];
                 deckSelect.innerHTML = '';
                 // Insert placeholder prompt
                 const placeholder = document.createElement('option');
@@ -814,7 +815,7 @@
                 deckSelect.appendChild(placeholder);
 
                 // Populate available decks
-                list.forEach(d => {
+                cachedDeckList.forEach(d => {
                     const opt = document.createElement('option');
                     opt.value = d.name;
                     opt.textContent = d.name;
@@ -825,6 +826,7 @@
                 card.innerText = 'Welcome!\n Please select a deck.';
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
+                cachedDeckList = [];
                 deckSelect.innerHTML = '';
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
@@ -1010,30 +1012,32 @@
         const multiDeckCancelBtn = document.getElementById('multiDeckCancelBtn');
         const multiDeckSaveBtn = document.getElementById('multiDeckSaveBtn');
         const multiDeckStatus = document.getElementById('multiDeckStatus');
+        let cachedDeckList = [];
 
-        async function openMultiDeckModal() {
-            multiDeckStatus.textContent = '';
-            // Populate checkboxes
-            try {
-                const resp = await fetch('/decks');
-                const list = await resp.json();
-                multiDeckList.innerHTML = '';
-                (Array.isArray(list) ? list : []).forEach(d => {
-                    const row = document.createElement('div');
-                    row.className = 'multi-deck-item';
-                    const label = document.createElement('span');
-                    label.textContent = d.name;
-                    const cb = document.createElement('input');
-                    cb.type = 'checkbox';
-                    cb.value = d.name;
-                    cb.className = 'multi-deck-checkbox';
-                    row.appendChild(label);
-                    row.appendChild(cb);
-                    multiDeckList.appendChild(row);
-                });
-            } catch (e) {
-                multiDeckList.innerHTML = '<p>Failed to load decks.</p>';
+        function populateMultiDeckList() {
+            multiDeckList.innerHTML = '';
+            if (!cachedDeckList.length) {
+                multiDeckList.innerHTML = '<p>No decks available.</p>';
+                return;
             }
+            cachedDeckList.forEach(d => {
+                const row = document.createElement('div');
+                row.className = 'multi-deck-item';
+                const label = document.createElement('span');
+                label.textContent = d.name;
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = d.name;
+                cb.className = 'multi-deck-checkbox';
+                row.appendChild(label);
+                row.appendChild(cb);
+                multiDeckList.appendChild(row);
+            });
+        }
+
+        function openMultiDeckModal() {
+            multiDeckStatus.textContent = '';
+            populateMultiDeckList();
             multiDeckModal.classList.add('is-open');
             multiDeckModal.setAttribute('aria-hidden', 'false');
         }
