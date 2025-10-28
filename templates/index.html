@@ -543,6 +543,19 @@
             font-weight: 700;
         }
         
+        .reloadBtn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--card-border);
+            color: var(--text);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
         .modal__field {
             margin-bottom: 10px;
             text-align: left;
@@ -621,6 +634,10 @@
                     <span class="link__text link__text--primary">Multi-Deck</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Multi-Deck</span>
                 </button>
+                <button class="nav__link nav__link--button" id="editDeckBtn" type="button">
+                    <span class="link__text link__text--primary">Edit</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Edit</span>
+                </button>
             </div>
         </div>
     </header>
@@ -655,6 +672,37 @@
             <p class="modal__status" id="multiDeckStatus"></p>
         </div>
     </div>
+    <div class="modal" id="editDeckModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-edit="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="editDeckModalTitle">
+            <h2 id="editDeckModalTitle" class="modal__title">Edit Deck CSV</h2>
+            <div class="modal__field">
+                <label for="editDeckSelect">Deck</label>
+                <select id="editDeckSelect"></select>
+            </div>
+            <!-- CSV textarea removed; editing is done via the table below -->
+            <div class="modal__field">
+                <label>Rows (editable)</label>
+                <div class="edit-table-wrap" style="max-height:320px; overflow:auto; border:1px solid var(--card-border); border-radius:8px;">
+                    <table id="editDeckTable" style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid var(--card-border);">English</th>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid var(--card-border);">German</th>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid var(--card-border);">Audio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="editDeckTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal__actions">
+                <button class="btn" id="editDeckCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--signup" id="editDeckSaveBtn" type="button">Save</button>
+            </div>
+            <p class="modal__status" id="editDeckStatus"></p>
+        </div>
+    </div>
     <div class="app">
         <h1>Flashcards</h1>
         <div class="deck-select">
@@ -672,7 +720,7 @@
         </div>
         <div class="actions footer-actions">
             <button id="reset">↺ Reset</button>
-            <button id="speak">▶ Speak</button>
+            <button id="speak">Speak</button>
         </div>
     </div>
 
@@ -693,6 +741,15 @@
 
         const deckSelect = document.getElementById('deckSelect');
         const englishFrontToggle = document.getElementById('englishFrontToggle');
+        const editDeckBtn = document.getElementById('editDeckBtn');
+        const editDeckModal = document.getElementById('editDeckModal');
+        const editDeckSelect = document.getElementById('editDeckSelect');
+        // CSV textarea removed; using table-only editing
+        const editDeckCancelBtn = document.getElementById('editDeckCancelBtn');
+        const editDeckSaveBtn = document.getElementById('editDeckSaveBtn');
+        const editDeckStatus = document.getElementById('editDeckStatus');
+        const editDeckTableBody = document.getElementById('editDeckTableBody');
+        let editRowsOriginal = [];
 
         function applyFrontPreference(isEnglishFront) {
             frontLang = isEnglishFront ? 'en' : 'de';
@@ -837,6 +894,224 @@
                 card.innerText = 'Welcome!\n Please select a deck.';
             }
         }
+
+        function populateEditDeckSelect() {
+            editDeckSelect.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select deck';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            editDeckSelect.appendChild(placeholder);
+            cachedDeckList.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.name;
+                opt.textContent = d.name;
+                editDeckSelect.appendChild(opt);
+            });
+        }
+
+        async function openEditDeckModal() {
+            editDeckStatus.textContent = '';
+            if (!cachedDeckList.length) {
+                await loadDecks();
+            }
+            populateEditDeckSelect();
+            // Preselect current deck if available
+            try {
+                const current = deckSelect.value;
+                if (current) {
+                    editDeckSelect.value = current;
+                    await loadCsvForEdit(current);
+                }
+            } catch {}
+            editDeckModal.classList.add('is-open');
+            editDeckModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeEditDeckModal() {
+            editDeckModal.classList.remove('is-open');
+            editDeckModal.setAttribute('aria-hidden', 'true');
+        }
+
+        async function loadCsvForEdit(deckName) {
+            editDeckStatus.textContent = '';
+            if (!deckName) return;
+            try {
+                const resp = await fetch(`/deck/csv?deck=${encodeURIComponent(deckName)}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const csv = String(data.csv || '');
+                    try {
+                        const rows = parseCsvRows(csv);
+                        renderEditTable(rows);
+                    } catch {}
+                } else {
+                    editDeckStatus.textContent = 'Failed to load CSV.';
+                }
+            } catch (err) {
+                editDeckStatus.textContent = 'Error loading CSV.';
+            }
+        }
+
+        function parseCsvRows(csv) {
+            const lines = String(csv || '').split(/\r?\n/).filter(l => l.trim().length);
+            return lines.map(l => {
+                const parts = l.split(',');
+                const en = (parts[0] || '').trim();
+                const de = (parts[1] || '').trim();
+                return [en, de];
+            });
+        }
+
+        function renderEditTable(rows) {
+            editRowsOriginal = rows.map(r => r.slice(0, 2));
+            editDeckTableBody.innerHTML = '';
+            rows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                const tdEn = document.createElement('td');
+                tdEn.style.padding = '6px';
+                const enInput = document.createElement('input');
+                enInput.type = 'text';
+                enInput.value = row[0] || '';
+                enInput.className = 'editCell editEn';
+                enInput.style.width = '98%';
+                tdEn.appendChild(enInput);
+
+                const tdDe = document.createElement('td');
+                tdDe.style.padding = '6px';
+                const deInput = document.createElement('input');
+                deInput.type = 'text';
+                deInput.value = row[1] || '';
+                deInput.className = 'editCell editDe';
+                deInput.style.width = '98%';
+                tdDe.appendChild(deInput);
+
+                const tdAction = document.createElement('td');
+                tdAction.style.padding = '6px';
+                const reloadBtn = document.createElement('button');
+                reloadBtn.type = 'button';
+                reloadBtn.className = 'btn reloadBtn';
+                reloadBtn.title = 'Reload audio';
+                reloadBtn.textContent = '↻';
+                reloadBtn.addEventListener('click', async() => {
+                    const currentGerman = deInput.value.trim();
+                    await rebuildAudioForRow(idx, currentGerman);
+                });
+                tdAction.appendChild(reloadBtn);
+
+                tr.appendChild(tdEn);
+                tr.appendChild(tdDe);
+                tr.appendChild(tdAction);
+                editDeckTableBody.appendChild(tr);
+            });
+        }
+
+        async function rebuildAudioForRow(index, currentGerman) {
+            try {
+                const oldGerman = (editRowsOriginal[index] && editRowsOriginal[index][1]) ? editRowsOriginal[index][1] : '';
+                const payload = {
+                    text: currentGerman,
+                    lang: 'de',
+                    old_text: (oldGerman && oldGerman !== currentGerman) ? oldGerman : null
+                };
+                const resp = await fetch('/audio/rebuild', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !data.ok) throw new Error(data.detail || 'Failed to rebuild audio');
+                // Update original snapshot for this row
+                const enVal = document.querySelectorAll('#editDeckTableBody .editEn')[index].value;
+                editRowsOriginal[index] = [enVal, currentGerman];
+                editDeckStatus.textContent = 'Audio reloaded.';
+                // Refresh audio cache for immediate playback elsewhere
+                try {
+                    const blobRes = await fetch(String(data.url));
+                    if (blobRes.ok) {
+                        const blob = await blobRes.blob();
+                        const url = URL.createObjectURL(blob);
+                        window.audioCache = window.audioCache || {};
+                        window.audioCache['de:' + currentGerman] = url;
+                    }
+                } catch {}
+            } catch (err) {
+                editDeckStatus.textContent = String(err.message || err);
+            }
+        }
+
+        function tableToCsv() {
+            const enInputs = document.querySelectorAll('#editDeckTableBody .editEn');
+            const deInputs = document.querySelectorAll('#editDeckTableBody .editDe');
+            const out = [];
+            for (let i = 0; i < enInputs.length; i++) {
+                const en = enInputs[i].value.trim();
+                const de = deInputs[i].value.trim();
+                if (en || de) out.push(`${en},${de}`);
+            }
+            return out.join('\n') + '\n';
+        }
+
+        // Edit modal events
+        if (editDeckBtn) editDeckBtn.addEventListener('click', openEditDeckModal);
+        if (editDeckCancelBtn) editDeckCancelBtn.addEventListener('click', closeEditDeckModal);
+        editDeckModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeEdit === 'true') closeEditDeckModal();
+        });
+        editDeckSelect.addEventListener('change', async(e) => {
+            const name = e.target.value;
+            if (name) await loadCsvForEdit(name);
+        });
+        if (editDeckSaveBtn) editDeckSaveBtn.addEventListener('click', async() => {
+            const name = editDeckSelect.value;
+            const content = tableToCsv().trim();
+            if (!name) {
+                editDeckStatus.textContent = 'Please select a deck.';
+                return;
+            }
+            if (!content) {
+                editDeckStatus.textContent = 'Please enter CSV content.';
+                return;
+            }
+            editDeckSaveBtn.disabled = true;
+            editDeckSaveBtn.textContent = 'Saving...';
+            try {
+                const resp = await fetch('/deck/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        content
+                    })
+                });
+                const data = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !data.ok) throw new Error(data.detail || 'Failed to save');
+                editDeckStatus.textContent = 'Saved';
+                editDeckSaveBtn.textContent = 'Saved';
+                // If editing the currently selected deck, reload its words
+                if (deckSelect.value === name) {
+                    await loadWordsForDeck(name);
+                }
+                setTimeout(() => {
+                    closeEditDeckModal();
+                    editDeckSaveBtn.disabled = false;
+                    editDeckSaveBtn.textContent = 'Save';
+                }, 600);
+            } catch (err) {
+                editDeckStatus.textContent = String(err.message || err);
+                editDeckSaveBtn.disabled = false;
+                editDeckSaveBtn.textContent = 'Save';
+            }
+        });
 
         function getNewCard() {
             if (words.length === 0) {

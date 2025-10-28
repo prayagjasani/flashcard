@@ -57,6 +57,15 @@ class DeckCreate(BaseModel):
     name: str
     data: str
 
+class DeckUpdate(BaseModel):
+    name: str
+    content: str
+
+class AudioRebuildRequest(BaseModel):
+    text: str
+    lang: str = "de"
+    old_text: str | None = None
+
 # -------------------------------
 # HELPER FUNCTIONS
 # -------------------------------
@@ -158,6 +167,111 @@ def get_cards(deck: str = "list"):
 
     # R2 required; no local file fallback
     raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+
+@app.get("/deck/csv")
+def get_deck_csv(deck: str):
+    """Return raw CSV content for an existing deck from R2."""
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    key = f"{R2_BUCKET_NAME}/csv/{safe}.csv"
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        return {"name": safe, "file": key, "csv": data}
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=404, detail="Deck not found")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/deck/update")
+def update_deck(payload: DeckUpdate):
+    """Update an existing deck's CSV content in R2."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_deck_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Deck name required")
+    content = payload.content or ""
+    key = f"{R2_BUCKET_NAME}/csv/{name}.csv"
+
+    # Read old CSV to compute changes
+    old_csv = ""
+    try:
+        obj_old = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        old_csv = obj_old["Body"].read().decode("utf-8")
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=500, detail=str(e))
+
+    try:
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=content.encode("utf-8"),
+            ContentType="text/csv",
+        )
+        # Compute German word changes and sync audio
+        def parse_de_words(csv_text: str):
+            words = set()
+            try:
+                reader = csv.reader(io.StringIO(csv_text))
+                for row in reader:
+                    if len(row) >= 2:
+                        de = row[1].strip()
+                        if de:
+                            words.add(de)
+            except Exception:
+                pass
+            return words
+
+        old_de = parse_de_words(old_csv)
+        new_de = parse_de_words(content)
+        to_delete = old_de - new_de
+        to_generate = new_de - old_de
+
+        audios_deleted = 0
+        audios_generated = 0
+        audio_errors = 0
+
+        for w in to_delete:
+            try:
+                r2_key = _safe_tts_key(w, "de")
+                r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
+                audios_deleted += 1
+            except Exception:
+                audio_errors += 1
+
+        for w in to_generate:
+            try:
+                buf_mp3 = io.BytesIO()
+                gTTS(text=w, lang="de").write_to_fp(buf_mp3)
+                r2_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=_safe_tts_key(w, "de"),
+                    Body=buf_mp3.getvalue(),
+                    ContentType="audio/mpeg",
+                )
+                audios_generated += 1
+            except Exception:
+                audio_errors += 1
+
+        rows_count = sum(1 for line in content.splitlines() if "," in line)
+        return {
+            "ok": True,
+            "r2_bucket": R2_BUCKET_NAME,
+            "r2_csv_key": key,
+            "rows": rows_count,
+            "audios_deleted": audios_deleted,
+            "audios_generated": audios_generated,
+            "audio_errors": audio_errors,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update deck CSV: {e}")
 
 @app.post("/deck/create")
 def create_deck(payload: DeckCreate):
@@ -483,6 +597,47 @@ def r2_get(key: str):
         code = e.response.get("Error", {}).get("Code")
         if code in ("404", "NoSuchKey", "NotFound"):
             raise HTTPException(status_code=404, detail="Object not found")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/audio/rebuild")
+def audio_rebuild(req: AudioRebuildRequest):
+    """Delete old audio (if provided) and regenerate new audio for given text/lang."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    text = (req.text or "").strip()
+    lang = (req.lang or "de").strip() or "de"
+    old_text = (req.old_text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text required")
+
+    try:
+        # If old_text differs, remove its audio
+        if old_text and old_text != text:
+            try:
+                old_key = _safe_tts_key(old_text, lang)
+                r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=old_key)
+            except Exception:
+                pass
+
+        # Remove current audio (ignore if not exists)
+        try:
+            cur_key = _safe_tts_key(text, lang)
+            r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=cur_key)
+        except Exception:
+            pass
+
+        # Generate fresh audio
+        buf = io.BytesIO()
+        gTTS(text=text, lang=lang).write_to_fp(buf)
+        key = _safe_tts_key(text, lang)
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=buf.getvalue(),
+            ContentType="audio/mpeg",
+        )
+        return {"ok": True, "key": key, "url": f"/r2/get?key={key}"}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
