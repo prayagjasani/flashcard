@@ -1,0 +1,197 @@
+{
+  "users": {
+    "default": {
+      "created_at": "2025-10-29T16:16:20.426462+00:00",
+      "updated_at": "2025-10-29T16:18:17.833531+00:00",
+      "activity": [
+        {
+          "ts": "2025-10-29T16:16:20.426462+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to come",
+          "de": "kommen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:21.417327+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to go",
+          "de": "gehen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:28.002829+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to buy",
+          "de": "kaufen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:29.907262+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to sell",
+          "de": "verkaufen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:31.100809+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to make / to do",
+          "de": "machen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:32.329207+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to play",
+          "de": "spielen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:33.717134+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to say",
+          "de": "sagen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:43.647871+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to fly",
+          "de": "fliegen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:54.872974+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to ask / to question",
+          "de": "fragen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:56.480038+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to live / to reside (at place)",
+          "de": "wohnen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:16:57.304914+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to live (a life)",
+          "de": "leben",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:17:02.288421+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to fill in (blanks)",
+          "de": "ergänzen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:17:02.699655+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to fill out (a form)",
+          "de": "ausfüllen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:17:04.765423+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to choose",
+          "de": "wählen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:17:06.325417+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to count",
+          "de": "zählen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:17:26.627439+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to pay",
+          "de": "bezahlen",
+          "result": "right",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:17:34.883584+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to put / to place",
+          "de": "stellen",
+          "result": "hard",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:18:08.436599+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to order",
+          "de": "bestellen",
+          "result": "hard",
+          "duration_ms": null
+        },
+        {
+          "ts": "2025-10-29T16:18:17.832543+00:00",
+          "type": "study",
+          "deck": "Normal",
+          "en": "to call (someone by name)",
+          "de": "rufen",
+          "result": "wrong",
+          "duration_ms": null
+        }
+      ],
+      "hard_words": [
+        {
+          "en": "to put / to place",
+          "de": "stellen",
+          "deck": "Normal",
+          "note": null,
+          "added_at": "2025-10-29T16:17:34.879584+00:00"
+        },
+        {
+          "en": "to order",
+          "de": "bestellen",
+          "deck": "Normal",
+          "note": null,
+          "added_at": "2025-10-29T16:18:08.432597+00:00"
+        }
+      ]
+    }
+  }
+}

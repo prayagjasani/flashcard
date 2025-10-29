@@ -129,7 +129,37 @@ def list_decks():
                     file = d.get("file")
                     # Accept both relative keys like "csv/foo.csv" and full keys like "<bucket>/csv/foo.csv"
                     if name and file and file.lower().endswith(".csv") and (file.startswith("csv/") or "/csv/" in file):
-                        items.append({"name": name, "file": file})
+                        # carry over optional last_modified if present in index.json
+                        lm = d.get("last_modified")
+                        items.append({"name": name, "file": file, "last_modified": lm})
+
+            # Fallback: if index entries lack last_modified, compute it from R2 listing
+            try:
+                if not any(it.get("last_modified") for it in items):
+                    lm_map = {}
+                    continuation = None
+                    while True:
+                        kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": f"{R2_BUCKET_NAME}/csv/"}
+                        if continuation:
+                            kwargs["ContinuationToken"] = continuation
+                        resp = r2_client.list_objects_v2(**kwargs)
+                        for o in resp.get("Contents", []):
+                            lm = o.get("LastModified")
+                            lm_map[o.get("Key", "")] = lm.isoformat() if lm else ""
+                        if resp.get("IsTruncated"):
+                            continuation = resp.get("NextContinuationToken")
+                        else:
+                            break
+                    for it in items:
+                        file = it.get("file", "")
+                        full_key = file if "/csv/" in file else f"{R2_BUCKET_NAME}/{file}"
+                        it["last_modified"] = lm_map.get(full_key, it.get("last_modified", ""))
+            except Exception:
+                # keep items unsorted if last_modified mapping fails
+                pass
+
+            # Sort newest-first by last_modified when available
+            items.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
             return items
         return []
     except ClientError as e:
@@ -417,11 +447,18 @@ def rebuild_deck_index():
                     base = key.split("/")[-1]
                     name = _safe_deck_name(base[:-4])
                     if name:
-                        items.append({"name": name, "file": key})
+                        lm = obj.get("LastModified")
+                        items.append({
+                            "name": name,
+                            "file": key,
+                            "last_modified": lm.isoformat() if lm else None,
+                        })
             if resp.get("IsTruncated"):
                 continuation = resp.get("NextContinuationToken")
             else:
                 break
+        # Sort newest-first
+        items.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
         r2_client.put_object(
             Bucket=R2_BUCKET_NAME,
             Key=f"{R2_BUCKET_NAME}/csv/index.json",
