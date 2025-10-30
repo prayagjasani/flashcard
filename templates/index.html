@@ -437,8 +437,8 @@
             padding: 12px 24px;
             height: 50px;
         }
-
         /* Auto-play toggle button styles */
+        
         #autoPlayToggle {
             background: #71717A;
             box-shadow: 0 4px 12px rgba(113, 113, 122, 0.25);
@@ -457,56 +457,54 @@
             position: relative;
             overflow: hidden;
         }
-
+        
         #autoPlayToggle:hover {
             transform: translateY(-1px);
             filter: brightness(1.05);
         }
-
+        
         #autoPlayToggle:active {
             transform: translateY(0);
             filter: brightness(0.98);
         }
-
         /* Active state - green when auto-play is enabled */
+        
         #autoPlayToggle.active {
             background: #22C55E;
             box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
         }
-
         /* Toggle icon and text styling */
+        
         .toggle-icon {
             font-size: 16px;
             transition: transform 300ms ease;
         }
-
+        
         .toggle-text {
             font-size: 14px;
             font-weight: 600;
         }
-
         /* Icon animation when toggling */
+        
         #autoPlayToggle.active .toggle-icon {
             transform: scale(1.1);
         }
-
         /* Responsive adjustments */
+        
         @media (max-width: 640px) {
             #autoPlayToggle {
                 width: 160px;
                 padding: 10px 16px;
             }
-            
             .toggle-text {
                 font-size: 12px;
             }
         }
-
+        
         @media (max-width: 480px) {
             .toggle-text {
                 display: none;
             }
-            
             #autoPlayToggle {
                 width: 60px;
                 padding: 12px;
@@ -796,12 +794,7 @@
         <div class="actions footer-actions">
             <button id="reset">↺ Reset</button>
             <button id="speak">Speak</button>
-            <button id="autoPlayToggle" 
-                    class="auto-play-toggle" 
-                    aria-label="Toggle auto-play audio" 
-                    role="switch" 
-                    aria-checked="false"
-                    title="Enable/disable automatic audio playback">
+            <button id="autoPlayToggle" class="auto-play-toggle" aria-label="Toggle auto-play audio" role="switch" aria-checked="false" title="Enable/disable automatic audio playback">
                 <span class="toggle-icon">🔇</span>
                 <span class="toggle-text">Auto-Play Audio</span>
             </button>
@@ -829,7 +822,7 @@
         function updateAutoPlayToggle() {
             const toggleIcon = autoPlayToggle.querySelector('.toggle-icon');
             const toggleText = autoPlayToggle.querySelector('.toggle-text');
-            
+
             if (isAutoPlayEnabled) {
                 autoPlayToggle.classList.add('active');
                 autoPlayToggle.setAttribute('aria-checked', 'true');
@@ -857,23 +850,23 @@
         // Auto-play toggle event listener
         autoPlayToggle.addEventListener('click', () => {
             isAutoPlayEnabled = !isAutoPlayEnabled;
-            
+
             try {
                 localStorage.setItem('autoPlayEnabled', String(isAutoPlayEnabled));
             } catch (e) {
                 console.warn('Could not save auto-play preference:', e);
             }
-            
+
             updateAutoPlayToggle();
         });
 
         // Auto-play audio function with error handling
         async function autoPlayAudio() {
             if (!isAutoPlayEnabled || !currentCard.de) return;
-            
+
             try {
                 const text = currentCard.de;
-                
+
                 // Use cached URL first if available
                 const cached = audioCache.get(text);
                 if (cached) {
@@ -1302,7 +1295,7 @@
             currentCard = words.shift();
             card.innerText = currentCard[frontLang];
             showingFront = true;
-            
+
             // Auto-play audio when showing front (German) side
             if (frontLang === 'de') {
                 // Small delay to ensure card text is rendered
@@ -1318,17 +1311,6 @@
             if (currentCard[backLang]) {
                 card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
                 showingFront = !showingFront;
-                
-                // Auto-play audio when flipping to German side
-                if (!showingFront && backLang === 'de') {
-                    setTimeout(() => {
-                        autoPlayAudio();
-                    }, 100);
-                } else if (showingFront && frontLang === 'de') {
-                    setTimeout(() => {
-                        autoPlayAudio();
-                    }, 100);
-                }
             }
         }
         // Touch-first: flip immediately and suppress synthetic click
