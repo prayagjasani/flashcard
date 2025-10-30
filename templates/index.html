@@ -437,6 +437,81 @@
             padding: 12px 24px;
             height: 50px;
         }
+
+        /* Auto-play toggle button styles */
+        #autoPlayToggle {
+            background: #71717A;
+            box-shadow: 0 4px 12px rgba(113, 113, 122, 0.25);
+            border-radius: 9999px;
+            border: none;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            padding: 12px 24px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 300ms ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #autoPlayToggle:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
+
+        #autoPlayToggle:active {
+            transform: translateY(0);
+            filter: brightness(0.98);
+        }
+
+        /* Active state - green when auto-play is enabled */
+        #autoPlayToggle.active {
+            background: #22C55E;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+        }
+
+        /* Toggle icon and text styling */
+        .toggle-icon {
+            font-size: 16px;
+            transition: transform 300ms ease;
+        }
+
+        .toggle-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Icon animation when toggling */
+        #autoPlayToggle.active .toggle-icon {
+            transform: scale(1.1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            #autoPlayToggle {
+                width: 160px;
+                padding: 10px 16px;
+            }
+            
+            .toggle-text {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .toggle-text {
+                display: none;
+            }
+            
+            #autoPlayToggle {
+                width: 60px;
+                padding: 12px;
+            }
+        }
         
         .footer-actions {
             margin-top: 8px;
@@ -721,6 +796,15 @@
         <div class="actions footer-actions">
             <button id="reset">↺ Reset</button>
             <button id="speak">Speak</button>
+            <button id="autoPlayToggle" 
+                    class="auto-play-toggle" 
+                    aria-label="Toggle auto-play audio" 
+                    role="switch" 
+                    aria-checked="false"
+                    title="Enable/disable automatic audio playback">
+                <span class="toggle-icon">🔇</span>
+                <span class="toggle-text">Auto-Play Audio</span>
+            </button>
         </div>
     </div>
 
@@ -730,6 +814,7 @@
         const rightBtn = document.getElementById('right');
         const resetBtn = document.getElementById('reset');
         const speakBtn = document.getElementById('speak');
+        const autoPlayToggle = document.getElementById('autoPlayToggle');
         const header = document.querySelector('.site-header');
 
         let currentCard = {};
@@ -738,6 +823,102 @@
         let showingFront = true;
         let frontLang = 'de';
         let backLang = 'en';
+        let isAutoPlayEnabled = false;
+
+        // Auto-play toggle functionality
+        function updateAutoPlayToggle() {
+            const toggleIcon = autoPlayToggle.querySelector('.toggle-icon');
+            const toggleText = autoPlayToggle.querySelector('.toggle-text');
+            
+            if (isAutoPlayEnabled) {
+                autoPlayToggle.classList.add('active');
+                autoPlayToggle.setAttribute('aria-checked', 'true');
+                toggleIcon.textContent = '🔊';
+                autoPlayToggle.title = 'Auto-play is enabled - audio will play automatically';
+            } else {
+                autoPlayToggle.classList.remove('active');
+                autoPlayToggle.setAttribute('aria-checked', 'false');
+                toggleIcon.textContent = '🔇';
+                autoPlayToggle.title = 'Auto-play is disabled - click speaker button to play audio';
+            }
+        }
+
+        // Initialize auto-play state from localStorage
+        function initAutoPlayState() {
+            try {
+                const saved = localStorage.getItem('autoPlayEnabled') === 'true';
+                isAutoPlayEnabled = saved;
+            } catch (e) {
+                isAutoPlayEnabled = false;
+            }
+            updateAutoPlayToggle();
+        }
+
+        // Auto-play toggle event listener
+        autoPlayToggle.addEventListener('click', () => {
+            isAutoPlayEnabled = !isAutoPlayEnabled;
+            
+            try {
+                localStorage.setItem('autoPlayEnabled', String(isAutoPlayEnabled));
+            } catch (e) {
+                console.warn('Could not save auto-play preference:', e);
+            }
+            
+            updateAutoPlayToggle();
+        });
+
+        // Auto-play audio function with error handling
+        async function autoPlayAudio() {
+            if (!isAutoPlayEnabled || !currentCard.de) return;
+            
+            try {
+                const text = currentCard.de;
+                
+                // Use cached URL first if available
+                const cached = audioCache.get(text);
+                if (cached) {
+                    try {
+                        audioPlayer.pause();
+                        audioPlayer.src = cached;
+                        audioPlayer.currentTime = 0;
+                        await audioPlayer.play();
+                        return;
+                    } catch (e) {
+                        console.warn('Auto-play failed with cached audio:', e);
+                    }
+                }
+
+                // Fetch and play audio
+                try {
+                    const resp = await fetch(`/r2/tts?text=${encodeURIComponent(text)}&lang=de`);
+                    if (resp.ok) {
+                        const blob = await resp.blob();
+                        const objUrl = URL.createObjectURL(blob);
+                        audioPlayer.pause();
+                        audioPlayer.src = objUrl;
+                        audioPlayer.currentTime = 0;
+                        await audioPlayer.play();
+                        audioCache.set(text, objUrl);
+                        audioBlobUrls.set(text, objUrl);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('Auto-play failed with fetch:', e);
+                }
+
+                // Fallback to speech synthesis
+                try {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'de-DE';
+                    if (germanVoice) utterance.voice = germanVoice;
+                    speechSynthesis.speak(utterance);
+                } catch (e) {
+                    console.warn('Auto-play failed with speech synthesis:', e);
+                }
+            } catch (e) {
+                console.error('Auto-play error:', e);
+            }
+        }
 
         const deckSelect = document.getElementById('deckSelect');
         const englishFrontToggle = document.getElementById('englishFrontToggle');
@@ -1121,6 +1302,14 @@
             currentCard = words.shift();
             card.innerText = currentCard[frontLang];
             showingFront = true;
+            
+            // Auto-play audio when showing front (German) side
+            if (frontLang === 'de') {
+                // Small delay to ensure card text is rendered
+                setTimeout(() => {
+                    autoPlayAudio();
+                }, 100);
+            }
         }
 
         let recentlyTouched = false;
@@ -1129,6 +1318,17 @@
             if (currentCard[backLang]) {
                 card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
                 showingFront = !showingFront;
+                
+                // Auto-play audio when flipping to German side
+                if (!showingFront && backLang === 'de') {
+                    setTimeout(() => {
+                        autoPlayAudio();
+                    }, 100);
+                } else if (showingFront && frontLang === 'de') {
+                    setTimeout(() => {
+                        autoPlayAudio();
+                    }, 100);
+                }
             }
         }
         // Touch-first: flip immediately and suppress synthetic click
@@ -1271,6 +1471,8 @@
             }
         });
 
+        // Initialize auto-play state and load decks
+        initAutoPlayState();
         loadDecks();
 
         // Simple dropdown change handler
