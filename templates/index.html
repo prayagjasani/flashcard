@@ -159,13 +159,26 @@
             -webkit-overflow-scrolling: touch;
             padding-bottom: 6px;
         }
-        .header__actions::-webkit-scrollbar { display: none; }
-        .header__actions > .nav__link,
-        .header__actions > .nav__link--button { flex: 0 0 auto; }
+        
+        .header__actions::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .header__actions>.nav__link,
+        .header__actions>.nav__link--button {
+            flex: 0 0 auto;
+        }
+        
         @media (max-width: 480px) {
-            .header__inner { padding: 10px 12px; }
-            .header__actions { gap: 14px; }
-            .nav__link { font-size: 14px; }
+            .header__inner {
+                padding: 10px 12px;
+            }
+            .header__actions {
+                gap: 14px;
+            }
+            .nav__link {
+                font-size: 14px;
+            }
         }
         
         .btn {
@@ -718,7 +731,7 @@
         .deck-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 16px;
+            gap: 10px;
             /* ~gap-4 */
         }
         
