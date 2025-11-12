@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Flashcard Deck Screen</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#007AFF",
+                        "background-light": "#F9F9F9",
+                        "background-dark": "#101922",
+                        "card-light": "#FFFFFF",
+                        "card-dark": "#19242E",
+                        "text-primary-light": "#333333",
+                        "text-primary-dark": "#E5E7EB",
+                        "text-secondary-light": "#8E8E93",
+                        "text-secondary-dark": "#92adc9",
+                        "destructive": "#FF3B30",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display">
+    <div class="relative flex min-h-screen w-full flex-col">
+        <!-- Main container -->
+        <div class="flex-1 pb-24">
+            <!-- Top App Bar -->
+            <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+                <div class="mx-auto max-w-4xl p-4 flex items-center">
+                    <button id="backBtn" class="flex h-10 w-10 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span class="material-symbols-outlined text-2xl">arrow_back</span></button>
+                    <h1 id="deckTitle" class="flex-1 text-center text-lg font-bold leading-tight tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">Deck</h1>
+                    <div class="h-10 w-10"></div>
+                </div>
+            </header>
+            <!-- Flashcard List -->
+            <main id="listMain" class="mx-auto max-w-4xl p-4">
+                <div id="cardGrid" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+            </main>
+            <section id="studySection" class="mx-auto max-w-4xl p-4 hidden">
+                <div class="flex flex-col items-center">
+                    <div id="studyCard" class="w-full max-w-md select-none cursor-pointer rounded-xl bg-card-light dark:bg-card-dark p-10 text-center text-2xl font-bold text-text-primary-light dark:text-text-primary-dark"></div>
+                    <div class="mt-6 flex gap-4">
+                        <button id="studyWrong" class="h-11 rounded-full bg-destructive px-6 text-white">Wrong</button>
+                        <button id="studyRight" class="h-11 rounded-full bg-primary px-6 text-white">Right</button>
+                        <button id="studySpeak" class="h-11 rounded-full bg-yellow-500 px-6 text-white">Speak</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        
+        <!-- Confirmation Dialog (hidden by default, example) -->
+        <!-- 
+        <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div class="w-full max-w-sm rounded-xl bg-background-light dark:bg-card-dark p-6 text-center shadow-xl">
+                <h3 class="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">Delete Card?</h3>
+                <p class="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">Are you sure you want to delete this card? This action cannot be undone.</p>
+                <div class="mt-6 grid grid-cols-2 gap-3">
+                    <button class="h-11 rounded-lg bg-slate-200 font-semibold text-text-primary-light dark:bg-slate-700 dark:text-text-primary-dark">Cancel</button>
+                    <button class="h-11 rounded-lg bg-destructive font-semibold text-white">Delete</button>
+                </div>
+            </div>
+        </div>
+        -->
+    </div>
+    <script>
+        const backBtn = document.getElementById('backBtn');
+        const deckTitle = document.getElementById('deckTitle');
+        const listMain = document.getElementById('listMain');
+        const cardGrid = document.getElementById('cardGrid');
+        const studySection = document.getElementById('studySection');
+        const studyCard = document.getElementById('studyCard');
+        const studyWrong = document.getElementById('studyWrong');
+        const studyRight = document.getElementById('studyRight');
+        const studySpeak = document.getElementById('studySpeak');
+        const params = new URLSearchParams(location.search);
+        const deck = params.get('deck') || '';
+        if (deck) deckTitle.textContent = deck;
+        let cards = [];
+        let queue = [];
+        let current = null;
+        let showingFront = true;
+        let frontLang = 'de';
+        let backLang = 'en';
+        const audioPlayer = new Audio();
+        const audioCache = new Map();
+        backBtn.addEventListener('click', () => { location.href = '/'; });
+        async function loadDeck() {
+            if (!deck) { cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">No deck selected</div>'; return; }
+            try {
+                const r = await fetch(`/cards?deck=${encodeURIComponent(deck)}`);
+                const data = r.ok ? await r.json() : [];
+                cards = Array.isArray(data) ? data : [];
+                renderGrid();
+            } catch {
+                cards = [];
+                cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">Failed to load deck</div>';
+            }
+        }
+        function renderGrid() {
+            cardGrid.innerHTML = '';
+            if (!cards.length) {
+                cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">This deck is empty</div>';
+                return;
+            }
+            hydrateAudioFromLocalStorage();
+            cards.forEach(c => {
+                const wrap = document.createElement('div');
+                wrap.className = 'relative group';
+                const card = document.createElement('div');
+                card.className = 'flex flex-col gap-2 rounded-xl bg-card-light dark:bg-card-dark p-5 shadow-sm transition-shadow hover:shadow-md cursor-pointer';
+                const de = document.createElement('p');
+                de.className = 'text-lg font-medium text-text-primary-light dark:text-text-primary-dark';
+                de.textContent = c.de;
+                const en = document.createElement('p');
+                en.className = 'text-sm text-text-secondary-light dark:text-text-secondary-dark';
+                en.textContent = c.en;
+                card.appendChild(de);
+                card.appendChild(en);
+                wrap.appendChild(card);
+                card.addEventListener('click', () => {
+                    if (c && c.de) speak(c.de);
+                });
+                cardGrid.appendChild(wrap);
+            });
+        }
+        function hydrateAudioFromLocalStorage() {
+            cards.forEach(c => {
+                const key = `audio:de:${c.de}`;
+                const val = localStorage.getItem(key);
+                if (val) audioCache.set(c.de, val);
+            });
+        }
+        async function preloadDeckAudio() {
+            try {
+                const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deck)}`);
+                const data = await resp.json();
+                if (data && data.audio_urls) {
+                    const entries = Object.entries(data.audio_urls);
+                    for (const [text, url] of entries) {
+                        if (localStorage.getItem(`audio:de:${text}`)) continue;
+                        try {
+                            const r2 = await fetch(url);
+                            if (r2.ok) {
+                                const blob = await r2.blob();
+                                const base64 = await new Promise((resolve, reject) => {
+                                    const r = new FileReader();
+                                    r.onloadend = () => resolve(r.result);
+                                    r.onerror = reject;
+                                    r.readAsDataURL(blob);
+                                });
+                                try { localStorage.setItem(`audio:de:${text}`, String(base64)); } catch {}
+                                audioCache.set(text, String(base64));
+                            }
+                        } catch {}
+                    }
+                }
+            } catch {}
+        }
+        function startStudy() {
+            if (!cards.length) return;
+            queue = cards.slice();
+            showingFront = true;
+            nextCard();
+            listMain.classList.add('hidden');
+            studySection.classList.remove('hidden');
+        }
+        function nextCard() {
+            if (!queue.length) { studyCard.textContent = 'All done'; return; }
+            current = queue.shift();
+            showingFront = true;
+            studyCard.textContent = current[frontLang];
+            autoPlay();
+        }
+        function flip() {
+            if (!current) return;
+            studyCard.textContent = showingFront ? current[backLang] : current[frontLang];
+            showingFront = !showingFront;
+        }
+        async function speak(text) {
+            try {
+                if (audioCache.has(text)) {
+                    audioPlayer.pause();
+                    audioPlayer.src = audioCache.get(text);
+                    audioPlayer.currentTime = 0;
+                    await audioPlayer.play();
+                    return;
+                }
+                const resp = await fetch(`/tts?text=${encodeURIComponent(text)}&lang=de`);
+                if (resp.ok) {
+                    const blob = await resp.blob();
+                    const url = URL.createObjectURL(blob);
+                    audioCache.set(text, url);
+                    audioPlayer.pause();
+                    audioPlayer.src = url;
+                    audioPlayer.currentTime = 0;
+                    await audioPlayer.play();
+                }
+            } catch {}
+        }
+        function autoPlay() { if (frontLang === 'de' && current && current.de) setTimeout(() => speak(current.de), 120); }
+        studyCard.addEventListener('click', flip);
+        studyWrong.addEventListener('click', () => { if (current) queue.push(current); nextCard(); });
+        studyRight.addEventListener('click', () => { nextCard(); });
+        studySpeak.addEventListener('click', () => { if (current && current.de) speak(current.de); });
+        
+        loadDeck();
+        preloadDeckAudio();
+    </script>
+</body>
+
+</html>

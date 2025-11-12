@@ -87,6 +87,10 @@ def _safe_tts_key(text: str, lang: str = "de") -> str:
 def read_root():
     return FileResponse('templates/index.html')
 
+@app.get("/learn")
+def learn_screen():
+    return FileResponse('hi.html')
+
 @app.head("/")
 def head_root():
     return Response(status_code=200)

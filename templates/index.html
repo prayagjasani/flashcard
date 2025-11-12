@@ -692,6 +692,60 @@
                 width: 46%;
             }
         }
+        
+        .deck-list {
+            max-width: none;
+            width: 100%;
+            margin: 0;
+            margin-top: 16px;
+            /* ~mt-16 */
+            padding: 32px 0 16px;
+            /* more space on top, none on sides */
+        }
+        
+        .deck-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            /* ~gap-4 */
+        }
+        
+        @media (min-width: 640px) {
+            .deck-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .deck-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+        
+        .deck-tile {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            /* ~rounded-xl */
+            padding: 20px;
+            /* ~p-5 */
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .deck-tile:hover {
+            box-shadow: var(--card-shadow-hover);
+        }
+        
+        .deck-title {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .deck-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 
@@ -699,9 +753,13 @@
     <header class="site-header" role="banner">
         <div class="header__inner">
             <div class="header__actions">
+                <button class="nav__link nav__link--button" id="homeBtn" type="button">
+                    <span class="link__text link__text--primary">Home</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Home</span>
+                </button>
                 <button class="nav__link nav__link--button" id="createDeckBtn" type="button">
-                    <span class="link__text link__text--primary">Create Deck</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Create Deck</span>
+                    <span class="link__text link__text--primary">Create </span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Create</span>
                 </button>
                 <button class="nav__link nav__link--button" id="multiDeckBtn" type="button">
                     <span class="link__text link__text--primary">Multi-Deck</span>
@@ -711,9 +769,16 @@
                     <span class="link__text link__text--primary">Edit</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Edit</span>
                 </button>
+                <button class="nav__link nav__link--button" id="learnBtn" type="button">
+                    <span class="link__text link__text--primary">Learn</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Learn</span>
+                </button>
             </div>
         </div>
     </header>
+    <section class="deck-list" id="homeDeckList">
+        <div class="deck-grid" id="deckGrid"></div>
+    </section>
     <div class="modal" id="deckModal" aria-hidden="true">
         <div class="modal__backdrop" data-close="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="deckModalTitle">
@@ -731,6 +796,16 @@
                 <button class="btn btn--signup" id="deckSaveBtn" type="button">Create</button>
             </div>
             <p class="modal__status" id="deckStatus"></p>
+        </div>
+    </div>
+    <div class="modal" id="chooseActionModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-action="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
+            <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
+            <div class="modal__actions">
+                <button class="btn" id="openLearnBtn" type="button">Learn</button>
+                <button class="btn btn--signup" id="openFlashBtn" type="button">Flashcard</button>
+            </div>
         </div>
     </div>
     <div class="modal" id="multiDeckModal" aria-hidden="true">
@@ -776,7 +851,7 @@
             <p class="modal__status" id="editDeckStatus"></p>
         </div>
     </div>
-    <div class="app">
+    <div id="flashApp" class="app" style="display:none">
         <h1>Flashcards</h1>
         <div class="deck-select">
             <label for="deckSelect">Deck</label>
@@ -809,6 +884,15 @@
         const speakBtn = document.getElementById('speak');
         const autoPlayToggle = document.getElementById('autoPlayToggle');
         const header = document.querySelector('.site-header');
+        const learnBtn = document.getElementById('learnBtn');
+        const homeBtn = document.getElementById('homeBtn');
+        const deckGrid = document.getElementById('deckGrid');
+        const homeDeckList = document.getElementById('homeDeckList');
+        const chooseActionModal = document.getElementById('chooseActionModal');
+        const openLearnBtn = document.getElementById('openLearnBtn');
+        const openFlashBtn = document.getElementById('openFlashBtn');
+        const flashApp = document.getElementById('flashApp');
+        let selectedDeckForAction = null;
 
         let currentCard = {};
         let words = [];
@@ -997,6 +1081,15 @@
                                 const objUrl = URL.createObjectURL(blob);
                                 audioCache.set(text, objUrl);
                                 audioBlobUrls.set(text, objUrl);
+                                const base64 = await new Promise((resolve, reject) => {
+                                    const r = new FileReader();
+                                    r.onloadend = () => resolve(r.result);
+                                    r.onerror = reject;
+                                    r.readAsDataURL(blob);
+                                });
+                                try {
+                                    localStorage.setItem(`audio:de:${text}`, String(base64));
+                                } catch {}
                             }
                         } catch (err) {
                             // If prefetch fails, keep the same-origin URL as fallback
@@ -1055,6 +1148,7 @@
 
                 // Wait for user choice
                 card.innerText = 'Welcome!\n Please select a deck.';
+                renderDeckGrid();
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
                 cachedDeckList = [];
@@ -1066,8 +1160,55 @@
                 placeholder.selected = true;
                 deckSelect.appendChild(placeholder);
                 card.innerText = 'Welcome!\n Please select a deck.';
+                renderDeckGrid();
             }
         }
+
+        function renderDeckGrid() {
+            if (!deckGrid) return;
+            deckGrid.innerHTML = '';
+            if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
+            cachedDeckList.forEach(d => {
+                const wrap = document.createElement('div');
+                wrap.className = 'deck-tile';
+                const title = document.createElement('div');
+                title.className = 'deck-title';
+                title.textContent = d.name;
+                wrap.appendChild(title);
+                wrap.addEventListener('click', () => {
+                    selectedDeckForAction = d.name;
+                    const ttl = document.getElementById('chooseActionTitle');
+                    if (ttl) ttl.textContent = d.name;
+                    chooseActionModal.classList.add('is-open');
+                    chooseActionModal.setAttribute('aria-hidden', 'false');
+                });
+                deckGrid.appendChild(wrap);
+            });
+        }
+
+        if (homeBtn) homeBtn.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+
+        if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}`;
+        });
+        if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            deckSelect.value = selectedDeckForAction;
+            loadWordsForDeck(selectedDeckForAction);
+            chooseActionModal.classList.remove('is-open');
+            chooseActionModal.setAttribute('aria-hidden', 'true');
+            if (flashApp) flashApp.style.display = 'block';
+            if (homeDeckList) homeDeckList.style.display = 'none';
+        });
+        if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeAction === 'true') {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
+        });
 
         function populateEditDeckSelect() {
             editDeckSelect.innerHTML = '';
@@ -1462,6 +1603,12 @@
             const name = e.target.value;
             if (!name) return;
             loadWordsForDeck(name);
+        });
+
+        if (learnBtn) learnBtn.addEventListener('click', () => {
+            const name = deckSelect && deckSelect.value;
+            if (name) window.location.href = `/learn?deck=${encodeURIComponent(name)}`;
+            else window.location.href = '/learn';
         });
 
         // Multi-deck modal interactions
