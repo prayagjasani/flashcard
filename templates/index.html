@@ -154,6 +154,18 @@
             align-items: center;
             gap: 20px;
             grid-column: 2;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 6px;
+        }
+        .header__actions::-webkit-scrollbar { display: none; }
+        .header__actions > .nav__link,
+        .header__actions > .nav__link--button { flex: 0 0 auto; }
+        @media (max-width: 480px) {
+            .header__inner { padding: 10px 12px; }
+            .header__actions { gap: 14px; }
+            .nav__link { font-size: 14px; }
         }
         
         .btn {
