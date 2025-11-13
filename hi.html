@@ -67,7 +67,7 @@
             </header>
             <!-- Flashcard List -->
             <main id="listMain" class="mx-auto max-w-4xl p-4">
-                <div id="cardGrid" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+                <div id="cardGrid" class="w-full"></div>
             </main>
             <section id="studySection" class="mx-auto max-w-4xl p-4 hidden">
                 <div class="flex flex-col items-center">
@@ -80,8 +80,8 @@
                 </div>
             </section>
         </div>
-        
-        
+
+
         <!-- Confirmation Dialog (hidden by default, example) -->
         <!-- 
         <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
@@ -117,9 +117,14 @@
         let backLang = 'en';
         const audioPlayer = new Audio();
         const audioCache = new Map();
-        backBtn.addEventListener('click', () => { location.href = '/'; });
+        backBtn.addEventListener('click', () => {
+            location.href = '/';
+        });
         async function loadDeck() {
-            if (!deck) { cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">No deck selected</div>'; return; }
+            if (!deck) {
+                cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">No deck selected</div>';
+                return;
+            }
             try {
                 const r = await fetch(`/cards?deck=${encodeURIComponent(deck)}`);
                 const data = r.ok ? await r.json() : [];
@@ -130,33 +135,37 @@
                 cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">Failed to load deck</div>';
             }
         }
+
         function renderGrid() {
             cardGrid.innerHTML = '';
             if (!cards.length) {
-                cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">This deck is empty</div>';
+                cardGrid.innerHTML = '<div class="mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">This deck is empty</div>';
                 return;
             }
             hydrateAudioFromLocalStorage();
+            const table = document.createElement('table');
+            table.className = 'w-full table-fixed border-separate border-spacing-0 bg-card-light dark:bg-card-dark rounded-xl overflow-hidden shadow-sm';
+            const tbody = document.createElement('tbody');
             cards.forEach(c => {
-                const wrap = document.createElement('div');
-                wrap.className = 'relative group';
-                const card = document.createElement('div');
-                card.className = 'flex flex-col gap-2 rounded-xl bg-card-light dark:bg-card-dark p-5 shadow-sm transition-shadow hover:shadow-md cursor-pointer';
-                const de = document.createElement('p');
-                de.className = 'text-lg font-medium text-text-primary-light dark:text-text-primary-dark';
-                de.textContent = c.de;
-                const en = document.createElement('p');
-                en.className = 'text-sm text-text-secondary-light dark:text-text-secondary-dark';
-                en.textContent = c.en;
-                card.appendChild(de);
-                card.appendChild(en);
-                wrap.appendChild(card);
-                card.addEventListener('click', () => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer';
+                const tdDe = document.createElement('td');
+                tdDe.className = 'align-middle px-3 py-2 text-[15px] font-medium text-text-primary-light dark:text-text-primary-dark border-r border-slate-200 dark:border-slate-800 break-words';
+                tdDe.textContent = c.de;
+                const tdEn = document.createElement('td');
+                tdEn.className = 'align-middle px-3 py-2 text-[15px] text-text-secondary-light dark:text-text-secondary-dark break-words';
+                tdEn.textContent = c.en;
+                tr.appendChild(tdDe);
+                tr.appendChild(tdEn);
+                tr.addEventListener('click', () => {
                     if (c && c.de) speak(c.de);
                 });
-                cardGrid.appendChild(wrap);
+                tbody.appendChild(tr);
             });
+            table.appendChild(tbody);
+            cardGrid.appendChild(table);
         }
+
         function hydrateAudioFromLocalStorage() {
             cards.forEach(c => {
                 const key = `audio:de:${c.de}`;
@@ -182,7 +191,9 @@
                                     r.onerror = reject;
                                     r.readAsDataURL(blob);
                                 });
-                                try { localStorage.setItem(`audio:de:${text}`, String(base64)); } catch {}
+                                try {
+                                    localStorage.setItem(`audio:de:${text}`, String(base64));
+                                } catch {}
                                 audioCache.set(text, String(base64));
                             }
                         } catch {}
@@ -190,6 +201,7 @@
                 }
             } catch {}
         }
+
         function startStudy() {
             if (!cards.length) return;
             queue = cards.slice();
@@ -198,13 +210,18 @@
             listMain.classList.add('hidden');
             studySection.classList.remove('hidden');
         }
+
         function nextCard() {
-            if (!queue.length) { studyCard.textContent = 'All done'; return; }
+            if (!queue.length) {
+                studyCard.textContent = 'All done';
+                return;
+            }
             current = queue.shift();
             showingFront = true;
             studyCard.textContent = current[frontLang];
             autoPlay();
         }
+
         function flip() {
             if (!current) return;
             studyCard.textContent = showingFront ? current[backLang] : current[frontLang];
@@ -231,12 +248,22 @@
                 }
             } catch {}
         }
-        function autoPlay() { if (frontLang === 'de' && current && current.de) setTimeout(() => speak(current.de), 120); }
+
+        function autoPlay() {
+            if (frontLang === 'de' && current && current.de) setTimeout(() => speak(current.de), 120);
+        }
         studyCard.addEventListener('click', flip);
-        studyWrong.addEventListener('click', () => { if (current) queue.push(current); nextCard(); });
-        studyRight.addEventListener('click', () => { nextCard(); });
-        studySpeak.addEventListener('click', () => { if (current && current.de) speak(current.de); });
-        
+        studyWrong.addEventListener('click', () => {
+            if (current) queue.push(current);
+            nextCard();
+        });
+        studyRight.addEventListener('click', () => {
+            nextCard();
+        });
+        studySpeak.addEventListener('click', () => {
+            if (current && current.de) speak(current.de);
+        });
+
         loadDeck();
         preloadDeckAudio();
     </script>
