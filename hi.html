@@ -144,16 +144,16 @@
             }
             hydrateAudioFromLocalStorage();
             const table = document.createElement('table');
-            table.className = 'w-full table-fixed border-separate border-spacing-0 bg-card-light dark:bg-card-dark rounded-xl overflow-hidden shadow-sm';
+            table.className = 'w-full table-fixed border-collapse bg-card-light dark:bg-card-dark rounded-xl overflow-hidden shadow-sm';
             const tbody = document.createElement('tbody');
             cards.forEach(c => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer';
+                tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer';
                 const tdDe = document.createElement('td');
-                tdDe.className = 'align-middle px-3 py-2 text-[15px] font-medium text-text-primary-light dark:text-text-primary-dark border-r border-slate-200 dark:border-slate-800 break-words';
+                tdDe.className = 'align-middle px-3 py-2 text-[15px] font-medium text-text-primary-light dark:text-text-primary-dark border-r border-slate-300 dark:border-slate-700 border-b border-slate-300 dark:border-slate-700 break-words';
                 tdDe.textContent = c.de;
                 const tdEn = document.createElement('td');
-                tdEn.className = 'align-middle px-3 py-2 text-[15px] text-text-secondary-light dark:text-text-secondary-dark break-words';
+                tdEn.className = 'align-middle px-3 py-2 text-[15px] text-text-secondary-light dark:text-text-secondary-dark border-b border-slate-300 dark:border-slate-700 break-words';
                 tdEn.textContent = c.en;
                 tr.appendChild(tdDe);
                 tr.appendChild(tdEn);
