@@ -43,15 +43,73 @@
         body {
             min-height: max(884px, 100dvh);
         }
-        .loading-overlay { position: fixed; inset: 0; z-index: 50; display: none; background: rgba(255,255,255,0.6); }
-        .loading-overlay.is-active { display: grid; place-items: center; }
-        .loading-dots { display: flex; gap: 8px; color: #8E8E93; }
-        .loading-dots span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: 0.5; animation: dotPulse 1000ms infinite ease-in-out; }
-        .loading-dots span:nth-child(2) { animation-delay: 150ms; }
-        .loading-dots span:nth-child(3) { animation-delay: 300ms; }
-        @keyframes dotPulse { 0% { transform: scale(1); opacity: 0.35; } 50% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 0.35; } }
-        .row-enter { animation: slideDown 360ms ease-out both; will-change: transform, opacity; }
-        @keyframes slideDown { 0% { transform: translateY(-6px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        
+        .loading-overlay.is-active {
+            display: grid;
+            place-items: center;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 8px;
+            color: #8E8E93;
+        }
+        
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+            animation: dotPulse 1000ms infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 150ms;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 300ms;
+        }
+        
+        @keyframes dotPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+            50% {
+                transform: scale(1.25);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+        }
+        
+        .row-enter {
+            animation: slideDown 360ms ease-out both;
+            will-change: transform, opacity;
+        }
+        
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-6px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -73,7 +131,9 @@
             </div>
             <div id="cardList" class="space-y-3"></div>
         </main>
-        <div id="globalLoader" class="loading-overlay" aria-hidden="true"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+        <div id="globalLoader" class="loading-overlay" aria-hidden="true">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
         <div id="editModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/40 p-4">
             <div class="w-full max-w-sm rounded-xl bg-background-light dark:bg-background-dark p-4 shadow-xl">
                 <h2 class="text-base font-semibold text-near-black dark:text-white">Edit Card</h2>
@@ -97,40 +157,215 @@
 </body>
 
 <script>
-const backBtn=document.getElementById('backBtn');
-const deckTitle=document.getElementById('deckTitle');
-const cardList=document.getElementById('cardList');
-const globalLoader=document.getElementById('globalLoader');
-const editModal=document.getElementById('editModal');
-const editEn=document.getElementById('editEn');
-const editDe=document.getElementById('editDe');
-const editCancel=document.getElementById('editCancel');
-const editSave=document.getElementById('editSave');
-const addBtn=document.getElementById('addBtn');
-const params=new URLSearchParams(location.search);
-const deckSelectEdit=document.getElementById('deckSelectEdit');
-let deck=params.get('deck')||'';
-if(deck)deckTitle.textContent=deck;
-let cards=[];let editingIndex=-1;let didInitialAnimation=false;
-function showLoader(){if(globalLoader)globalLoader.classList.add('is-active');}
-function hideLoader(){if(globalLoader)globalLoader.classList.remove('is-active');}
-backBtn.addEventListener('click',()=>{location.href='/';});
-async function loadCards(){showLoader();try{const r=await fetch(`/cards?deck=${encodeURIComponent(deck)}`);const data=r.ok?await r.json():[];cards=Array.isArray(data)?data:[];renderList();hideLoader();}catch{cards=[];renderList();hideLoader();}}
-function renderList(){cardList.innerHTML='';if(!cards.length){cardList.innerHTML='<div class="text-center text-neutral-gray">No cards</div>';return;}cards.forEach((c,i)=>{const row=document.createElement('div');row.className='flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800/50'+(didInitialAnimation?'':' row-enter');if(!didInitialAnimation)row.style.animationDelay=`${i*40}ms`;const left=document.createElement('div');left.className='flex flex-1 flex-col justify-center';const de=document.createElement('p');de.className='text-base font-medium text-near-black dark:text-white';de.textContent=c.de;const en=document.createElement('p');en.className='text-sm text-neutral-gray dark:text-gray-400';en.textContent=c.en;left.appendChild(de);left.appendChild(en);const right=document.createElement('div');right.className='flex shrink-0 items-center gap-2';const btnEdit=document.createElement('button');btnEdit.className='flex size-10 items-center justify-center rounded-full text-neutral-gray transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700';btnEdit.innerHTML='<span class="material-symbols-outlined text-xl">edit</span>';btnEdit.addEventListener('click',()=>openEdit(i));const btnReload=document.createElement('button');btnReload.className='flex size-10 items-center justify-center rounded-full text-neutral-gray transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700';btnReload.innerHTML='<span class="material-symbols-outlined text-xl">cached</span>';btnReload.title='Reload audio';btnReload.addEventListener('click',()=>reloadAudio(i));const btnDelete=document.createElement('button');btnDelete.className='flex size-10 items-center justify-center rounded-full text-destructive-red transition-colors hover:bg-red-50 dark:hover:bg-red-500/10';btnDelete.innerHTML='<span class="material-symbols-outlined text-xl">delete</span>';btnDelete.addEventListener('click',()=>deleteCard(i));row.appendChild(left);row.appendChild(right);right.appendChild(btnEdit);right.appendChild(btnReload);right.appendChild(btnDelete);cardList.appendChild(row);});didInitialAnimation=true;}
-function openEdit(i){editingIndex=i;const c=cards[i];editEn.value=c.en||'';editDe.value=c.de||'';editModal.classList.remove('hidden');}
-function closeEdit(){editingIndex=-1;editModal.classList.add('hidden');}
-editCancel.addEventListener('click',closeEdit);
-editModal.addEventListener('click',(e)=>{if(e.target===editModal)closeEdit();});
-editSave.addEventListener('click',async()=>{const en=(editEn.value||'').trim();const de=(editDe.value||'').trim();if(!en||!de)return;if(editingIndex===-1)cards.push({en,de});else cards[editingIndex]={en,de};closeEdit();await saveDeck();});
-async function saveDeck(){showLoader();try{const content=cards.map(r=>`${r.en},${r.de}`).join('\n');const resp=await fetch('/deck/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:deck,content})});await resp.json();await loadCards();}catch{hideLoader();}finally{hideLoader();}}
-async function deleteCard(i){cards.splice(i,1);await saveDeck();}
-async function reloadAudio(i){const text=(cards[i]&&cards[i].de||'').trim();if(!text)return;showLoader();try{await fetch('/audio/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,lang:'de'})}).then(r=>r.json()).catch(()=>{});}catch{}finally{hideLoader();}}
-addBtn.addEventListener('click',()=>{editingIndex=-1;editEn.value='';editDe.value='';editModal.classList.remove('hidden');});
-loadCards();
+    const backBtn = document.getElementById('backBtn');
+    const deckTitle = document.getElementById('deckTitle');
+    const cardList = document.getElementById('cardList');
+    const globalLoader = document.getElementById('globalLoader');
+    const editModal = document.getElementById('editModal');
+    const editEn = document.getElementById('editEn');
+    const editDe = document.getElementById('editDe');
+    const editCancel = document.getElementById('editCancel');
+    const editSave = document.getElementById('editSave');
+    const addBtn = document.getElementById('addBtn');
+    const params = new URLSearchParams(location.search);
+    const deckSelectEdit = document.getElementById('deckSelectEdit');
+    let deck = params.get('deck') || '';
+    if (deck) deckTitle.textContent = deck;
+    let cards = [];
+    let editingIndex = -1;
+    let didInitialAnimation = false;
 
-async function loadDecks(){showLoader();try{const resp=await fetch('/decks');const list=await resp.json();const items=Array.isArray(list)?list:[];deckSelectEdit.innerHTML='';const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Select deck';placeholder.disabled=false;deckSelectEdit.appendChild(placeholder);items.forEach(d=>{const opt=document.createElement('option');opt.value=d.name;opt.textContent=d.name;deckSelectEdit.appendChild(opt);});if(deck){deckSelectEdit.value=deck;}deckSelectEdit.addEventListener('change',async(e)=>{deck=e.target.value||'';deckTitle.textContent=deck||'Deck';cards=[];cardList.innerHTML='';if(deck){await loadCards();}});hideLoader();}catch{hideLoader();}}
+    function showLoader() {
+        if (globalLoader) globalLoader.classList.add('is-active');
+    }
 
-loadDecks();
+    function hideLoader() {
+        if (globalLoader) globalLoader.classList.remove('is-active');
+    }
+    backBtn.addEventListener('click', () => {
+        location.href = '/';
+    });
+    async function loadCards() {
+        showLoader();
+        try {
+            const r = await fetch(`/cards?deck=${encodeURIComponent(deck)}`);
+            const data = r.ok ? await r.json() : [];
+            cards = Array.isArray(data) ? data : [];
+            renderList();
+            hideLoader();
+        } catch {
+            cards = [];
+            renderList();
+            hideLoader();
+        }
+    }
+
+    function renderList() {
+        cardList.innerHTML = '';
+        if (!cards.length) {
+            cardList.innerHTML = '<div class="text-center text-neutral-gray">No cards</div>';
+            return;
+        }
+        cards.forEach((c, i) => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800/50' + (didInitialAnimation ? '' : ' row-enter');
+            if (!didInitialAnimation) row.style.animationDelay = `${i*40}ms`;
+            const left = document.createElement('div');
+            left.className = 'flex flex-1 flex-col justify-center';
+            const de = document.createElement('p');
+            de.className = 'text-base font-medium text-near-black dark:text-white';
+            de.textContent = c.de;
+            const en = document.createElement('p');
+            en.className = 'text-sm text-neutral-gray dark:text-gray-400';
+            en.textContent = c.en;
+            left.appendChild(de);
+            left.appendChild(en);
+            const right = document.createElement('div');
+            right.className = 'flex shrink-0 items-center gap-2';
+            const btnEdit = document.createElement('button');
+            btnEdit.className = 'flex size-10 items-center justify-center rounded-full text-neutral-gray transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700';
+            btnEdit.innerHTML = '<span class="material-symbols-outlined text-xl">edit</span>';
+            btnEdit.addEventListener('click', () => openEdit(i));
+            const btnReload = document.createElement('button');
+            btnReload.className = 'flex size-10 items-center justify-center rounded-full text-neutral-gray transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700';
+            btnReload.innerHTML = '<span class="material-symbols-outlined text-xl">cached</span>';
+            btnReload.title = 'Reload audio';
+            btnReload.addEventListener('click', () => reloadAudio(i));
+            const btnDelete = document.createElement('button');
+            btnDelete.className = 'flex size-10 items-center justify-center rounded-full text-destructive-red transition-colors hover:bg-red-50 dark:hover:bg-red-500/10';
+            btnDelete.innerHTML = '<span class="material-symbols-outlined text-xl">delete</span>';
+            btnDelete.addEventListener('click', () => deleteCard(i));
+            row.appendChild(left);
+            row.appendChild(right);
+            right.appendChild(btnEdit);
+            right.appendChild(btnReload);
+            right.appendChild(btnDelete);
+            cardList.appendChild(row);
+        });
+        didInitialAnimation = true;
+    }
+
+    function openEdit(i) {
+        editingIndex = i;
+        const c = cards[i];
+        editEn.value = c.en || '';
+        editDe.value = c.de || '';
+        editModal.classList.remove('hidden');
+    }
+
+    function closeEdit() {
+        editingIndex = -1;
+        editModal.classList.add('hidden');
+    }
+    editCancel.addEventListener('click', closeEdit);
+    editModal.addEventListener('click', (e) => {
+        if (e.target === editModal) closeEdit();
+    });
+    editSave.addEventListener('click', async() => {
+        const en = (editEn.value || '').trim();
+        const de = (editDe.value || '').trim();
+        if (!en || !de) return;
+        if (editingIndex === -1) cards.push({
+            en,
+            de
+        });
+        else cards[editingIndex] = {
+            en,
+            de
+        };
+        closeEdit();
+        await saveDeck();
+    });
+    async function saveDeck() {
+        showLoader();
+        try {
+            const content = cards.map(r => `${r.en},${r.de}`).join('\n');
+            const resp = await fetch('/deck/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: deck,
+                    content
+                })
+            });
+            await resp.json();
+            await loadCards();
+        } catch {
+            hideLoader();
+        } finally {
+            hideLoader();
+        }
+    }
+    async function deleteCard(i) {
+        cards.splice(i, 1);
+        await saveDeck();
+    }
+    async function reloadAudio(i) {
+        const text = (cards[i] && cards[i].de || '').trim();
+        if (!text) return;
+        showLoader();
+        try {
+            await fetch('/audio/rebuild', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text,
+                    lang: 'de'
+                })
+            }).then(r => r.json()).catch(() => {});
+        } catch {} finally {
+            hideLoader();
+        }
+    }
+    addBtn.addEventListener('click', () => {
+        editingIndex = -1;
+        editEn.value = '';
+        editDe.value = '';
+        editModal.classList.remove('hidden');
+    });
+    loadCards();
+
+    async function loadDecks() {
+        showLoader();
+        try {
+            const resp = await fetch('/decks');
+            const list = await resp.json();
+            const items = Array.isArray(list) ? list : [];
+            deckSelectEdit.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select deck';
+            placeholder.disabled = false;
+            deckSelectEdit.appendChild(placeholder);
+            items.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.name;
+                opt.textContent = d.name;
+                deckSelectEdit.appendChild(opt);
+            });
+            if (deck) {
+                deckSelectEdit.value = deck;
+            }
+            deckSelectEdit.addEventListener('change', async(e) => {
+                deck = e.target.value || '';
+                deckTitle.textContent = deck || 'Deck';
+                cards = [];
+                cardList.innerHTML = '';
+                if (deck) {
+                    await loadCards();
+                }
+            });
+            hideLoader();
+        } catch {
+            hideLoader();
+        }
+    }
+
+    loadDecks();
 </script>
 
 </html>

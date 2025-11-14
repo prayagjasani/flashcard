@@ -95,6 +95,10 @@ def learn_screen():
 def edit_screen():
     return FileResponse('edit.html')
 
+@app.get("/create")
+def create_screen():
+    return FileResponse('templates/create.html')
+
 @app.head("/")
 def head_root():
     return Response(status_code=200)
