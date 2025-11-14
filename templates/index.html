@@ -1598,6 +1598,7 @@
                             loadWordsForDeck(qsDeck);
                             if (flashApp) flashApp.style.display = 'block';
                             if (homeDeckList) homeDeckList.style.display = 'none';
+                            if (createFolderBtn) createFolderBtn.style.display = 'none';
                         } else if (qsMode === 'learn') {
                             window.location.href = `/learn?deck=${encodeURIComponent(qsDeck)}`;
                         }
@@ -1964,6 +1965,7 @@
             chooseActionModal.setAttribute('aria-hidden', 'true');
             if (flashApp) flashApp.style.display = 'block';
             if (homeDeckList) homeDeckList.style.display = 'none';
+            if (createFolderBtn) createFolderBtn.style.display = 'none';
         });
         if (chooseActionKebab) chooseActionKebab.addEventListener('click', (e) => {
             e.stopPropagation();
