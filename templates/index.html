@@ -836,9 +836,11 @@
         .deck-tile.menu-open { z-index: 2500; }
         .kebab-menu.is-open { display: block; }
         .kebab-item {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
-            text-align: left;
+            text-align: center;
             background: #f3f4f6;
             border: 1px solid var(--card-border);
             border-radius: 9999px;
@@ -846,6 +848,7 @@
             margin: 6px 0;
             color: var(--text);
             box-shadow: inset 0 -1px rgba(15,23,42,0.04);
+            min-height: 40px;
         }
         .kebab-item:hover { background: #eef0f4; }
         
@@ -1472,8 +1475,12 @@
         function renderFolderGrid() {
             if (!folderGrid) return;
             folderGrid.innerHTML = '';
-            const list = cachedFolderList.length ? cachedFolderList : [{ name: 'Uncategorized', count: 0 }];
-            list.forEach((f, i) => {
+            const base = cachedFolderList.length ? cachedFolderList.slice() : [{ name: 'Uncategorized', count: 0 }];
+            const ordered = base.filter(f => f && f.name !== 'Uncategorized');
+            let unc = base.find(f => f && f.name === 'Uncategorized');
+            if (!unc) unc = { name: 'Uncategorized', count: 0 };
+            ordered.push(unc);
+            ordered.forEach((f, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
                 wrap.style.animationDelay = `${i * 40}ms`;
@@ -1613,12 +1620,12 @@
             const raw = cachedFolderList.length ? cachedFolderList.slice() : [];
             const seen = new Set();
             const list = [];
-            const hasUnc = raw.some((f) => (f && f.name) === 'Uncategorized');
-            if (!hasUnc) list.push({ name: 'Uncategorized', count: 0 });
             raw.forEach((f) => {
                 const nm = (f && f.name) ? f.name : String(f);
+                if (nm === 'Uncategorized') return; // place at end only
                 if (!seen.has(nm)) { seen.add(nm); list.push({ name: nm, count: f.count || 0 }); }
             });
+            list.push({ name: 'Uncategorized', count: 0 });
             let defaultFolder = 'Uncategorized';
             try {
                 const dk = cachedDeckList.find(x => x.name === selectedDeckForAction);
