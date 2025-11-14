@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Folder</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#007AFF",
+                        "background-light": "#F9F9F9",
+                        "background-dark": "#101922",
+                        "card-light": "#FFFFFF",
+                        "card-dark": "#19242E",
+                        "text-primary-light": "#333333",
+                        "text-primary-dark": "#E5E7EB",
+                        "text-secondary-light": "#8E8E93",
+                        "text-secondary-dark": "#92adc9",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+    <style>
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        
+        .loading-overlay.is-active {
+            display: flex;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 8px;
+            color: #8E8E93;
+        }
+        
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+            animation: dotPulse 1000ms infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 150ms;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 300ms;
+        }
+        
+        @keyframes dotPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+            50% {
+                transform: scale(1.25);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .loading-dots {
+                color: #92adc9;
+            }
+        }
+    </style>
+    <style>
+         :root {
+            --bg: #f6f7fb;
+            --text: #0f172a;
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb;
+            --accent: #3b82f6;
+            --muted: #64748b;
+            --card-shadow: 0 8px 20px rgba(2, 8, 23, 0.06);
+            --card-shadow-hover: 0 12px 26px rgba(2, 8, 23, 0.10);
+            --text-primary: var(--text);
+            --text-secondary: var(--muted);
+        }
+        
+        .deck-list {
+            max-width: none;
+            width: 100%;
+            margin: 0;
+            margin-top: 16px;
+            padding: 0px 0 16px;
+        }
+        
+        .deck-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        @media (min-width: 640px) {
+            .deck-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .deck-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+        
+        .deck-tile {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 20px;
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+            overflow: visible;
+            z-index: 0;
+        }
+        
+        .deck-tile:hover {
+            box-shadow: var(--card-shadow-hover);
+        }
+        
+        .tile-enter {
+            animation: slideDown 380ms ease-out both;
+            will-change: transform, opacity;
+        }
+        
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-6px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .deck-title {
+            font-weight: 400;
+            color: var(--text-primary);
+            font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+        
+        .deck-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display">
+    <div class="relative flex min-h-screen w-full flex-col">
+        <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+            <div class="w-full px-3 py-2 flex items-center border-b border-slate-200/70">
+                <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
+                <h1 id="folderTitle" class="flex-1 text-center text-base font-bold leading-tight tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">Folder</h1>
+                <div class="h-8 w-8"></div>
+            </div>
+        </header>
+        <div id="globalLoader" class="loading-overlay" aria-hidden="true">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+        <main class="w-full px-4">
+            <section class="deck-list">
+                <div class="deck-grid" id="deckList"></div>
+            </section>
+        </main>
+    </div>
+    <script>
+        const backBtn = document.getElementById('backBtn');
+        const folderTitle = document.getElementById('folderTitle');
+        const deckList = document.getElementById('deckList');
+        const globalLoader = document.getElementById('globalLoader');
+
+        function showLoader() {
+            if (globalLoader) globalLoader.classList.add('is-active');
+        }
+
+        function hideLoader() {
+            if (globalLoader) globalLoader.classList.remove('is-active');
+        }
+
+        const params = new URLSearchParams(location.search);
+        const folder = params.get('name') || 'Uncategorized';
+        folderTitle.textContent = folder;
+
+        backBtn.addEventListener('click', () => {
+            location.href = '/';
+        });
+
+        async function loadDecks() {
+            showLoader();
+            try {
+                const resp = await fetch('/decks');
+                const data = resp.ok ? await resp.json() : [];
+                const all = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+                const list = all.filter(d => ((d.folder || 'Uncategorized') === folder));
+                renderList(list);
+            } catch {
+                renderList([]);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function renderList(items) {
+            deckList.innerHTML = '';
+            if (!items.length) {
+                const empty = document.createElement('div');
+                empty.className = 'mt-10 text-center';
+                empty.style.color = 'var(--text-secondary)';
+                empty.textContent = 'No decks in this folder';
+                deckList.appendChild(empty);
+                return;
+            }
+            items.forEach((d, i) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'deck-tile tile-enter';
+                wrap.style.animationDelay = `${i * 40}ms`;
+                const title = document.createElement('div');
+                title.className = 'deck-title';
+                title.textContent = d.name;
+                wrap.appendChild(title);
+                wrap.addEventListener('click', () => {
+                    window.location.href = `/learn?deck=${encodeURIComponent(d.name)}`;
+                });
+                deckList.appendChild(wrap);
+            });
+        }
+
+        loadDecks();
+    </script>
+</body>
+
+</html>

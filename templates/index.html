@@ -195,7 +195,6 @@
             transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
         }
         
-        
         .btn:hover {
             transform: translateY(-1px);
         }
@@ -638,23 +637,94 @@
             box-shadow: var(--shadow);
             padding: 16px;
         }
-        .modal--multi .modal__dialog { max-width: 420px; padding: 20px; }
-        .multi-deck-list { max-height: 280px; overflow-y: auto; }
-        .multi-deck-list { -ms-overflow-style: none; scrollbar-width: none; }
-        .multi-deck-list::-webkit-scrollbar { width: 0 !important; height: 0 !important; background: transparent !important; }
-        .multi-deck-list::-webkit-scrollbar-thumb { background: transparent !important; }
-        .multi-deck-list::-webkit-scrollbar-track { background: transparent !important; }
-        .multi-deck-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px; border-bottom: 1px solid var(--card-border); }
-        .multi-deck-item:last-child { border-bottom: none; }
-        .multi-deck-item span { color: var(--text); }
-        .multi-deck-checkbox { width: 18px; height: 18px; accent-color: var(--accent); }
-        .modal--multi .modal__actions { flex-direction: row !important; gap: 10px; }
-        .modal--multi .modal__actions .btn { flex: 1 1 0; height: 48px; font-weight: 600; }
-        .modal--center-actions .modal__dialog { max-width: 420px; }
-        .modal--center-actions .modal__actions { flex-direction: row; gap: 10px; }
-        .modal--center-actions .modal__actions .btn { height: 44px; font-weight: 600; }
-        .btn--pill { border-radius: 9999px; background: #f3f4f6; color: var(--text); border-color: var(--card-border); box-shadow: inset 0 -1px rgba(15,23,42,0.04); }
-        .btn--pill:hover { background: #eef0f4; }
+        
+        .modal--multi .modal__dialog {
+            max-width: 420px;
+            padding: 20px;
+        }
+        
+        .multi-deck-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        
+        .multi-deck-list {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .multi-deck-list::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
+        }
+        
+        .multi-deck-list::-webkit-scrollbar-thumb {
+            background: transparent !important;
+        }
+        
+        .multi-deck-list::-webkit-scrollbar-track {
+            background: transparent !important;
+        }
+        
+        .multi-deck-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .multi-deck-item:last-child {
+            border-bottom: none;
+        }
+        
+        .multi-deck-item span {
+            color: var(--text);
+        }
+        
+        .multi-deck-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+        }
+        
+        .modal--multi .modal__actions {
+            flex-direction: row !important;
+            gap: 10px;
+        }
+        
+        .modal--multi .modal__actions .btn {
+            flex: 1 1 0;
+            height: 48px;
+            font-weight: 600;
+        }
+        
+        .modal--center-actions .modal__dialog {
+            max-width: 420px;
+        }
+        
+        .modal--center-actions .modal__actions {
+            flex-direction: row;
+            gap: 10px;
+        }
+        
+        .modal--center-actions .modal__actions .btn {
+            height: 44px;
+            font-weight: 600;
+        }
+        
+        .btn--pill {
+            border-radius: 9999px;
+            background: #f3f4f6;
+            color: var(--text);
+            border-color: var(--card-border);
+            box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
+        }
+        
+        .btn--pill:hover {
+            background: #eef0f4;
+        }
         
         .modal__title {
             margin: 0 0 12px;
@@ -708,8 +778,17 @@
             justify-content: center;
             margin-top: 10px;
         }
-        .modal__actions .btn { flex: 1 1 0; height: 40px; }
-        @media (max-width: 420px) { .modal__actions { flex-direction: column; } }
+        
+        .modal__actions .btn {
+            flex: 1 1 0;
+            height: 40px;
+        }
+        
+        @media (max-width: 420px) {
+            .modal__actions {
+                flex-direction: column;
+            }
+        }
         
         .modal__status {
             margin-top: 8px;
@@ -788,14 +867,29 @@
         .deck-tile:hover {
             box-shadow: var(--card-shadow-hover);
         }
-        .tile-enter { animation: slideDown 380ms ease-out both; will-change: transform, opacity; }
-        @keyframes slideDown { 0% { transform: translateY(-6px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        
+        .tile-enter {
+            animation: slideDown 380ms ease-out both;
+            will-change: transform, opacity;
+        }
+        
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-6px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
         
         .deck-title {
             font-weight: 400;
             color: var(--text-primary);
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         }
+        
         .kebab-btn {
             position: absolute;
             top: 50%;
@@ -815,11 +909,31 @@
             line-height: 1;
             cursor: pointer;
         }
-        .kebab-btn:hover { color: var(--text); background: transparent; transform: translateY(-50%); }
-        .kebab-btn:active { transform: translateY(-50%); }
-        .modal__dialog .kebab-btn { top: 10px; right: 10px; transform: none; }
-        .modal__dialog .kebab-btn:hover { transform: none; }
-        .modal__dialog .kebab-btn:active { transform: none; }
+        
+        .kebab-btn:hover {
+            color: var(--text);
+            background: transparent;
+            transform: translateY(-50%);
+        }
+        
+        .kebab-btn:active {
+            transform: translateY(-50%);
+        }
+        
+        .modal__dialog .kebab-btn {
+            top: 10px;
+            right: 10px;
+            transform: none;
+        }
+        
+        .modal__dialog .kebab-btn:hover {
+            transform: none;
+        }
+        
+        .modal__dialog .kebab-btn:active {
+            transform: none;
+        }
+        
         .kebab-menu {
             position: absolute;
             top: 46px;
@@ -833,8 +947,15 @@
             display: none;
             z-index: 3000;
         }
-        .deck-tile.menu-open { z-index: 2500; }
-        .kebab-menu.is-open { display: block; }
+        
+        .deck-tile.menu-open {
+            z-index: 2500;
+        }
+        
+        .kebab-menu.is-open {
+            display: block;
+        }
+        
         .kebab-item {
             display: flex;
             align-items: center;
@@ -847,15 +968,19 @@
             padding: 10px 12px;
             margin: 6px 0;
             color: var(--text);
-            box-shadow: inset 0 -1px rgba(15,23,42,0.04);
+            box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
             min-height: 40px;
         }
-        .kebab-item:hover { background: #eef0f4; }
+        
+        .kebab-item:hover {
+            background: #eef0f4;
+        }
         
         .deck-subtitle {
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
+        
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -865,13 +990,23 @@
             justify-content: center;
             background: rgba(255, 255, 255, 0.6);
         }
+        
         @media (prefers-color-scheme: dark) {
             .loading-overlay {
                 background: rgba(17, 24, 39, 0.45);
             }
         }
-        .loading-overlay.is-active { display: flex; }
-        .loading-dots { display: flex; gap: 8px; color: var(--muted); }
+        
+        .loading-overlay.is-active {
+            display: flex;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 8px;
+            color: var(--muted);
+        }
+        
         .loading-dots span {
             width: 8px;
             height: 8px;
@@ -880,13 +1015,30 @@
             opacity: 0.5;
             animation: dotPulse 1000ms infinite ease-in-out;
         }
-        .loading-dots span:nth-child(2) { animation-delay: 150ms; }
-        .loading-dots span:nth-child(3) { animation-delay: 300ms; }
-        @keyframes dotPulse {
-            0% { transform: scale(1); opacity: 0.35; }
-            50% { transform: scale(1.25); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.35; }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 150ms;
         }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 300ms;
+        }
+        
+        @keyframes dotPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+            50% {
+                transform: scale(1.25);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+        }
+        
         .fab-btn {
             position: fixed;
             bottom: 20px;
@@ -906,7 +1058,10 @@
             cursor: pointer;
             z-index: 90;
         }
-        .fab-btn:hover { filter: brightness(1.05); }
+        
+        .fab-btn:hover {
+            filter: brightness(1.05);
+        }
     </style>
 </head>
 
@@ -1139,10 +1294,16 @@
         const flashApp = document.getElementById('flashApp');
         const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
+
         function closeKebabMenus() {
-            document.querySelectorAll('.kebab-menu').forEach(el => { el.classList.remove('is-open'); });
-            document.querySelectorAll('.deck-tile.menu-open').forEach(el => { el.classList.remove('menu-open'); });
+            document.querySelectorAll('.kebab-menu').forEach(el => {
+                el.classList.remove('is-open');
+            });
+            document.querySelectorAll('.deck-tile.menu-open').forEach(el => {
+                el.classList.remove('menu-open');
+            });
         }
+
         function toggleMenu(menu) {
             const isOpen = menu.classList.contains('is-open');
             closeKebabMenus();
@@ -1161,8 +1322,14 @@
         let frontLang = 'de';
         let backLang = 'en';
         let isAutoPlayEnabled = false;
-        function showLoader(){ if(globalLoader) globalLoader.classList.add('is-active'); }
-        function hideLoader(){ if(globalLoader) globalLoader.classList.remove('is-active'); }
+
+        function showLoader() {
+            if (globalLoader) globalLoader.classList.add('is-active');
+        }
+
+        function hideLoader() {
+            if (globalLoader) globalLoader.classList.remove('is-active');
+        }
 
         // Auto-play toggle functionality
         function updateAutoPlayToggle() {
@@ -1394,7 +1561,9 @@
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
-                try { await loadFolders(); } catch {}
+                try {
+                    await loadFolders();
+                } catch {}
                 deckSelect.innerHTML = '';
                 // Insert placeholder prompt
                 const placeholder = document.createElement('option');
@@ -1466,7 +1635,9 @@
         async function loadFolders() {
             try {
                 const resp = await fetch('/folders');
-                const data = await resp.json().catch(() => ({ folders: [] }));
+                const data = await resp.json().catch(() => ({
+                    folders: []
+                }));
                 cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
                 renderFolderGrid();
             } catch {}
@@ -1475,10 +1646,16 @@
         function renderFolderGrid() {
             if (!folderGrid) return;
             folderGrid.innerHTML = '';
-            const base = cachedFolderList.length ? cachedFolderList.slice() : [{ name: 'Uncategorized', count: 0 }];
+            const base = cachedFolderList.length ? cachedFolderList.slice() : [{
+                name: 'Uncategorized',
+                count: 0
+            }];
             const ordered = base.filter(f => f && f.name !== 'Uncategorized');
             let unc = base.find(f => f && f.name === 'Uncategorized');
-            if (!unc) unc = { name: 'Uncategorized', count: 0 };
+            if (!unc) unc = {
+                name: 'Uncategorized',
+                count: 0
+            };
             ordered.push(unc);
             ordered.forEach((f, i) => {
                 const wrap = document.createElement('div');
@@ -1493,12 +1670,7 @@
                 wrap.appendChild(title);
                 wrap.appendChild(sub);
                 wrap.addEventListener('click', () => {
-                    selectedFolder = f.name;
-                    renderDeckGrid();
-                    if (deckSectionHead) deckSectionHead.style.display = 'block';
-                    if (deckSectionTitle) deckSectionTitle.textContent = f.name;
-                    if (deckGrid) deckGrid.style.display = 'grid';
-                    if (folderGrid) folderGrid.style.display = 'none';
+                    window.location.href = `/folder?name=${encodeURIComponent(f.name)}`;
                 });
                 if (f.name !== 'Uncategorized') {
                     const kebab = document.createElement('button');
@@ -1511,15 +1683,26 @@
                     mRename.className = 'kebab-item';
                     mRename.type = 'button';
                     mRename.textContent = 'Rename';
-                    mRename.addEventListener('click', (e) => { e.stopPropagation(); closeKebabMenus(); openRenameFolderModal(f.name); });
+                    mRename.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        closeKebabMenus();
+                        openRenameFolderModal(f.name);
+                    });
                     const mDelete = document.createElement('button');
                     mDelete.className = 'kebab-item';
                     mDelete.type = 'button';
                     mDelete.textContent = 'Delete';
-                    mDelete.addEventListener('click', async (e) => { e.stopPropagation(); closeKebabMenus(); await deleteFolder(f.name); });
+                    mDelete.addEventListener('click', async(e) => {
+                        e.stopPropagation();
+                        closeKebabMenus();
+                        await deleteFolder(f.name);
+                    });
                     menu.appendChild(mRename);
                     menu.appendChild(mDelete);
-                    kebab.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(menu); });
+                    kebab.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleMenu(menu);
+                    });
                     wrap.appendChild(kebab);
                     wrap.appendChild(menu);
                 }
@@ -1538,6 +1721,7 @@
             createFolderModal.classList.add('is-open');
             createFolderModal.setAttribute('aria-hidden', 'false');
         }
+
         function closeCreateFolderModal() {
             if (!createFolderModal) return;
             createFolderModal.classList.remove('is-open');
@@ -1548,15 +1732,28 @@
         if (createFolderModal) createFolderModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeCreateFolder === 'true') closeCreateFolderModal();
         });
-        if (createFolderSaveBtn) createFolderSaveBtn.addEventListener('click', async () => {
+        if (createFolderSaveBtn) createFolderSaveBtn.addEventListener('click', async() => {
             const raw = folderNameInput.value;
             const name = sanitizeName(raw);
-            if (!name) { createFolderStatus.textContent = 'Please enter a folder name.'; return; }
+            if (!name) {
+                createFolderStatus.textContent = 'Please enter a folder name.';
+                return;
+            }
             createFolderSaveBtn.disabled = true;
             createFolderSaveBtn.textContent = 'Creating...';
             try {
-                const resp = await fetch('/folder/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-                const out = await resp.json().catch(() => ({ ok: false }));
+                const resp = await fetch('/folder/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to create folder');
                 createFolderStatus.textContent = 'Created';
                 await loadFolders();
@@ -1577,16 +1774,29 @@
             renameFolderModal.classList.add('is-open');
             renameFolderModal.setAttribute('aria-hidden', 'false');
         }
+
         function closeRenameFolderModal() {
             renameFolderModal.classList.remove('is-open');
             renameFolderModal.setAttribute('aria-hidden', 'true');
         }
         if (renameFolderCancelBtn) renameFolderCancelBtn.addEventListener('click', closeRenameFolderModal);
-        if (renameFolderModal) renameFolderModal.addEventListener('click', (e) => { if (e.target.dataset.closeRenameFolder === 'true') closeRenameFolderModal(); });
+        if (renameFolderModal) renameFolderModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeRenameFolder === 'true') closeRenameFolderModal();
+        });
         async function deleteFolder(name) {
             try {
-                const resp = await fetch('/folder/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-                const out = await resp.json().catch(() => ({ ok: false }));
+                const resp = await fetch('/folder/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to delete folder');
                 if (selectedFolder === name) selectedFolder = '';
                 await loadDecks();
@@ -1596,13 +1806,27 @@
                 renameFolderStatus.textContent = String(err.message || err);
             }
         }
-        if (renameFolderSaveBtn) renameFolderSaveBtn.addEventListener('click', async () => {
+        if (renameFolderSaveBtn) renameFolderSaveBtn.addEventListener('click', async() => {
             const newName = sanitizeName(renameFolderInput.value);
             if (!folderToManage) return;
-            if (!newName) { renameFolderStatus.textContent = 'Please enter a name.'; return; }
+            if (!newName) {
+                renameFolderStatus.textContent = 'Please enter a name.';
+                return;
+            }
             try {
-                const resp = await fetch('/folder/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ old_name: folderToManage, new_name: newName }) });
-                const out = await resp.json().catch(() => ({ ok: false }));
+                const resp = await fetch('/folder/rename', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        old_name: folderToManage,
+                        new_name: newName
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to rename');
                 if (selectedFolder === folderToManage) selectedFolder = newName;
                 await loadDecks();
@@ -1623,9 +1847,18 @@
             raw.forEach((f) => {
                 const nm = (f && f.name) ? f.name : String(f);
                 if (nm === 'Uncategorized') return; // place at end only
-                if (!seen.has(nm)) { seen.add(nm); list.push({ name: nm, count: f.count || 0 }); }
+                if (!seen.has(nm)) {
+                    seen.add(nm);
+                    list.push({
+                        name: nm,
+                        count: f.count || 0
+                    });
+                }
             });
-            list.push({ name: 'Uncategorized', count: 0 });
+            list.push({
+                name: 'Uncategorized',
+                count: 0
+            });
             let defaultFolder = 'Uncategorized';
             try {
                 const dk = cachedDeckList.find(x => x.name === selectedDeckForAction);
@@ -1654,21 +1887,35 @@
             moveDeckModal.classList.add('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'false');
         }
+
         function closeMoveDeckModal() {
             moveDeckModal.classList.remove('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'true');
         }
         if (moveDeckCancelBtn) moveDeckCancelBtn.addEventListener('click', closeMoveDeckModal);
-        if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => { if (e.target.dataset.closeMoveDeck === 'true') closeMoveDeckModal(); });
-        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async () => {
+        if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeMoveDeck === 'true') closeMoveDeckModal();
+        });
+        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
             if (!selectedDeckForAction) return;
             const picked = document.querySelector('input[name="moveFolder"]:checked');
             const folder = picked ? picked.value : '';
             moveDeckSaveBtn.disabled = true;
             moveDeckSaveBtn.textContent = 'Moving...';
             try {
-                const resp = await fetch('/deck/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: selectedDeckForAction, folder: folder === 'Uncategorized' ? null : folder }) });
-                const out = await resp.json().catch(() => ({ ok: false }));
+                const resp = await fetch('/deck/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: selectedDeckForAction,
+                        folder: folder === 'Uncategorized' ? null : folder
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
                 moveDeckStatus.textContent = 'Moved';
                 await loadDecks();
@@ -1702,8 +1949,15 @@
             if (flashApp) flashApp.style.display = 'block';
             if (homeDeckList) homeDeckList.style.display = 'none';
         });
-        if (chooseActionKebab) chooseActionKebab.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(chooseActionMenu); });
-        if (chooseActionMoveBtn) chooseActionMoveBtn.addEventListener('click', (e) => { e.stopPropagation(); if (selectedDeckForAction) openMoveDeckModal(); closeKebabMenus(); });
+        if (chooseActionKebab) chooseActionKebab.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu(chooseActionMenu);
+        });
+        if (chooseActionMoveBtn) chooseActionMoveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (selectedDeckForAction) openMoveDeckModal();
+            closeKebabMenus();
+        });
         if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeAction === 'true') {
                 chooseActionModal.classList.remove('is-open');
@@ -1876,7 +2130,9 @@
         // Edit navigation: open dedicated editor page
         if (editDeckBtn) editDeckBtn.addEventListener('click', () => {
             let targetDeck = '';
-            try { targetDeck = localStorage.getItem('selectedDeck') || ''; } catch {}
+            try {
+                targetDeck = localStorage.getItem('selectedDeck') || '';
+            } catch {}
             if (targetDeck) window.location.href = `/edit?deck=${encodeURIComponent(targetDeck)}`;
             else window.location.href = '/edit';
         });
@@ -2231,7 +2487,9 @@
             deckModal.setAttribute('aria-hidden', 'true');
         }
         if (createDeckBtn) createDeckBtn.addEventListener('click', () => {
-            try { showLoader(); } catch {}
+            try {
+                showLoader();
+            } catch {}
             window.location.href = '/create';
         });
         if (deckCancelBtn) deckCancelBtn.addEventListener('click', closeDeckModal);
