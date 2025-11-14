@@ -190,6 +190,7 @@
             padding: 8px 12px;
             border-radius: 12px;
             font-weight: 600;
+            font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             cursor: pointer;
             transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
         }
@@ -636,10 +637,17 @@
             box-shadow: var(--shadow);
             padding: 16px;
         }
+        .modal--center-actions .modal__dialog { max-width: 420px; }
+        .modal--center-actions .modal__actions { flex-direction: row; gap: 10px; }
+        .modal--center-actions .modal__actions .btn { height: 44px; font-weight: 600; }
+        .btn--neutral { background: var(--text); color: #fff; border-color: var(--text); box-shadow: 0 4px 12px rgba(2,8,23,0.20); }
+        .btn--neutral:hover { filter: brightness(1.05); transform: translateY(-1px) scale(1.01); }
         
         .modal__title {
             margin: 0 0 12px;
             font-weight: 700;
+            font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            letter-spacing: -0.01em;
         }
         
         .reloadBtn {
@@ -687,6 +695,8 @@
             justify-content: center;
             margin-top: 10px;
         }
+        .modal__actions .btn { flex: 1 1 0; height: 40px; }
+        @media (max-width: 420px) { .modal__actions { flex-direction: column; } }
         
         .modal__status {
             margin-top: 8px;
@@ -762,6 +772,8 @@
         .deck-tile:hover {
             box-shadow: var(--card-shadow-hover);
         }
+        .tile-enter { animation: slideDown 380ms ease-out both; will-change: transform, opacity; }
+        @keyframes slideDown { 0% { transform: translateY(-6px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
         
         .deck-title {
             font-weight: 400;
@@ -772,6 +784,37 @@
         .deck-subtitle {
             font-size: 0.9rem;
             color: var(--text-secondary);
+        }
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        @media (prefers-color-scheme: dark) {
+            .loading-overlay {
+                background: rgba(17, 24, 39, 0.45);
+            }
+        }
+        .loading-overlay.is-active { display: flex; }
+        .loading-dots { display: flex; gap: 8px; color: var(--muted); }
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+            animation: dotPulse 1000ms infinite ease-in-out;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 150ms; }
+        .loading-dots span:nth-child(3) { animation-delay: 300ms; }
+        @keyframes dotPulse {
+            0% { transform: scale(1); opacity: 0.35; }
+            50% { transform: scale(1.25); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.35; }
         }
     </style>
 </head>
@@ -803,6 +846,9 @@
             </div>
         </div>
     </header>
+    <div class="loading-overlay" id="globalLoader" aria-hidden="true">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
     <section class="deck-list" id="homeDeckList">
         <div class="deck-grid" id="deckGrid"></div>
     </section>
@@ -825,13 +871,13 @@
             <p class="modal__status" id="deckStatus"></p>
         </div>
     </div>
-    <div class="modal" id="chooseActionModal" aria-hidden="true">
+    <div class="modal modal--center-actions" id="chooseActionModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-action="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
             <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
             <div class="modal__actions">
                 <button class="btn" id="openLearnBtn" type="button">Learn</button>
-                <button class="btn btn--signup" id="openFlashBtn" type="button">Flashcard</button>
+                <button class="btn" id="openFlashBtn" type="button">Flashcard</button>
             </div>
         </div>
     </div>
@@ -919,6 +965,7 @@
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
         const flashApp = document.getElementById('flashApp');
+        const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
 
         let currentCard = {};
@@ -928,6 +975,8 @@
         let frontLang = 'de';
         let backLang = 'en';
         let isAutoPlayEnabled = false;
+        function showLoader(){ if(globalLoader) globalLoader.classList.add('is-active'); }
+        function hideLoader(){ if(globalLoader) globalLoader.classList.remove('is-active'); }
 
         // Auto-play toggle functionality
         function updateAutoPlayToggle() {
@@ -1066,6 +1115,7 @@
         });
 
         async function loadWordsForDeck(deckName) {
+            showLoader();
             const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
             let data = [];
             try {
@@ -1090,6 +1140,7 @@
             // Preload audio for all words in the deck
             clearDeckPreloads();
             preloadDeckAudio(deckName);
+            hideLoader();
         }
 
         async function preloadDeckAudio(deckName) {
@@ -1152,6 +1203,7 @@
         }
 
         async function loadDecks() {
+            showLoader();
             try {
                 const resp = await fetch('/decks');
                 const list = await resp.json();
@@ -1176,6 +1228,7 @@
                 // Wait for user choice
                 card.innerText = 'Welcome!\n Please select a deck.';
                 renderDeckGrid();
+                hideLoader();
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
                 cachedDeckList = [];
@@ -1188,6 +1241,7 @@
                 deckSelect.appendChild(placeholder);
                 card.innerText = 'Welcome!\n Please select a deck.';
                 renderDeckGrid();
+                hideLoader();
             }
         }
 
@@ -1195,9 +1249,10 @@
             if (!deckGrid) return;
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
-            cachedDeckList.forEach(d => {
+            cachedDeckList.forEach((d, i) => {
                 const wrap = document.createElement('div');
-                wrap.className = 'deck-tile';
+                wrap.className = 'deck-tile tile-enter';
+                wrap.style.animationDelay = `${i * 40}ms`;
                 const title = document.createElement('div');
                 title.className = 'deck-title';
                 title.textContent = d.name;
@@ -1399,8 +1454,13 @@
             return out.join('\n') + '\n';
         }
 
-        // Edit modal events
-        if (editDeckBtn) editDeckBtn.addEventListener('click', openEditDeckModal);
+        // Edit navigation: open dedicated editor page
+        if (editDeckBtn) editDeckBtn.addEventListener('click', () => {
+            let targetDeck = '';
+            try { targetDeck = localStorage.getItem('selectedDeck') || ''; } catch {}
+            if (targetDeck) window.location.href = `/edit?deck=${encodeURIComponent(targetDeck)}`;
+            else window.location.href = '/edit';
+        });
         if (editDeckCancelBtn) editDeckCancelBtn.addEventListener('click', closeEditDeckModal);
         editDeckModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeEdit === 'true') closeEditDeckModal();

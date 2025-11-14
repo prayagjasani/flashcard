@@ -91,6 +91,10 @@ def read_root():
 def learn_screen():
     return FileResponse('hi.html')
 
+@app.get("/edit")
+def edit_screen():
+    return FileResponse('edit.html')
+
 @app.head("/")
 def head_root():
     return Response(status_code=200)
