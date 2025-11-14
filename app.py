@@ -56,6 +56,7 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT:
 class DeckCreate(BaseModel):
     name: str
     data: str
+    folder: str | None = None
 
 class DeckUpdate(BaseModel):
     name: str
@@ -70,6 +71,16 @@ class AudioRebuildRequest(BaseModel):
     text: str
     lang: str = "de"
     old_text: str | None = None
+class FolderCreate(BaseModel):
+    name: str
+class FolderRename(BaseModel):
+    old_name: str
+    new_name: str
+class FolderDelete(BaseModel):
+    name: str
+class DeckMove(BaseModel):
+    name: str
+    folder: str | None = None
 
 # -------------------------------
 # HELPER FUNCTIONS
@@ -148,7 +159,8 @@ def list_decks():
                     if name and file and file.lower().endswith(".csv") and (file.startswith("csv/") or "/csv/" in file):
                         # carry over optional last_modified if present in index.json
                         lm = d.get("last_modified")
-                        items.append({"name": name, "file": file, "last_modified": lm})
+                        folder = d.get("folder")
+                        items.append({"name": name, "file": file, "last_modified": lm, "folder": folder})
 
             # Fallback: if index entries lack last_modified, compute it from R2 listing
             try:
@@ -374,10 +386,15 @@ def create_deck(payload: DeckCreate):
     for d in index_list:
         if isinstance(d, dict) and d.get("name") == name:
             d["file"] = r2_csv_key
+            if payload.folder:
+                d["folder"] = _safe_deck_name(payload.folder)
             updated = True
             break
     if not updated:
-        index_list.append({"name": name, "file": r2_csv_key})
+        entry = {"name": name, "file": r2_csv_key}
+        if payload.folder:
+            entry["folder"] = _safe_deck_name(payload.folder)
+        index_list.append(entry)
 
     index_updated = False
     index_error = None
@@ -574,6 +591,157 @@ def rename_deck(payload: DeckRename):
         index_rebuild = {"ok": False, "error": str(e)}
     return {"ok": True, "old_name": old, "new_name": new, "index_updated": index_updated, "index_rebuild": index_rebuild}
 
+@app.get("/folders")
+def get_folders():
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    index_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    folders_key = f"{R2_BUCKET_NAME}/folders/index.json"
+    names = set()
+    counts = {}
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            for d in parsed:
+                if isinstance(d, dict):
+                    f = d.get("folder") or "Uncategorized"
+                    names.add(f)
+                    counts[f] = counts.get(f, 0) + 1
+    except Exception:
+        pass
+    extra = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=folders_key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            extra = [str(x) for x in parsed]
+    except Exception:
+        pass
+    for f in extra:
+        names.add(f)
+        counts.setdefault(f, 0)
+    out = sorted([{"name": n, "count": counts.get(n, 0)} for n in names], key=lambda x: x["name"].lower())
+    return {"folders": out}
+
+@app.post("/folder/create")
+def folder_create(payload: FolderCreate):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_deck_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    key = f"{R2_BUCKET_NAME}/folders/index.json"
+    items = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            items = parsed
+    except Exception:
+        pass
+    if name not in items:
+        items.append(name)
+    r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+    return {"ok": True, "name": name}
+
+@app.post("/folder/rename")
+def folder_rename(payload: FolderRename):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    old = _safe_deck_name(payload.old_name)
+    new = _safe_deck_name(payload.new_name)
+    if not old or not new:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    key = f"{R2_BUCKET_NAME}/folders/index.json"
+    items = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            items = parsed
+    except Exception:
+        pass
+    if old in items:
+        items = [new if x == old else x for x in items]
+    if new not in items:
+        items.append(new)
+    r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+    idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=idx_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            for d in parsed:
+                if isinstance(d, dict) and (d.get("folder") or "") == old:
+                    d["folder"] = new
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
+    except Exception:
+        pass
+    return {"ok": True, "old_name": old, "new_name": new}
+
+@app.post("/folder/delete")
+def folder_delete(payload: FolderDelete):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_deck_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    key = f"{R2_BUCKET_NAME}/folders/index.json"
+    items = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            items = [x for x in parsed if x != name]
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+    except Exception:
+        pass
+    idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=idx_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            for d in parsed:
+                if isinstance(d, dict) and (d.get("folder") or "") == name:
+                    d.pop("folder", None)
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
+    except Exception:
+        pass
+    return {"ok": True, "deleted": name}
+
+@app.post("/deck/move")
+def deck_move(payload: DeckMove):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_deck_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Deck name required")
+    folder = _safe_deck_name(payload.folder) if payload.folder else None
+    idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=idx_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            for d in parsed:
+                if isinstance(d, dict) and d.get("name") == name:
+                    if folder:
+                        d["folder"] = folder
+                    else:
+                        d.pop("folder", None)
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "name": name, "folder": folder or None}
+
 @app.post("/decks/index/rebuild")
 def rebuild_deck_index():
     """Scan R2 for csv/*.csv and rebuild csv/index.json accordingly."""
@@ -581,6 +749,17 @@ def rebuild_deck_index():
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
     try:
         items = []
+        keep = {}
+        try:
+            prev = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=f"{R2_BUCKET_NAME}/csv/index.json")
+            prev_data = prev["Body"].read().decode("utf-8")
+            parsed_prev = json.loads(prev_data)
+            if isinstance(parsed_prev, list):
+                for d in parsed_prev:
+                    if isinstance(d, dict) and d.get("name"):
+                        keep[d["name"]] = d.get("folder")
+        except Exception:
+            pass
         continuation = None
         while True:
             kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": f"{R2_BUCKET_NAME}/csv/"}
@@ -598,6 +777,7 @@ def rebuild_deck_index():
                             "name": name,
                             "file": key,
                             "last_modified": lm.isoformat() if lm else None,
+                            "folder": keep.get(name),
                         })
             if resp.get("IsTruncated"):
                 continuation = resp.get("NextContinuationToken")

@@ -195,6 +195,7 @@
             transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
         }
         
+        
         .btn:hover {
             transform: translateY(-1px);
         }
@@ -613,7 +614,7 @@
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 60;
+            z-index: 100;
         }
         
         .modal.is-open {
@@ -771,6 +772,7 @@
         }
         
         .deck-tile {
+            position: relative;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 14px;
@@ -779,6 +781,8 @@
             /* ~p-5 */
             cursor: pointer;
             box-shadow: var(--card-shadow);
+            overflow: visible;
+            z-index: 0;
         }
         
         .deck-tile:hover {
@@ -792,6 +796,58 @@
             color: var(--text-primary);
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         }
+        .kebab-btn {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            border-radius: 0;
+            box-shadow: none;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .kebab-btn:hover { color: var(--text); background: transparent; transform: translateY(-50%); }
+        .kebab-btn:active { transform: translateY(-50%); }
+        .modal__dialog .kebab-btn { top: 10px; right: 10px; transform: none; }
+        .modal__dialog .kebab-btn:hover { transform: none; }
+        .modal__dialog .kebab-btn:active { transform: none; }
+        .kebab-menu {
+            position: absolute;
+            top: 46px;
+            right: 10px;
+            min-width: 160px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 8px;
+            display: none;
+            z-index: 3000;
+        }
+        .deck-tile.menu-open { z-index: 2500; }
+        .kebab-menu.is-open { display: block; }
+        .kebab-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #f3f4f6;
+            border: 1px solid var(--card-border);
+            border-radius: 9999px;
+            padding: 10px 12px;
+            margin: 6px 0;
+            color: var(--text);
+            box-shadow: inset 0 -1px rgba(15,23,42,0.04);
+        }
+        .kebab-item:hover { background: #eef0f4; }
         
         .deck-subtitle {
             font-size: 0.9rem;
@@ -828,6 +884,26 @@
             50% { transform: scale(1.25); opacity: 1; }
             100% { transform: scale(1); opacity: 0.35; }
         }
+        .fab-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            border-radius: 9999px;
+            border: 1px solid var(--card-border);
+            background: var(--accent);
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(2, 8, 23, 0.10);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 90;
+        }
+        .fab-btn:hover { filter: brightness(1.05); }
     </style>
 </head>
 
@@ -862,8 +938,16 @@
         <div class="loading-dots"><span></span><span></span><span></span></div>
     </div>
     <section class="deck-list" id="homeDeckList">
-        <div class="deck-grid" id="deckGrid"></div>
+        <div style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
+            <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Folders</h2>
+        </div>
+        <div class="deck-grid" id="folderGrid"></div>
+        <div id="deckSectionHead" style="margin:18px 2px 8px; display:none;">
+            <h2 id="deckSectionTitle" style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Decks</h2>
+        </div>
+        <div class="deck-grid" id="deckGrid" style="display:none"></div>
     </section>
+    <button id="createFolderBtn" class="fab-btn" type="button" aria-label="Create Folder">+</button>
     <div class="modal" id="deckModal" aria-hidden="true">
         <div class="modal__backdrop" data-close="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="deckModalTitle">
@@ -887,6 +971,10 @@
         <div class="modal__backdrop" data-close-action="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
             <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
+            <button class="kebab-btn" id="chooseActionKebab" type="button">⋮</button>
+            <div class="kebab-menu" id="chooseActionMenu">
+                <button class="kebab-item" id="chooseActionMoveBtn" type="button">Move</button>
+            </div>
             <div class="modal__actions">
                 <button class="btn btn--pill" id="openLearnBtn" type="button">Learn</button>
                 <button class="btn btn--pill" id="openFlashBtn" type="button">Flashcard</button>
@@ -903,6 +991,49 @@
                 <button class="btn btn--signup" id="multiDeckSaveBtn" type="button">Save</button>
             </div>
             <p class="modal__status" id="multiDeckStatus"></p>
+        </div>
+    </div>
+    <div class="modal modal--center-actions" id="createFolderModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-create-folder="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="createFolderTitle">
+            <h2 id="createFolderTitle" class="modal__title">Create Folder</h2>
+            <div class="modal__field">
+                <label for="folderNameInput">Folder name</label>
+                <input id="folderNameInput" type="text" placeholder="e.g., Languages" />
+            </div>
+            <div class="modal__actions">
+                <button class="btn btn--pill" id="createFolderCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--pill" id="createFolderSaveBtn" type="button">Create</button>
+            </div>
+            <p class="modal__status" id="createFolderStatus"></p>
+        </div>
+    </div>
+    <div class="modal" id="renameFolderModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-rename-folder="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="renameFolderTitle">
+            <h2 id="renameFolderTitle" class="modal__title">Manage Folder</h2>
+            <div class="modal__field">
+                <label for="renameFolderInput">Folder name</label>
+                <input id="renameFolderInput" type="text" />
+            </div>
+            <div class="modal__actions">
+                <button class="btn" id="renameFolderCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--signup" id="renameFolderSaveBtn" type="button">Rename</button>
+                <button class="btn" id="deleteFolderBtn" type="button">Delete</button>
+            </div>
+            <p class="modal__status" id="renameFolderStatus"></p>
+        </div>
+    </div>
+    <div class="modal modal--multi" id="moveDeckModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-move-deck="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="moveDeckTitle">
+            <h2 id="moveDeckTitle" class="modal__title">Move to Folder</h2>
+            <div class="multi-deck-list" id="moveDeckList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="moveDeckCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--signup" id="moveDeckSaveBtn" type="button">Move</button>
+            </div>
+            <p class="modal__status" id="moveDeckStatus"></p>
         </div>
     </div>
     <div class="modal" id="editDeckModal" aria-hidden="true">
@@ -974,11 +1105,51 @@
         const deckGrid = document.getElementById('deckGrid');
         const homeDeckList = document.getElementById('homeDeckList');
         const chooseActionModal = document.getElementById('chooseActionModal');
+        const chooseActionKebab = document.getElementById('chooseActionKebab');
+        const chooseActionMenu = document.getElementById('chooseActionMenu');
+        const chooseActionMoveBtn = document.getElementById('chooseActionMoveBtn');
+        const deckSectionHead = document.getElementById('deckSectionHead');
+        const deckSectionTitle = document.getElementById('deckSectionTitle');
+        const folderGrid = document.getElementById('folderGrid');
+        const createFolderBtn = document.getElementById('createFolderBtn');
+        const createFolderModal = document.getElementById('createFolderModal');
+        const folderNameInput = document.getElementById('folderNameInput');
+        const createFolderCancelBtn = document.getElementById('createFolderCancelBtn');
+        const createFolderSaveBtn = document.getElementById('createFolderSaveBtn');
+        const createFolderStatus = document.getElementById('createFolderStatus');
+        const moveDeckModal = document.getElementById('moveDeckModal');
+        const moveDeckList = document.getElementById('moveDeckList');
+        const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
+        const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
+        const moveDeckStatus = document.getElementById('moveDeckStatus');
+        const renameFolderModal = document.getElementById('renameFolderModal');
+        const renameFolderInput = document.getElementById('renameFolderInput');
+        const renameFolderCancelBtn = document.getElementById('renameFolderCancelBtn');
+        const renameFolderSaveBtn = document.getElementById('renameFolderSaveBtn');
+        const deleteFolderBtn = document.getElementById('deleteFolderBtn');
+        const renameFolderStatus = document.getElementById('renameFolderStatus');
+        let cachedFolderList = [];
+        let selectedFolder = '';
+        let folderToManage = '';
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
         const flashApp = document.getElementById('flashApp');
         const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
+        function closeKebabMenus() {
+            document.querySelectorAll('.kebab-menu').forEach(el => { el.classList.remove('is-open'); });
+            document.querySelectorAll('.deck-tile.menu-open').forEach(el => { el.classList.remove('menu-open'); });
+        }
+        function toggleMenu(menu) {
+            const isOpen = menu.classList.contains('is-open');
+            closeKebabMenus();
+            if (!isOpen) {
+                menu.classList.add('is-open');
+                const parentTile = menu.closest('.deck-tile');
+                if (parentTile) parentTile.classList.add('menu-open');
+            }
+        }
+        window.addEventListener('click', () => closeKebabMenus());
 
         let currentCard = {};
         let words = [];
@@ -1220,6 +1391,7 @@
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
+                try { await loadFolders(); } catch {}
                 deckSelect.innerHTML = '';
                 // Insert placeholder prompt
                 const placeholder = document.createElement('option');
@@ -1240,6 +1412,10 @@
                 // Wait for user choice
                 card.innerText = 'Welcome!\n Please select a deck.';
                 renderDeckGrid();
+                if (deckSectionHead) deckSectionHead.style.display = 'none';
+                if (deckSectionTitle) deckSectionTitle.textContent = 'Decks';
+                if (deckGrid) deckGrid.style.display = 'none';
+                if (folderGrid) folderGrid.style.display = 'grid';
                 hideLoader();
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
@@ -1253,6 +1429,9 @@
                 deckSelect.appendChild(placeholder);
                 card.innerText = 'Welcome!\n Please select a deck.';
                 renderDeckGrid();
+                if (deckSectionHead) deckSectionHead.style.display = 'none';
+                if (deckGrid) deckGrid.style.display = 'none';
+                if (folderGrid) folderGrid.style.display = 'grid';
                 hideLoader();
             }
         }
@@ -1261,7 +1440,8 @@
             if (!deckGrid) return;
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
-            cachedDeckList.forEach((d, i) => {
+            const list = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
+            list.forEach((d, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
                 wrap.style.animationDelay = `${i * 40}ms`;
@@ -1280,6 +1460,224 @@
             });
         }
 
+        async function loadFolders() {
+            try {
+                const resp = await fetch('/folders');
+                const data = await resp.json().catch(() => ({ folders: [] }));
+                cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
+                renderFolderGrid();
+            } catch {}
+        }
+
+        function renderFolderGrid() {
+            if (!folderGrid) return;
+            folderGrid.innerHTML = '';
+            const list = cachedFolderList.length ? cachedFolderList : [{ name: 'Uncategorized', count: 0 }];
+            list.forEach((f, i) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'deck-tile tile-enter';
+                wrap.style.animationDelay = `${i * 40}ms`;
+                const title = document.createElement('div');
+                title.className = 'deck-title';
+                title.textContent = f.name;
+                const sub = document.createElement('div');
+                sub.className = 'deck-subtitle';
+                sub.textContent = `${f.count || 0} deck${(f.count||0)===1?'':'s'}`;
+                wrap.appendChild(title);
+                wrap.appendChild(sub);
+                wrap.addEventListener('click', () => {
+                    selectedFolder = f.name;
+                    renderDeckGrid();
+                    if (deckSectionHead) deckSectionHead.style.display = 'block';
+                    if (deckSectionTitle) deckSectionTitle.textContent = f.name;
+                    if (deckGrid) deckGrid.style.display = 'grid';
+                    if (folderGrid) folderGrid.style.display = 'none';
+                });
+                if (f.name !== 'Uncategorized') {
+                    const kebab = document.createElement('button');
+                    kebab.className = 'kebab-btn';
+                    kebab.type = 'button';
+                    kebab.textContent = '⋮';
+                    const menu = document.createElement('div');
+                    menu.className = 'kebab-menu';
+                    const mRename = document.createElement('button');
+                    mRename.className = 'kebab-item';
+                    mRename.type = 'button';
+                    mRename.textContent = 'Rename';
+                    mRename.addEventListener('click', (e) => { e.stopPropagation(); closeKebabMenus(); openRenameFolderModal(f.name); });
+                    const mDelete = document.createElement('button');
+                    mDelete.className = 'kebab-item';
+                    mDelete.type = 'button';
+                    mDelete.textContent = 'Delete';
+                    mDelete.addEventListener('click', async (e) => { e.stopPropagation(); closeKebabMenus(); await deleteFolder(f.name); });
+                    menu.appendChild(mRename);
+                    menu.appendChild(mDelete);
+                    kebab.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(menu); });
+                    wrap.appendChild(kebab);
+                    wrap.appendChild(menu);
+                }
+                folderGrid.appendChild(wrap);
+            });
+        }
+
+        function sanitizeName(name) {
+            return (name || '').trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50);
+        }
+
+        function openCreateFolderModal() {
+            if (!createFolderModal) return;
+            createFolderStatus.textContent = '';
+            folderNameInput.value = '';
+            createFolderModal.classList.add('is-open');
+            createFolderModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeCreateFolderModal() {
+            if (!createFolderModal) return;
+            createFolderModal.classList.remove('is-open');
+            createFolderModal.setAttribute('aria-hidden', 'true');
+        }
+        if (createFolderBtn) createFolderBtn.addEventListener('click', openCreateFolderModal);
+        if (createFolderCancelBtn) createFolderCancelBtn.addEventListener('click', closeCreateFolderModal);
+        if (createFolderModal) createFolderModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeCreateFolder === 'true') closeCreateFolderModal();
+        });
+        if (createFolderSaveBtn) createFolderSaveBtn.addEventListener('click', async () => {
+            const raw = folderNameInput.value;
+            const name = sanitizeName(raw);
+            if (!name) { createFolderStatus.textContent = 'Please enter a folder name.'; return; }
+            createFolderSaveBtn.disabled = true;
+            createFolderSaveBtn.textContent = 'Creating...';
+            try {
+                const resp = await fetch('/folder/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+                const out = await resp.json().catch(() => ({ ok: false }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to create folder');
+                createFolderStatus.textContent = 'Created';
+                await loadFolders();
+                closeCreateFolderModal();
+                createFolderSaveBtn.disabled = false;
+                createFolderSaveBtn.textContent = 'Create';
+            } catch (err) {
+                createFolderStatus.textContent = String(err.message || err);
+                createFolderSaveBtn.disabled = false;
+                createFolderSaveBtn.textContent = 'Create';
+            }
+        });
+
+        function openRenameFolderModal(name) {
+            folderToManage = name;
+            renameFolderStatus.textContent = '';
+            renameFolderInput.value = name;
+            renameFolderModal.classList.add('is-open');
+            renameFolderModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeRenameFolderModal() {
+            renameFolderModal.classList.remove('is-open');
+            renameFolderModal.setAttribute('aria-hidden', 'true');
+        }
+        if (renameFolderCancelBtn) renameFolderCancelBtn.addEventListener('click', closeRenameFolderModal);
+        if (renameFolderModal) renameFolderModal.addEventListener('click', (e) => { if (e.target.dataset.closeRenameFolder === 'true') closeRenameFolderModal(); });
+        async function deleteFolder(name) {
+            try {
+                const resp = await fetch('/folder/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+                const out = await resp.json().catch(() => ({ ok: false }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to delete folder');
+                if (selectedFolder === name) selectedFolder = '';
+                await loadDecks();
+                await loadFolders();
+                closeRenameFolderModal();
+            } catch (err) {
+                renameFolderStatus.textContent = String(err.message || err);
+            }
+        }
+        if (renameFolderSaveBtn) renameFolderSaveBtn.addEventListener('click', async () => {
+            const newName = sanitizeName(renameFolderInput.value);
+            if (!folderToManage) return;
+            if (!newName) { renameFolderStatus.textContent = 'Please enter a name.'; return; }
+            try {
+                const resp = await fetch('/folder/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ old_name: folderToManage, new_name: newName }) });
+                const out = await resp.json().catch(() => ({ ok: false }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to rename');
+                if (selectedFolder === folderToManage) selectedFolder = newName;
+                await loadDecks();
+                await loadFolders();
+                closeRenameFolderModal();
+            } catch (err) {
+                renameFolderStatus.textContent = String(err.message || err);
+            }
+        });
+
+        function openMoveDeckModal() {
+            if (!moveDeckModal) return;
+            moveDeckStatus.textContent = '';
+            moveDeckList.innerHTML = '';
+            const raw = cachedFolderList.length ? cachedFolderList.slice() : [];
+            const seen = new Set();
+            const list = [];
+            const hasUnc = raw.some((f) => (f && f.name) === 'Uncategorized');
+            if (!hasUnc) list.push({ name: 'Uncategorized', count: 0 });
+            raw.forEach((f) => {
+                const nm = (f && f.name) ? f.name : String(f);
+                if (!seen.has(nm)) { seen.add(nm); list.push({ name: nm, count: f.count || 0 }); }
+            });
+            let defaultFolder = 'Uncategorized';
+            try {
+                const dk = cachedDeckList.find(x => x.name === selectedDeckForAction);
+                if (dk && dk.folder) defaultFolder = dk.folder;
+            } catch {}
+            list.forEach((f, i) => {
+                const row = document.createElement('div');
+                row.className = 'multi-deck-item';
+                const label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '10px';
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'moveFolder';
+                radio.value = f.name;
+                radio.className = 'multi-deck-checkbox';
+                if (f.name === defaultFolder || (!defaultFolder && i === 0)) radio.checked = true;
+                const span = document.createElement('span');
+                span.textContent = f.name;
+                label.appendChild(radio);
+                label.appendChild(span);
+                row.appendChild(label);
+                moveDeckList.appendChild(row);
+            });
+            moveDeckModal.classList.add('is-open');
+            moveDeckModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeMoveDeckModal() {
+            moveDeckModal.classList.remove('is-open');
+            moveDeckModal.setAttribute('aria-hidden', 'true');
+        }
+        if (moveDeckCancelBtn) moveDeckCancelBtn.addEventListener('click', closeMoveDeckModal);
+        if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => { if (e.target.dataset.closeMoveDeck === 'true') closeMoveDeckModal(); });
+        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async () => {
+            if (!selectedDeckForAction) return;
+            const picked = document.querySelector('input[name="moveFolder"]:checked');
+            const folder = picked ? picked.value : '';
+            moveDeckSaveBtn.disabled = true;
+            moveDeckSaveBtn.textContent = 'Moving...';
+            try {
+                const resp = await fetch('/deck/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: selectedDeckForAction, folder: folder === 'Uncategorized' ? null : folder }) });
+                const out = await resp.json().catch(() => ({ ok: false }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
+                moveDeckStatus.textContent = 'Moved';
+                await loadDecks();
+                await loadFolders();
+                closeMoveDeckModal();
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+                moveDeckSaveBtn.disabled = false;
+                moveDeckSaveBtn.textContent = 'Move';
+            } catch (err) {
+                moveDeckStatus.textContent = String(err.message || err);
+                moveDeckSaveBtn.disabled = false;
+                moveDeckSaveBtn.textContent = 'Move';
+            }
+        });
+
         if (homeBtn) homeBtn.addEventListener('click', () => {
             window.location.href = '/';
         });
@@ -1297,6 +1695,8 @@
             if (flashApp) flashApp.style.display = 'block';
             if (homeDeckList) homeDeckList.style.display = 'none';
         });
+        if (chooseActionKebab) chooseActionKebab.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(chooseActionMenu); });
+        if (chooseActionMoveBtn) chooseActionMoveBtn.addEventListener('click', (e) => { e.stopPropagation(); if (selectedDeckForAction) openMoveDeckModal(); closeKebabMenus(); });
         if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeAction === 'true') {
                 chooseActionModal.classList.remove('is-open');
