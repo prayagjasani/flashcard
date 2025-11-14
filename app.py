@@ -60,6 +60,11 @@ class DeckCreate(BaseModel):
 class DeckUpdate(BaseModel):
     name: str
     content: str
+class DeckDelete(BaseModel):
+    name: str
+class DeckRename(BaseModel):
+    old_name: str
+    new_name: str
 
 class AudioRebuildRequest(BaseModel):
     text: str
@@ -439,6 +444,135 @@ def create_deck(payload: DeckCreate):
         "index_error": index_error,
         "index_rebuild": index_rebuild,
     }
+
+@app.post("/deck/delete")
+def delete_deck(payload: DeckDelete):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_deck_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Deck name required")
+    csv_key = f"{R2_BUCKET_NAME}/csv/{name}.csv"
+    de_words = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=csv_key)
+        data = obj["Body"].read().decode("utf-8")
+        reader = csv.reader(io.StringIO(data))
+        for row in reader:
+            if len(row) >= 2:
+                de = row[1].strip()
+                if de:
+                    de_words.append(de)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=500, detail=str(e))
+    audio_deleted = 0
+    audio_errors = 0
+    for w in de_words:
+        try:
+            r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=_safe_tts_key(w, "de"))
+            audio_deleted += 1
+        except Exception:
+            audio_errors += 1
+    csv_deleted = False
+    try:
+        r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=csv_key)
+        csv_deleted = True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            csv_deleted = False
+        else:
+            raise HTTPException(status_code=500, detail=str(e))
+    index_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    index_updated = False
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            new_list = [d for d in parsed if not (isinstance(d, dict) and (d.get("name") == name or d.get("file") == csv_key))]
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=index_key,
+                Body=json.dumps(new_list).encode("utf-8"),
+                ContentType="application/json",
+            )
+            index_updated = True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=500, detail=str(e))
+    index_rebuild = None
+    try:
+        index_rebuild = rebuild_deck_index()
+    except Exception as e:
+        index_rebuild = {"ok": False, "error": str(e)}
+    return {
+        "ok": True,
+        "csv_deleted": csv_deleted,
+        "audio_deleted": audio_deleted,
+        "audio_errors": audio_errors,
+        "index_updated": index_updated,
+        "index_rebuild": index_rebuild,
+    }
+
+@app.post("/deck/rename")
+def rename_deck(payload: DeckRename):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    old = _safe_deck_name(payload.old_name)
+    new = _safe_deck_name(payload.new_name)
+    if not old or not new:
+        raise HTTPException(status_code=400, detail="Deck name required")
+    if old == new:
+        raise HTTPException(status_code=400, detail="New name must be different")
+    old_key = f"{R2_BUCKET_NAME}/csv/{old}.csv"
+    new_key = f"{R2_BUCKET_NAME}/csv/{new}.csv"
+    try:
+        r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=new_key)
+        raise HTTPException(status_code=400, detail="Target deck already exists")
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=500, detail=str(e))
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=old_key)
+        content = obj["Body"].read()
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=404, detail="Deck not found")
+        raise HTTPException(status_code=500, detail=str(e))
+    try:
+        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=new_key, Body=content, ContentType="text/csv")
+        r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=old_key)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rename: {e}")
+    index_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    index_updated = False
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        if isinstance(parsed, list):
+            for d in parsed:
+                if isinstance(d, dict) and d.get("name") == old:
+                    d["name"] = new
+                    d["file"] = new_key
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=index_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
+            index_updated = True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=500, detail=str(e))
+    index_rebuild = None
+    try:
+        index_rebuild = rebuild_deck_index()
+    except Exception as e:
+        index_rebuild = {"ok": False, "error": str(e)}
+    return {"ok": True, "old_name": old, "new_name": new, "index_updated": index_updated, "index_rebuild": index_rebuild}
 
 @app.post("/decks/index/rebuild")
 def rebuild_deck_index():

@@ -164,9 +164,11 @@ to forget,vergessen
         function sanitizeDeckName(name) {
             return (name || '').trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50);
         }
-        cancelBtn.addEventListener('click', () => {
-            window.location.href = '/';
-        });
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                window.location.href = '/';
+            });
+        }
         createBtn.addEventListener('click', async() => {
             const rawName = nameInput.value;
             const rawData = dataInput.value;
