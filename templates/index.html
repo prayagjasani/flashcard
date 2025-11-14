@@ -633,15 +633,15 @@
             max-width: 640px;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 16px;
+            border-radius: 24px;
             box-shadow: var(--shadow);
             padding: 16px;
         }
         .modal--center-actions .modal__dialog { max-width: 420px; }
         .modal--center-actions .modal__actions { flex-direction: row; gap: 10px; }
         .modal--center-actions .modal__actions .btn { height: 44px; font-weight: 600; }
-        .btn--neutral { background: var(--text); color: #fff; border-color: var(--text); box-shadow: 0 4px 12px rgba(2,8,23,0.20); }
-        .btn--neutral:hover { filter: brightness(1.05); transform: translateY(-1px) scale(1.01); }
+        .btn--pill { border-radius: 9999px; background: #f3f4f6; color: var(--text); border-color: var(--card-border); box-shadow: inset 0 -1px rgba(15,23,42,0.04); }
+        .btn--pill:hover { background: #eef0f4; }
         
         .modal__title {
             margin: 0 0 12px;
@@ -876,8 +876,8 @@
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
             <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
             <div class="modal__actions">
-                <button class="btn" id="openLearnBtn" type="button">Learn</button>
-                <button class="btn" id="openFlashBtn" type="button">Flashcard</button>
+                <button class="btn btn--pill" id="openLearnBtn" type="button">Learn</button>
+                <button class="btn btn--pill" id="openFlashBtn" type="button">Flashcard</button>
             </div>
         </div>
     </div>
