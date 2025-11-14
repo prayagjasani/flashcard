@@ -639,7 +639,11 @@
         }
         .modal--multi .modal__dialog { max-width: 420px; padding: 20px; }
         .multi-deck-list { max-height: 280px; overflow-y: auto; }
-        .multi-deck-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 6px; border-bottom: 1px solid var(--card-border); }
+        .multi-deck-list { -ms-overflow-style: none; scrollbar-width: none; }
+        .multi-deck-list::-webkit-scrollbar { width: 0 !important; height: 0 !important; background: transparent !important; }
+        .multi-deck-list::-webkit-scrollbar-thumb { background: transparent !important; }
+        .multi-deck-list::-webkit-scrollbar-track { background: transparent !important; }
+        .multi-deck-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px; border-bottom: 1px solid var(--card-border); }
         .multi-deck-item:last-child { border-bottom: none; }
         .multi-deck-item span { color: var(--text); }
         .multi-deck-checkbox { width: 18px; height: 18px; accent-color: var(--accent); }
