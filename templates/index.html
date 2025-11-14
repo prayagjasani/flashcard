@@ -1588,6 +1588,21 @@
                 if (deckSectionTitle) deckSectionTitle.textContent = 'Decks';
                 if (deckGrid) deckGrid.style.display = 'none';
                 if (folderGrid) folderGrid.style.display = 'grid';
+                try {
+                    const params = new URLSearchParams(location.search);
+                    const qsDeck = params.get('deck') || '';
+                    const qsMode = params.get('mode') || '';
+                    if (qsDeck && cachedDeckList.find(d => d.name === qsDeck)) {
+                        if (qsMode === 'flash') {
+                            deckSelect.value = qsDeck;
+                            loadWordsForDeck(qsDeck);
+                            if (flashApp) flashApp.style.display = 'block';
+                            if (homeDeckList) homeDeckList.style.display = 'none';
+                        } else if (qsMode === 'learn') {
+                            window.location.href = `/learn?deck=${encodeURIComponent(qsDeck)}`;
+                        }
+                    }
+                } catch {}
                 hideLoader();
             } catch (e) {
                 // If listing fails, keep placeholder and show welcome message
@@ -1938,7 +1953,8 @@
 
         if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
-            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}`;
+            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
         if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;

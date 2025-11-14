@@ -185,6 +185,16 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
+        .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal.is-open { display: flex; }
+        .modal__backdrop { position: absolute; inset: 0; background: rgba(2, 8, 23, 0.5); backdrop-filter: blur(2px); }
+        .modal__dialog { position: relative; width: 90%; max-width: 420px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 24px; box-shadow: var(--shadow); padding: 16px; }
+        .modal__title { margin: 0 0 12px; font-weight: 700; font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; letter-spacing: -0.01em; }
+        .modal__actions { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; }
+        .btn { appearance: none; border: 1px solid var(--card-border); background: #ffffff; color: #0f172a; padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .btn--pill { border-radius: 9999px; background: #f3f4f6; color: var(--text); border-color: var(--card-border); box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04); }
+        .btn--pill:hover { background: #eef0f4; }
+        @media (prefers-color-scheme: dark) { .modal__dialog { background: #19242E; } }
     </style>
 </head>
 
@@ -206,11 +216,25 @@
             </section>
         </main>
     </div>
+    <div class="modal modal--center-actions" id="chooseActionModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
+            <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
+            <div class="modal__actions">
+                <button class="btn btn--pill" id="openLearnBtn" type="button">Learn</button>
+                <button class="btn btn--pill" id="openFlashBtn" type="button">Flashcard</button>
+            </div>
+        </div>
+    </div>
     <script>
         const backBtn = document.getElementById('backBtn');
         const folderTitle = document.getElementById('folderTitle');
         const deckList = document.getElementById('deckList');
         const globalLoader = document.getElementById('globalLoader');
+        const chooseActionModal = document.getElementById('chooseActionModal');
+        const openLearnBtn = document.getElementById('openLearnBtn');
+        const openFlashBtn = document.getElementById('openFlashBtn');
+        let selectedDeckForAction = '';
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
@@ -262,13 +286,32 @@
                 title.textContent = d.name;
                 wrap.appendChild(title);
                 wrap.addEventListener('click', () => {
-                    window.location.href = `/learn?deck=${encodeURIComponent(d.name)}`;
+                    selectedDeckForAction = d.name;
+                    const ttl = document.getElementById('chooseActionTitle');
+                    if (ttl) ttl.textContent = d.name;
+                    chooseActionModal.classList.add('is-open');
+                    chooseActionModal.setAttribute('aria-hidden', 'false');
                 });
                 deckList.appendChild(wrap);
             });
         }
 
         loadDecks();
+        if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            const fromParam = `&from=${encodeURIComponent(folder)}`;
+            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+        });
+        if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            window.location.href = `/?mode=flash&deck=${encodeURIComponent(selectedDeckForAction)}`;
+        });
+        if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
+            if (e.target && (e.target.dataset.close === 'true')) {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
+        });
     </script>
 </body>
 

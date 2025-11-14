@@ -121,8 +121,14 @@
             <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
                 <div class="mx-auto max-w-4xl px-3 py-2 flex items-center border-b border-slate-200/70">
                     <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
-                    <h1 id="deckTitle" class="flex-1 text-center text-base font-bold leading-tight tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">Deck</h1>
-                    <div class="h-8 w-8"></div>
+                <h1 id="deckTitle" class="flex-1 text-center text-base font-bold leading-tight tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">Deck</h1>
+                <button id="homeBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Home">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+                        <path d="M3 10.5L12 3l9 7.5" />
+                        <path d="M5 10v9h14v-9" />
+                        <path d="M9 19v-6h6v6" />
+                    </svg>
+                </button>
                 </div>
             </header>
             <div id="globalLoader" class="loading-overlay" aria-hidden="true">
@@ -162,6 +168,7 @@
     <script>
         const backBtn = document.getElementById('backBtn');
         const deckTitle = document.getElementById('deckTitle');
+        const homeBtn = document.getElementById('homeBtn');
         const listMain = document.getElementById('listMain');
         const cardGrid = document.getElementById('cardGrid');
         const studySection = document.getElementById('studySection');
@@ -180,6 +187,7 @@
         }
         const params = new URLSearchParams(location.search);
         const deck = params.get('deck') || '';
+        const from = params.get('from') || '';
         if (deck) deckTitle.textContent = deck;
         let cards = [];
         let queue = [];
@@ -190,8 +198,10 @@
         const audioPlayer = new Audio();
         const audioCache = new Map();
         backBtn.addEventListener('click', () => {
-            location.href = '/';
+            if (from) location.href = `/folder?name=${encodeURIComponent(from)}`;
+            else location.href = '/';
         });
+        homeBtn.addEventListener('click', () => { location.href = '/'; });
         async function loadDeck() {
             showLoader();
             if (!deck) {
