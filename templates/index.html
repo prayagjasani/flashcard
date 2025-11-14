@@ -637,32 +637,19 @@
             box-shadow: var(--shadow);
             padding: 16px;
         }
-        
-        .modal--center-actions .modal__dialog {
-            max-width: 420px;
-        }
-        
-        .modal--center-actions .modal__actions {
-            flex-direction: row;
-            gap: 10px;
-        }
-        
-        .modal--center-actions .modal__actions .btn {
-            height: 44px;
-            font-weight: 600;
-        }
-        
-        .btn--pill {
-            border-radius: 9999px;
-            background: #f3f4f6;
-            color: var(--text);
-            border-color: var(--card-border);
-            box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
-        }
-        
-        .btn--pill:hover {
-            background: #eef0f4;
-        }
+        .modal--multi .modal__dialog { max-width: 420px; padding: 20px; }
+        .multi-deck-list { max-height: 280px; overflow-y: auto; }
+        .multi-deck-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 6px; border-bottom: 1px solid var(--card-border); }
+        .multi-deck-item:last-child { border-bottom: none; }
+        .multi-deck-item span { color: var(--text); }
+        .multi-deck-checkbox { width: 18px; height: 18px; accent-color: var(--accent); }
+        .modal--multi .modal__actions { flex-direction: row !important; gap: 10px; }
+        .modal--multi .modal__actions .btn { flex: 1 1 0; height: 48px; font-weight: 600; }
+        .modal--center-actions .modal__dialog { max-width: 420px; }
+        .modal--center-actions .modal__actions { flex-direction: row; gap: 10px; }
+        .modal--center-actions .modal__actions .btn { height: 44px; font-weight: 600; }
+        .btn--pill { border-radius: 9999px; background: #f3f4f6; color: var(--text); border-color: var(--card-border); box-shadow: inset 0 -1px rgba(15,23,42,0.04); }
+        .btn--pill:hover { background: #eef0f4; }
         
         .modal__title {
             margin: 0 0 12px;
@@ -716,17 +703,8 @@
             justify-content: center;
             margin-top: 10px;
         }
-        
-        .modal__actions .btn {
-            flex: 1 1 0;
-            height: 40px;
-        }
-        
-        @media (max-width: 420px) {
-            .modal__actions {
-                flex-direction: column;
-            }
-        }
+        .modal__actions .btn { flex: 1 1 0; height: 40px; }
+        @media (max-width: 420px) { .modal__actions { flex-direction: column; } }
         
         .modal__status {
             margin-top: 8px;
@@ -802,22 +780,8 @@
         .deck-tile:hover {
             box-shadow: var(--card-shadow-hover);
         }
-        
-        .tile-enter {
-            animation: slideDown 380ms ease-out both;
-            will-change: transform, opacity;
-        }
-        
-        @keyframes slideDown {
-            0% {
-                transform: translateY(-6px);
-                opacity: 0;
-            }
-            100% {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
+        .tile-enter { animation: slideDown 380ms ease-out both; will-change: transform, opacity; }
+        @keyframes slideDown { 0% { transform: translateY(-6px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
         
         .deck-title {
             font-weight: 400;
@@ -829,7 +793,6 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
-        
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -839,23 +802,13 @@
             justify-content: center;
             background: rgba(255, 255, 255, 0.6);
         }
-        
         @media (prefers-color-scheme: dark) {
             .loading-overlay {
                 background: rgba(17, 24, 39, 0.45);
             }
         }
-        
-        .loading-overlay.is-active {
-            display: flex;
-        }
-        
-        .loading-dots {
-            display: flex;
-            gap: 8px;
-            color: var(--muted);
-        }
-        
+        .loading-overlay.is-active { display: flex; }
+        .loading-dots { display: flex; gap: 8px; color: var(--muted); }
         .loading-dots span {
             width: 8px;
             height: 8px;
@@ -864,28 +817,12 @@
             opacity: 0.5;
             animation: dotPulse 1000ms infinite ease-in-out;
         }
-        
-        .loading-dots span:nth-child(2) {
-            animation-delay: 150ms;
-        }
-        
-        .loading-dots span:nth-child(3) {
-            animation-delay: 300ms;
-        }
-        
+        .loading-dots span:nth-child(2) { animation-delay: 150ms; }
+        .loading-dots span:nth-child(3) { animation-delay: 300ms; }
         @keyframes dotPulse {
-            0% {
-                transform: scale(1);
-                opacity: 0.35;
-            }
-            50% {
-                transform: scale(1.25);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 0.35;
-            }
+            0% { transform: scale(1); opacity: 0.35; }
+            50% { transform: scale(1.25); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.35; }
         }
     </style>
 </head>
@@ -952,7 +889,7 @@
             </div>
         </div>
     </div>
-    <div class="modal" id="multiDeckModal" aria-hidden="true">
+    <div class="modal modal--multi" id="multiDeckModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-multi="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="multiDeckModalTitle">
             <h2 id="multiDeckModalTitle" class="modal__title">Select Multiple Decks</h2>
@@ -1046,14 +983,8 @@
         let frontLang = 'de';
         let backLang = 'en';
         let isAutoPlayEnabled = false;
-
-        function showLoader() {
-            if (globalLoader) globalLoader.classList.add('is-active');
-        }
-
-        function hideLoader() {
-            if (globalLoader) globalLoader.classList.remove('is-active');
-        }
+        function showLoader(){ if(globalLoader) globalLoader.classList.add('is-active'); }
+        function hideLoader(){ if(globalLoader) globalLoader.classList.remove('is-active'); }
 
         // Auto-play toggle functionality
         function updateAutoPlayToggle() {
@@ -1534,9 +1465,7 @@
         // Edit navigation: open dedicated editor page
         if (editDeckBtn) editDeckBtn.addEventListener('click', () => {
             let targetDeck = '';
-            try {
-                targetDeck = localStorage.getItem('selectedDeck') || '';
-            } catch {}
+            try { targetDeck = localStorage.getItem('selectedDeck') || ''; } catch {}
             if (targetDeck) window.location.href = `/edit?deck=${encodeURIComponent(targetDeck)}`;
             else window.location.href = '/edit';
         });
@@ -1891,9 +1820,7 @@
             deckModal.setAttribute('aria-hidden', 'true');
         }
         if (createDeckBtn) createDeckBtn.addEventListener('click', () => {
-            try {
-                showLoader();
-            } catch {}
+            try { showLoader(); } catch {}
             window.location.href = '/create';
         });
         if (deckCancelBtn) deckCancelBtn.addEventListener('click', closeDeckModal);
