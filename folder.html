@@ -185,16 +185,129 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
-        .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 100; }
-        .modal.is-open { display: flex; }
-        .modal__backdrop { position: absolute; inset: 0; background: rgba(2, 8, 23, 0.5); backdrop-filter: blur(2px); }
-        .modal__dialog { position: relative; width: 90%; max-width: 420px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 24px; box-shadow: var(--shadow); padding: 16px; }
-        .modal__title { margin: 0 0 12px; font-weight: 700; font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; letter-spacing: -0.01em; }
-        .modal__actions { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; }
-        .btn { appearance: none; border: 1px solid var(--card-border); background: #ffffff; color: #0f172a; padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-        .btn--pill { border-radius: 9999px; background: #f3f4f6; color: var(--text); border-color: var(--card-border); box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04); }
-        .btn--pill:hover { background: #eef0f4; }
-        @media (prefers-color-scheme: dark) { .modal__dialog { background: #19242E; } }
+        
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .modal.is-open {
+            display: flex;
+        }
+        
+        .modal__backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 8, 23, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        .modal__dialog {
+            position: relative;
+            width: 90%;
+            max-width: 420px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            padding: 16px;
+        }
+        
+        .modal__title {
+            margin: 0 0 12px;
+            font-weight: 700;
+            font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            letter-spacing: -0.01em;
+        }
+        
+        .modal__actions {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn {
+            appearance: none;
+            border: 1px solid var(--card-border);
+            background: #ffffff;
+            color: #0f172a;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn--pill {
+            border-radius: 9999px;
+            background: #f3f4f6;
+            color: var(--text);
+            border-color: var(--card-border);
+            box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
+        }
+        
+        .btn--pill:hover {
+            background: #eef0f4;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .modal__dialog {
+                background: #19242E;
+            }
+        }
+        
+        .modal__close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .modal__close:hover {
+            background: #eef0f4;
+        }
+        
+        .multi-deck-list {
+            max-height: 280px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+        
+        .multi-deck-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 14px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .multi-deck-item:last-child {
+            border-bottom: none;
+        }
+        
+        .multi-deck-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent);
+        }
+        
+        .modal--multi .modal__actions {
+            gap: 12px;
+        }
     </style>
 </head>
 
@@ -219,11 +332,25 @@
     <div class="modal modal--center-actions" id="chooseActionModal" aria-hidden="true">
         <div class="modal__backdrop" data-close="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
+            <button id="chooseActionCloseBtn" class="modal__close" type="button">×</button>
             <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
             <div class="modal__actions">
                 <button class="btn btn--pill" id="openLearnBtn" type="button">Learn</button>
                 <button class="btn btn--pill" id="openFlashBtn" type="button">Flashcard</button>
+                <button class="btn btn--pill" id="openMoveBtn" type="button">Move</button>
             </div>
+        </div>
+    </div>
+    <div class="modal modal--multi" id="moveDeckModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="moveDeckTitle">
+            <h2 id="moveDeckTitle" class="modal__title">Move to Folder</h2>
+            <div class="multi-deck-list" id="moveDeckList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="moveDeckCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--pill" id="moveDeckSaveBtn" type="button">Move</button>
+            </div>
+            <p class="modal__status" id="moveDeckStatus"></p>
         </div>
     </div>
     <script>
@@ -234,6 +361,12 @@
         const chooseActionModal = document.getElementById('chooseActionModal');
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
+        const openMoveBtn = document.getElementById('openMoveBtn');
+        const moveDeckModal = document.getElementById('moveDeckModal');
+        const moveDeckList = document.getElementById('moveDeckList');
+        const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
+        const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
+        const moveDeckStatus = document.getElementById('moveDeckStatus');
         let selectedDeckForAction = '';
 
         function showLoader() {
@@ -297,6 +430,64 @@
         }
 
         loadDecks();
+        async function loadFoldersIntoMoveList() {
+            moveDeckList.innerHTML = '';
+            try {
+                const resp = await fetch('/folders');
+                const data = await resp.json().catch(() => ({
+                    folders: []
+                }));
+                const raw = Array.isArray(data.folders) ? data.folders : [];
+                const seen = new Set();
+                const ordered = [];
+                raw.forEach((f) => {
+                    const nm = (f && f.name) ? f.name : String(f);
+                    if (nm === folder) return;
+                    if (nm === 'Uncategorized') return;
+                    if (!seen.has(nm)) {
+                        seen.add(nm);
+                        ordered.push({
+                            name: nm,
+                            count: f.count || 0
+                        });
+                    }
+                });
+                ordered.push({
+                    name: 'Uncategorized',
+                    count: 0
+                });
+                ordered.forEach((f) => {
+                    const row = document.createElement('div');
+                    row.className = 'multi-deck-item';
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '12px';
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = 'moveFolder';
+                    radio.value = f.name;
+                    radio.className = 'multi-deck-checkbox';
+                    const span = document.createElement('span');
+                    span.textContent = f.name;
+                    label.appendChild(radio);
+                    label.appendChild(span);
+                    row.appendChild(label);
+                    moveDeckList.appendChild(row);
+                });
+            } catch {}
+        }
+
+        function openMoveDeckModal() {
+            moveDeckStatus.textContent = '';
+            loadFoldersIntoMoveList();
+            if (chooseActionModal) {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
+            moveDeckModal.classList.add('is-open');
+            moveDeckModal.setAttribute('aria-hidden', 'false');
+        }
         if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
             const fromParam = `&from=${encodeURIComponent(folder)}`;
@@ -306,11 +497,59 @@
             if (!selectedDeckForAction) return;
             window.location.href = `/?mode=flash&deck=${encodeURIComponent(selectedDeckForAction)}`;
         });
+        if (openMoveBtn) openMoveBtn.addEventListener('click', openMoveDeckModal);
+
+        function closeMoveDeckModal() {
+            moveDeckModal.classList.remove('is-open');
+            moveDeckModal.setAttribute('aria-hidden', 'true');
+        }
+        if (moveDeckCancelBtn) moveDeckCancelBtn.addEventListener('click', closeMoveDeckModal);
+        if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => {
+            if (e.target && (e.target.dataset.close === 'true')) closeMoveDeckModal();
+        });
+        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
+            if (!selectedDeckForAction) return;
+            const picked = document.querySelector('input[name="moveFolder"]:checked');
+            const targetFolder = picked ? picked.value : '';
+            moveDeckSaveBtn.disabled = true;
+            moveDeckSaveBtn.textContent = 'Moving...';
+            try {
+                const resp = await fetch('/deck/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: selectedDeckForAction,
+                        folder: targetFolder === 'Uncategorized' ? null : targetFolder
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
+                moveDeckStatus.textContent = 'Moved';
+                await loadDecks();
+                closeMoveDeckModal();
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            } catch (err) {
+                moveDeckStatus.textContent = String(err.message || err);
+            } finally {
+                moveDeckSaveBtn.disabled = false;
+                moveDeckSaveBtn.textContent = 'Move';
+            }
+        });
         if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
             if (e.target && (e.target.dataset.close === 'true')) {
                 chooseActionModal.classList.remove('is-open');
                 chooseActionModal.setAttribute('aria-hidden', 'true');
             }
+        });
+        const chooseActionCloseBtn = document.getElementById('chooseActionCloseBtn');
+        if (chooseActionCloseBtn) chooseActionCloseBtn.addEventListener('click', () => {
+            chooseActionModal.classList.remove('is-open');
+            chooseActionModal.setAttribute('aria-hidden', 'true');
         });
     </script>
 </body>

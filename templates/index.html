@@ -587,8 +587,8 @@
         .multi-deck-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px;
+            justify-content: flex-start;
+            padding: 14px;
             border-bottom: 1px solid var(--card-border);
         }
         
@@ -670,8 +670,8 @@
         .multi-deck-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 12px 12px;
+            justify-content: flex-start;
+            padding: 14px;
             border-bottom: 1px solid var(--card-border);
         }
         
@@ -684,8 +684,8 @@
         }
         
         .multi-deck-checkbox {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             accent-color: var(--accent);
         }
         
@@ -712,6 +712,26 @@
         .modal--center-actions .modal__actions .btn {
             height: 44px;
             font-weight: 600;
+        }
+        
+        .modal__close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .modal__close:hover {
+            background: #eef0f4;
         }
         
         .btn--pill {
@@ -1106,37 +1126,28 @@
         <div class="deck-grid" id="deckGrid" style="display:none"></div>
     </section>
     <button id="createFolderBtn" class="fab-btn" type="button" aria-label="Create Folder">+</button>
-    <div class="modal" id="deckModal" aria-hidden="true">
-        <div class="modal__backdrop" data-close="true"></div>
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="deckModalTitle">
-            <h2 id="deckModalTitle" class="modal__title">Create Deck</h2>
-            <div class="modal__field">
-                <label for="deckNameInput">Deck name</label>
-                <input id="deckNameInput" type="text" placeholder="e.g., verbs_de" />
-            </div>
-            <div class="modal__field">
-                <label for="deckDataInput">Data (english,german per line)</label>
-                <textarea id="deckDataInput" placeholder="to speak,sprechen&#10;to give,geben&#10;to help,helfen&#10;to eat,essen&#10;to forget,vergessen&#10;(etc)"></textarea>
-            </div>
-            <div class="modal__actions">
-                <button class="btn" id="deckCancelBtn" type="button">Cancel</button>
-                <button class="btn btn--signup" id="deckSaveBtn" type="button">Create</button>
-            </div>
-            <p class="modal__status" id="deckStatus"></p>
-        </div>
-    </div>
     <div class="modal modal--center-actions" id="chooseActionModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-action="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
+            <button id="chooseActionCloseBtn" class="modal__close" type="button">×</button>
             <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
-            <button class="kebab-btn" id="chooseActionKebab" type="button">⋮</button>
-            <div class="kebab-menu" id="chooseActionMenu">
-                <button class="kebab-item" id="chooseActionMoveBtn" type="button">Move</button>
-            </div>
             <div class="modal__actions">
                 <button class="btn btn--pill" id="openLearnBtn" type="button">Learn</button>
                 <button class="btn btn--pill" id="openFlashBtn" type="button">Flashcard</button>
+                <button class="btn btn--pill" id="openMoveBtn" type="button">Move</button>
             </div>
+        </div>
+    </div>
+    <div class="modal modal--multi" id="moveDeckModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-move="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="moveDeckTitle">
+            <h2 id="moveDeckTitle" class="modal__title">Move to Folder</h2>
+            <div class="multi-deck-list" id="moveDeckList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="moveDeckCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--pill" id="moveDeckSaveBtn" type="button">Move</button>
+            </div>
+            <p class="modal__status" id="moveDeckStatus"></p>
         </div>
     </div>
     <div class="modal modal--multi" id="multiDeckModal" aria-hidden="true">
@@ -1182,49 +1193,7 @@
             <p class="modal__status" id="renameFolderStatus"></p>
         </div>
     </div>
-    <div class="modal modal--multi" id="moveDeckModal" aria-hidden="true">
-        <div class="modal__backdrop" data-close-move-deck="true"></div>
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="moveDeckTitle">
-            <h2 id="moveDeckTitle" class="modal__title">Move to Folder</h2>
-            <div class="multi-deck-list" id="moveDeckList"></div>
-            <div class="modal__actions">
-                <button class="btn" id="moveDeckCancelBtn" type="button">Cancel</button>
-                <button class="btn btn--signup" id="moveDeckSaveBtn" type="button">Move</button>
-            </div>
-            <p class="modal__status" id="moveDeckStatus"></p>
-        </div>
-    </div>
-    <div class="modal" id="editDeckModal" aria-hidden="true">
-        <div class="modal__backdrop" data-close-edit="true"></div>
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="editDeckModalTitle">
-            <h2 id="editDeckModalTitle" class="modal__title">Edit Deck CSV</h2>
-            <div class="modal__field">
-                <label for="editDeckSelect">Deck</label>
-                <select id="editDeckSelect"></select>
-            </div>
-            <!-- CSV textarea removed; editing is done via the table below -->
-            <div class="modal__field">
-                <label>Rows (editable)</label>
-                <div class="edit-table-wrap" style="max-height:320px; overflow:auto; border:1px solid var(--card-border); border-radius:8px;">
-                    <table id="editDeckTable" style="width:100%; border-collapse:collapse;">
-                        <thead>
-                            <tr>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid var(--card-border);">English</th>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid var(--card-border);">German</th>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid var(--card-border);">Audio</th>
-                            </tr>
-                        </thead>
-                        <tbody id="editDeckTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal__actions">
-                <button class="btn" id="editDeckCancelBtn" type="button">Cancel</button>
-                <button class="btn btn--signup" id="editDeckSaveBtn" type="button">Save</button>
-            </div>
-            <p class="modal__status" id="editDeckStatus"></p>
-        </div>
-    </div>
+
     <div id="flashApp" class="app" style="display:none">
         <h1>Flashcards</h1>
         <div class="deck-select">
@@ -1263,9 +1232,7 @@
         const deckGrid = document.getElementById('deckGrid');
         const homeDeckList = document.getElementById('homeDeckList');
         const chooseActionModal = document.getElementById('chooseActionModal');
-        const chooseActionKebab = document.getElementById('chooseActionKebab');
-        const chooseActionMenu = document.getElementById('chooseActionMenu');
-        const chooseActionMoveBtn = document.getElementById('chooseActionMoveBtn');
+        const chooseActionCloseBtn = document.getElementById('chooseActionCloseBtn');
         const deckSectionHead = document.getElementById('deckSectionHead');
         const deckSectionTitle = document.getElementById('deckSectionTitle');
         const folderGrid = document.getElementById('folderGrid');
@@ -1275,11 +1242,7 @@
         const createFolderCancelBtn = document.getElementById('createFolderCancelBtn');
         const createFolderSaveBtn = document.getElementById('createFolderSaveBtn');
         const createFolderStatus = document.getElementById('createFolderStatus');
-        const moveDeckModal = document.getElementById('moveDeckModal');
-        const moveDeckList = document.getElementById('moveDeckList');
-        const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
-        const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
-        const moveDeckStatus = document.getElementById('moveDeckStatus');
+
         const renameFolderModal = document.getElementById('renameFolderModal');
         const renameFolderInput = document.getElementById('renameFolderInput');
         const renameFolderCancelBtn = document.getElementById('renameFolderCancelBtn');
@@ -1291,6 +1254,12 @@
         let folderToManage = '';
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
+        const openMoveBtn = document.getElementById('openMoveBtn');
+        const moveDeckModal = document.getElementById('moveDeckModal');
+        const moveDeckList = document.getElementById('moveDeckList');
+        const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
+        const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
+        const moveDeckStatus = document.getElementById('moveDeckStatus');
         const flashApp = document.getElementById('flashApp');
         const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
@@ -1429,14 +1398,6 @@
         const deckSelect = document.getElementById('deckSelect');
         const englishFrontToggle = document.getElementById('englishFrontToggle');
         const editDeckBtn = document.getElementById('editDeckBtn');
-        const editDeckModal = document.getElementById('editDeckModal');
-        const editDeckSelect = document.getElementById('editDeckSelect');
-        // CSV textarea removed; using table-only editing
-        const editDeckCancelBtn = document.getElementById('editDeckCancelBtn');
-        const editDeckSaveBtn = document.getElementById('editDeckSaveBtn');
-        const editDeckStatus = document.getElementById('editDeckStatus');
-        const editDeckTableBody = document.getElementById('editDeckTableBody');
-        let editRowsOriginal = [];
 
         function applyFrontPreference(isEnglishFront) {
             frontLang = isEnglishFront ? 'en' : 'de';
@@ -1853,46 +1814,76 @@
             }
         });
 
-        function openMoveDeckModal() {
-            if (!moveDeckModal) return;
-            moveDeckStatus.textContent = '';
+
+
+        if (homeBtn) homeBtn.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+
+        if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+        });
+        if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            deckSelect.value = selectedDeckForAction;
+            loadWordsForDeck(selectedDeckForAction);
+            chooseActionModal.classList.remove('is-open');
+            chooseActionModal.setAttribute('aria-hidden', 'true');
+            if (flashApp) flashApp.style.display = 'block';
+            if (homeDeckList) homeDeckList.style.display = 'none';
+            if (createFolderBtn) createFolderBtn.style.display = 'none';
+        });
+        if (chooseActionCloseBtn) chooseActionCloseBtn.addEventListener('click', () => {
+            chooseActionModal.classList.remove('is-open');
+            chooseActionModal.setAttribute('aria-hidden', 'true');
+        });
+        if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeAction === 'true') {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
+        });
+
+        function populateMoveFolderList() {
             moveDeckList.innerHTML = '';
             const raw = cachedFolderList.length ? cachedFolderList.slice() : [];
+            let currentFolder = '';
+            try {
+                const m = Array.isArray(cachedDeckList) ? cachedDeckList.find(d => d && d.name === selectedDeckForAction) : null;
+                currentFolder = m ? (m.folder || 'Uncategorized') : '';
+            } catch {}
             const seen = new Set();
-            const list = [];
+            const ordered = [];
             raw.forEach((f) => {
                 const nm = (f && f.name) ? f.name : String(f);
-                if (nm === 'Uncategorized') return; // place at end only
+                if (currentFolder && nm === currentFolder) return;
+                if (nm === 'Uncategorized') return;
                 if (!seen.has(nm)) {
                     seen.add(nm);
-                    list.push({
+                    ordered.push({
                         name: nm,
                         count: f.count || 0
                     });
                 }
             });
-            list.push({
+            ordered.push({
                 name: 'Uncategorized',
                 count: 0
             });
-            let defaultFolder = 'Uncategorized';
-            try {
-                const dk = cachedDeckList.find(x => x.name === selectedDeckForAction);
-                if (dk && dk.folder) defaultFolder = dk.folder;
-            } catch {}
-            list.forEach((f, i) => {
+            ordered.forEach((f) => {
                 const row = document.createElement('div');
                 row.className = 'multi-deck-item';
                 const label = document.createElement('label');
                 label.style.display = 'flex';
                 label.style.alignItems = 'center';
-                label.style.gap = '10px';
+                label.style.gap = '12px';
                 const radio = document.createElement('input');
                 radio.type = 'radio';
                 radio.name = 'moveFolder';
                 radio.value = f.name;
                 radio.className = 'multi-deck-checkbox';
-                if (f.name === defaultFolder || (!defaultFolder && i === 0)) radio.checked = true;
                 const span = document.createElement('span');
                 span.textContent = f.name;
                 label.appendChild(radio);
@@ -1900,6 +1891,16 @@
                 row.appendChild(label);
                 moveDeckList.appendChild(row);
             });
+        }
+
+        function openMoveDeckModal() {
+            if (!selectedDeckForAction) return;
+            moveDeckStatus.textContent = '';
+            populateMoveFolderList();
+            if (chooseActionModal) {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
             moveDeckModal.classList.add('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'false');
         }
@@ -1908,9 +1909,10 @@
             moveDeckModal.classList.remove('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'true');
         }
+        if (openMoveBtn) openMoveBtn.addEventListener('click', openMoveDeckModal);
         if (moveDeckCancelBtn) moveDeckCancelBtn.addEventListener('click', closeMoveDeckModal);
         if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => {
-            if (e.target.dataset.closeMoveDeck === 'true') closeMoveDeckModal();
+            if (e.target.dataset.closeMove === 'true') closeMoveDeckModal();
         });
         if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
             if (!selectedDeckForAction) return;
@@ -1939,211 +1941,29 @@
                 closeMoveDeckModal();
                 chooseActionModal.classList.remove('is-open');
                 chooseActionModal.setAttribute('aria-hidden', 'true');
-                moveDeckSaveBtn.disabled = false;
-                moveDeckSaveBtn.textContent = 'Move';
             } catch (err) {
                 moveDeckStatus.textContent = String(err.message || err);
+            } finally {
                 moveDeckSaveBtn.disabled = false;
                 moveDeckSaveBtn.textContent = 'Move';
             }
         });
 
-        if (homeBtn) homeBtn.addEventListener('click', () => {
-            window.location.href = '/';
-        });
 
-        if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
-            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
-            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
-        });
-        if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
-            deckSelect.value = selectedDeckForAction;
-            loadWordsForDeck(selectedDeckForAction);
-            chooseActionModal.classList.remove('is-open');
-            chooseActionModal.setAttribute('aria-hidden', 'true');
-            if (flashApp) flashApp.style.display = 'block';
-            if (homeDeckList) homeDeckList.style.display = 'none';
-            if (createFolderBtn) createFolderBtn.style.display = 'none';
-        });
-        if (chooseActionKebab) chooseActionKebab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleMenu(chooseActionMenu);
-        });
-        if (chooseActionMoveBtn) chooseActionMoveBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (selectedDeckForAction) openMoveDeckModal();
-            closeKebabMenus();
-        });
-        if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
-            if (e.target.dataset.closeAction === 'true') {
-                chooseActionModal.classList.remove('is-open');
-                chooseActionModal.setAttribute('aria-hidden', 'true');
-            }
-        });
 
-        function populateEditDeckSelect() {
-            editDeckSelect.innerHTML = '';
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = 'Select deck';
-            placeholder.disabled = true;
-            placeholder.selected = true;
-            editDeckSelect.appendChild(placeholder);
-            cachedDeckList.forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d.name;
-                opt.textContent = d.name;
-                editDeckSelect.appendChild(opt);
-            });
-        }
 
-        async function openEditDeckModal() {
-            editDeckStatus.textContent = '';
-            if (!cachedDeckList.length) {
-                await loadDecks();
-            }
-            populateEditDeckSelect();
-            // Preselect current deck if available
-            try {
-                const current = deckSelect.value;
-                if (current) {
-                    editDeckSelect.value = current;
-                    await loadCsvForEdit(current);
-                }
-            } catch {}
-            editDeckModal.classList.add('is-open');
-            editDeckModal.setAttribute('aria-hidden', 'false');
-        }
 
-        function closeEditDeckModal() {
-            editDeckModal.classList.remove('is-open');
-            editDeckModal.setAttribute('aria-hidden', 'true');
-        }
 
-        async function loadCsvForEdit(deckName) {
-            editDeckStatus.textContent = '';
-            if (!deckName) return;
-            try {
-                const resp = await fetch(`/deck/csv?deck=${encodeURIComponent(deckName)}`);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const csv = String(data.csv || '');
-                    try {
-                        const rows = parseCsvRows(csv);
-                        renderEditTable(rows);
-                    } catch {}
-                } else {
-                    editDeckStatus.textContent = 'Failed to load CSV.';
-                }
-            } catch (err) {
-                editDeckStatus.textContent = 'Error loading CSV.';
-            }
-        }
 
-        function parseCsvRows(csv) {
-            const lines = String(csv || '').split(/\r?\n/).filter(l => l.trim().length);
-            return lines.map(l => {
-                const parts = l.split(',');
-                const en = (parts[0] || '').trim();
-                const de = (parts[1] || '').trim();
-                return [en, de];
-            });
-        }
 
-        function renderEditTable(rows) {
-            editRowsOriginal = rows.map(r => r.slice(0, 2));
-            editDeckTableBody.innerHTML = '';
-            rows.forEach((row, idx) => {
-                const tr = document.createElement('tr');
-                const tdEn = document.createElement('td');
-                tdEn.style.padding = '6px';
-                const enInput = document.createElement('input');
-                enInput.type = 'text';
-                enInput.value = row[0] || '';
-                enInput.className = 'editCell editEn';
-                enInput.style.width = '98%';
-                tdEn.appendChild(enInput);
 
-                const tdDe = document.createElement('td');
-                tdDe.style.padding = '6px';
-                const deInput = document.createElement('input');
-                deInput.type = 'text';
-                deInput.value = row[1] || '';
-                deInput.className = 'editCell editDe';
-                deInput.style.width = '98%';
-                tdDe.appendChild(deInput);
 
-                const tdAction = document.createElement('td');
-                tdAction.style.padding = '6px';
-                const reloadBtn = document.createElement('button');
-                reloadBtn.type = 'button';
-                reloadBtn.className = 'btn reloadBtn';
-                reloadBtn.title = 'Reload audio';
-                reloadBtn.textContent = '↻';
-                reloadBtn.addEventListener('click', async() => {
-                    const currentGerman = deInput.value.trim();
-                    await rebuildAudioForRow(idx, currentGerman);
-                });
-                tdAction.appendChild(reloadBtn);
 
-                tr.appendChild(tdEn);
-                tr.appendChild(tdDe);
-                tr.appendChild(tdAction);
-                editDeckTableBody.appendChild(tr);
-            });
-        }
 
-        async function rebuildAudioForRow(index, currentGerman) {
-            try {
-                const oldGerman = (editRowsOriginal[index] && editRowsOriginal[index][1]) ? editRowsOriginal[index][1] : '';
-                const payload = {
-                    text: currentGerman,
-                    lang: 'de',
-                    old_text: (oldGerman && oldGerman !== currentGerman) ? oldGerman : null
-                };
-                const resp = await fetch('/audio/rebuild', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-                const data = await resp.json().catch(() => ({
-                    ok: false
-                }));
-                if (!resp.ok || !data.ok) throw new Error(data.detail || 'Failed to rebuild audio');
-                // Update original snapshot for this row
-                const enVal = document.querySelectorAll('#editDeckTableBody .editEn')[index].value;
-                editRowsOriginal[index] = [enVal, currentGerman];
-                editDeckStatus.textContent = 'Audio reloaded.';
-                // Refresh audio cache for immediate playback elsewhere
-                try {
-                    const blobRes = await fetch(String(data.url));
-                    if (blobRes.ok) {
-                        const blob = await blobRes.blob();
-                        const url = URL.createObjectURL(blob);
-                        window.audioCache = window.audioCache || {};
-                        window.audioCache['de:' + currentGerman] = url;
-                    }
-                } catch {}
-            } catch (err) {
-                editDeckStatus.textContent = String(err.message || err);
-            }
-        }
 
-        function tableToCsv() {
-            const enInputs = document.querySelectorAll('#editDeckTableBody .editEn');
-            const deInputs = document.querySelectorAll('#editDeckTableBody .editDe');
-            const out = [];
-            for (let i = 0; i < enInputs.length; i++) {
-                const en = enInputs[i].value.trim();
-                const de = deInputs[i].value.trim();
-                if (en || de) out.push(`${en},${de}`);
-            }
-            return out.join('\n') + '\n';
-        }
+
+
+
 
         // Edit navigation: open dedicated editor page
         if (editDeckBtn) editDeckBtn.addEventListener('click', () => {
@@ -2153,59 +1973,6 @@
             } catch {}
             if (targetDeck) window.location.href = `/edit?deck=${encodeURIComponent(targetDeck)}`;
             else window.location.href = '/edit';
-        });
-        if (editDeckCancelBtn) editDeckCancelBtn.addEventListener('click', closeEditDeckModal);
-        editDeckModal.addEventListener('click', (e) => {
-            if (e.target.dataset.closeEdit === 'true') closeEditDeckModal();
-        });
-        editDeckSelect.addEventListener('change', async(e) => {
-            const name = e.target.value;
-            if (name) await loadCsvForEdit(name);
-        });
-        if (editDeckSaveBtn) editDeckSaveBtn.addEventListener('click', async() => {
-            const name = editDeckSelect.value;
-            const content = tableToCsv().trim();
-            if (!name) {
-                editDeckStatus.textContent = 'Please select a deck.';
-                return;
-            }
-            if (!content) {
-                editDeckStatus.textContent = 'Please enter CSV content.';
-                return;
-            }
-            editDeckSaveBtn.disabled = true;
-            editDeckSaveBtn.textContent = 'Saving...';
-            try {
-                const resp = await fetch('/deck/update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        content
-                    })
-                });
-                const data = await resp.json().catch(() => ({
-                    ok: false
-                }));
-                if (!resp.ok || !data.ok) throw new Error(data.detail || 'Failed to save');
-                editDeckStatus.textContent = 'Saved';
-                editDeckSaveBtn.textContent = 'Saved';
-                // If editing the currently selected deck, reload its words
-                if (deckSelect.value === name) {
-                    await loadWordsForDeck(name);
-                }
-                setTimeout(() => {
-                    closeEditDeckModal();
-                    editDeckSaveBtn.disabled = false;
-                    editDeckSaveBtn.textContent = 'Save';
-                }, 600);
-            } catch (err) {
-                editDeckStatus.textContent = String(err.message || err);
-                editDeckSaveBtn.disabled = false;
-                editDeckSaveBtn.textContent = 'Save';
-            }
         });
 
         function getNewCard() {
@@ -2482,92 +2249,14 @@
         });
         // Mobile menu removed per design request; no toggle handlers.
 
-        // Deck creation modal logic
+        // Deck creation navigation
         const createDeckBtn = document.getElementById('createDeckBtn');
-        const deckModal = document.getElementById('deckModal');
-        const deckNameInput = document.getElementById('deckNameInput');
-        const deckDataInput = document.getElementById('deckDataInput');
-        const deckCancelBtn = document.getElementById('deckCancelBtn');
-        const deckSaveBtn = document.getElementById('deckSaveBtn');
-        const deckStatus = document.getElementById('deckStatus');
 
-        function openDeckModal() {
-            deckStatus.textContent = '';
-            deckNameInput.value = '';
-            deckDataInput.value = '';
-            deckModal.classList.add('is-open');
-            deckModal.setAttribute('aria-hidden', 'false');
-            deckNameInput.focus();
-        }
-
-        function closeDeckModal() {
-            deckModal.classList.remove('is-open');
-            deckModal.setAttribute('aria-hidden', 'true');
-        }
         if (createDeckBtn) createDeckBtn.addEventListener('click', () => {
             try {
                 showLoader();
             } catch {}
             window.location.href = '/create';
-        });
-        if (deckCancelBtn) deckCancelBtn.addEventListener('click', closeDeckModal);
-        deckModal.addEventListener('click', (e) => {
-            if (e.target.dataset.close === 'true') closeDeckModal();
-        });
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeDeckModal();
-        });
-
-        function sanitizeDeckName(name) {
-            return name.trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50);
-        }
-
-        if (deckSaveBtn) deckSaveBtn.addEventListener('click', async() => {
-            const rawName = deckNameInput.value;
-            const rawData = deckDataInput.value;
-            const name = sanitizeDeckName(rawName);
-            if (!name) {
-                deckStatus.textContent = 'Please enter a deck name.';
-                return;
-            }
-            if (!rawData.trim()) {
-                deckStatus.textContent = 'Please paste deck data.';
-                return;
-            }
-
-            deckSaveBtn.disabled = true;
-            deckSaveBtn.textContent = 'Saving...';
-
-            try {
-                const resp = await fetch('/deck/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        data: rawData
-                    })
-                });
-                const out = await resp.json().catch(() => ({
-                    ok: false
-                }));
-                if (!resp.ok || !out.ok) {
-                    throw new Error(out.detail || 'Failed to create deck');
-                }
-                // On success: refresh list and close modal; user can select the new deck
-                deckSaveBtn.textContent = 'Saved';
-                try {
-                    await loadDecks();
-                } catch {}
-                closeDeckModal();
-                deckSaveBtn.disabled = false;
-                deckSaveBtn.textContent = 'Create';
-            } catch (err) {
-                deckStatus.textContent = String(err.message || err);
-                deckSaveBtn.disabled = false;
-                deckSaveBtn.textContent = 'Create';
-            }
         });
     </script>
 </body>
