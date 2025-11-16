@@ -352,6 +352,15 @@
         .modal--multi .modal__actions {
             gap: 12px;
         }
+        .is-dragging-hidden {
+            position: absolute !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
     </style>
 </head>
 
@@ -451,6 +460,8 @@
             return ordered;
         }
         let draggingDeck = null;
+        let dragTileEl = null;
+        let dragTileHeight = 0;
         const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
         function ensurePlaceholder(container) {
             if (!container) return null;
@@ -464,6 +475,7 @@
                 ph.style.borderRadius = '12px';
                 ph.style.background = '#eef0f4';
             }
+            { let __h = dragTileHeight || 48; if (!__h) { const __src = container.querySelector('.deck-tile'); if (__src) { const __r = __src.getBoundingClientRect(); __h = Math.max(40, Math.round(__r.height)); } } ph.style.height = __h + 'px'; }
             if (!ph.parentElement) container.appendChild(ph);
             return ph;
         }
@@ -498,9 +510,9 @@
                 startY = y;
                 pressTimer = setTimeout(() => {
                     dragging = true;
-                    tile.style.opacity = '0.9';
-                    tile.style.transform = 'scale(1.02)';
-                    tile.style.transition = 'transform 100ms ease';
+                    dragTileEl = tile;
+                    dragTileHeight = Math.round(tile.getBoundingClientRect().height);
+                    tile.classList.add('is-dragging-hidden');
                     tile.style.touchAction = 'none';
                     const tiles = Array.from(container.querySelectorAll('.deck-tile'));
                     const idx = tiles.indexOf(tile);
@@ -511,8 +523,7 @@
             async function commit() {
                 if (!dragging) return;
                 dragging = false;
-                tile.style.opacity = '';
-                tile.style.transform = '';
+                tile.classList.remove('is-dragging-hidden');
                 tile.style.touchAction = 'auto';
                 const tiles = Array.from(container.querySelectorAll('.deck-tile'));
                 if (!tiles.length) { removePlaceholder(container); return; }
@@ -525,19 +536,21 @@
                 if (from < 0 || to < 0 || from === to) { removePlaceholder(container); return; }
                 ordered.splice(to, 0, ordered.splice(from, 1)[0]);
                 await writeOrder('deck', ordered, scope);
-                renderList(ordered.map(n => ({ name: n, folder }))); 
+                renderList(ordered.map(n => ({ name: n, folder })));
                 removePlaceholder(container);
+                dragTileEl = null;
+                dragTileHeight = 0;
             }
             tile.style.touchAction = 'auto';
             tile.style.userSelect = 'none';
             tile.addEventListener('touchstart', (e) => { const t = e.touches && e.touches[0]; if (!t) return; start(t.clientY); }, { passive: true });
             tile.addEventListener('touchmove', (e) => { const t = e.touches && e.touches[0]; if (!t) return; fingerY = t.clientY; if (!dragging) { if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) { clearPress(); } return; } e.preventDefault(); const idx = indexFromFinger(container, fingerY); placePlaceholder(container, idx); }, { passive: false });
             tile.addEventListener('touchend', () => { clearPress(); commit(); });
-            tile.addEventListener('touchcancel', () => { clearPress(); dragging = false; tile.style.opacity = ''; tile.style.transform = ''; tile.style.touchAction = 'auto'; removePlaceholder(container); });
+            tile.addEventListener('touchcancel', () => { clearPress(); dragging = false; tile.classList.remove('is-dragging-hidden'); tile.style.touchAction = 'auto'; removePlaceholder(container); dragTileEl = null; dragTileHeight = 0; });
         }
         function attachDeckDnD(tile, name, scope) {
             tile.setAttribute('draggable', 'true');
-            tile.addEventListener('dragstart', (e) => { draggingDeck = name; e.dataTransfer.effectAllowed = 'move'; });
+            tile.addEventListener('dragstart', (e) => { draggingDeck = name; e.dataTransfer.effectAllowed = 'move'; dragTileEl = tile; dragTileHeight = Math.round(tile.getBoundingClientRect().height); tile.classList.add('is-dragging-hidden'); const tiles = Array.from(deckList.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckList, idx < 0 ? 0 : idx); });
             tile.addEventListener('dragover', (e) => { e.preventDefault(); const tiles = Array.from(deckList.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckList, idx < 0 ? 0 : idx); });
             tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
@@ -548,10 +561,12 @@
                 if (from < 0 || to < 0) return;
                 ordered.splice(to, 0, ordered.splice(from, 1)[0]);
                 await writeOrder('deck', ordered, scope);
-                renderList(ordered.map(n => ({ name: n, folder }))); 
+                renderList(ordered.map(n => ({ name: n, folder })));
                 removePlaceholder(deckList);
+                dragTileEl = null;
+                dragTileHeight = 0;
             });
-            tile.addEventListener('dragend', () => { removePlaceholder(deckList); });
+            tile.addEventListener('dragend', () => { tile.classList.remove('is-dragging-hidden'); removePlaceholder(deckList); dragTileEl = null; dragTileHeight = 0; });
             attachTouchDnD(tile, name, scope, deckList);
         }
 
