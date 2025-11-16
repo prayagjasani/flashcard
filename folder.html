@@ -523,21 +523,15 @@
             async function commit() {
                 if (!dragging) return;
                 dragging = false;
+                const ph = container.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    container.insertBefore(dragTileEl, ph);
+                }
+                removePlaceholder(container);
                 tile.classList.remove('is-dragging-hidden');
                 tile.style.touchAction = 'auto';
-                const tiles = Array.from(container.querySelectorAll('.deck-tile'));
-                if (!tiles.length) { removePlaceholder(container); return; }
-                let targetIndex = indexFromFinger(container, fingerY);
-                const sourceNames = Array.from(container.querySelectorAll('.deck-title')).map(el => el.textContent);
-                const ordered = applyOrder(sourceNames.map(n => ({ name: n })), 'deck', scope).map(x => x.name);
-                const from = ordered.indexOf(name);
-                let to = targetIndex;
-                if (to > from) to--;
-                if (from < 0 || to < 0 || from === to) { removePlaceholder(container); return; }
-                ordered.splice(to, 0, ordered.splice(from, 1)[0]);
-                await writeOrder('deck', ordered, scope);
-                renderList(ordered.map(n => ({ name: n, folder })));
-                removePlaceholder(container);
+                const newOrder = Array.from(container.querySelectorAll('.deck-title')).map(el => el.textContent);
+                await writeOrder('deck', newOrder, scope);
                 dragTileEl = null;
                 dragTileHeight = 0;
             }
@@ -554,15 +548,15 @@
             tile.addEventListener('dragover', (e) => { e.preventDefault(); const tiles = Array.from(deckList.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckList, idx < 0 ? 0 : idx); });
             tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
-                const target = name; const dragged = draggingDeck; draggingDeck = null; if (!dragged || dragged === target) return;
-                const sourceNames = Array.from(deckList.querySelectorAll('.deck-title')).map(el => el.textContent);
-                const ordered = applyOrder(sourceNames.map(n => ({ name: n })), 'deck', scope).map(x => x.name);
-                const from = ordered.indexOf(dragged); const to = ordered.indexOf(target);
-                if (from < 0 || to < 0) return;
-                ordered.splice(to, 0, ordered.splice(from, 1)[0]);
-                await writeOrder('deck', ordered, scope);
-                renderList(ordered.map(n => ({ name: n, folder })));
+                const target = name; const dragged = draggingDeck; draggingDeck = null;
+                const ph = deckList.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    deckList.insertBefore(dragTileEl, ph);
+                }
                 removePlaceholder(deckList);
+                tile.classList.remove('is-dragging-hidden');
+                const newOrder = Array.from(deckList.querySelectorAll('.deck-title')).map(el => el.textContent);
+                await writeOrder('deck', newOrder, scope);
                 dragTileEl = null;
                 dragTileHeight = 0;
             });

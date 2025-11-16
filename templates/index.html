@@ -1441,26 +1441,19 @@
             async function commit() {
                 if (!dragging) return;
                 dragging = false;
+                const ph = container.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    container.insertBefore(dragTileEl, ph);
+                }
+                removePlaceholder(container);
                 tile.classList.remove('is-dragging-hidden');
                 tile.style.touchAction = 'auto';
-                const tiles = Array.from(container.querySelectorAll('.deck-tile'));
-                if (!tiles.length) { removePlaceholder(container); return; }
-                let targetIndex = indexFromFinger(container, fingerY);
-                let current;
+                const newOrder = Array.from(container.querySelectorAll('.deck-title')).map(el => el.textContent);
                 if (type === 'folder') {
-                    current = applyOrder(cachedFolderList.slice(), 'folder').map(f => f.name);
+                    await writeOrder('folder', newOrder);
                 } else {
-                    const scopeKey = scope || 'root';
-                    const sourceList = (selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList).map(d => d.name);
-                    current = applyOrder(sourceList.map(n => ({ name: n })), 'deck', scopeKey).map(x => x.name);
+                    await writeOrder('deck', newOrder, scope || 'root');
                 }
-                const fromIndex = current.indexOf(name);
-                let toIndex = targetIndex;
-                if (toIndex > fromIndex) toIndex--;
-                if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) { removePlaceholder(container); return; }
-                current.splice(toIndex, 0, current.splice(fromIndex, 1)[0]);
-                if (type === 'folder') { await writeOrder('folder', current); renderFolderGrid(); } else { await writeOrder('deck', current, scope || 'root'); renderDeckGrid(); }
-                removePlaceholder(container);
                 dragTileEl = null;
                 dragTileHeight = 0;
             }
@@ -1494,15 +1487,14 @@
                 const target = name;
                 const dragged = draggingFolder;
                 draggingFolder = null;
-                if (!dragged || dragged === target) return;
-                const current = applyOrder(cachedFolderList.slice(), 'folder').map((f) => f.name);
-                const from = current.indexOf(dragged);
-                const to = current.indexOf(target);
-                if (from < 0 || to < 0) return;
-                current.splice(to, 0, current.splice(from, 1)[0]);
-                await writeOrder('folder', current);
-                renderFolderGrid();
+                const ph = folderGrid.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    folderGrid.insertBefore(dragTileEl, ph);
+                }
                 removePlaceholder(folderGrid);
+                tile.classList.remove('is-dragging-hidden');
+                const newOrder = Array.from(folderGrid.querySelectorAll('.deck-title')).map(el => el.textContent);
+                await writeOrder('folder', newOrder);
                 dragTileEl = null;
                 dragTileHeight = 0;
             });
@@ -1527,17 +1519,14 @@
                 const target = name;
                 const dragged = draggingDeck;
                 draggingDeck = null;
-                if (!dragged || dragged === target) return;
-                const scopeKey = scope || 'root';
-                const sourceList = (selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList).map(d => d.name);
-                const ordered = applyOrder(sourceList.map(n => ({ name: n })), 'deck', scopeKey).map(x => x.name);
-                const from = ordered.indexOf(dragged);
-                const to = ordered.indexOf(target);
-                if (from < 0 || to < 0) return;
-                ordered.splice(to, 0, ordered.splice(from, 1)[0]);
-                await writeOrder('deck', ordered, scopeKey);
-                renderDeckGrid();
+                const ph = deckGrid.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    deckGrid.insertBefore(dragTileEl, ph);
+                }
                 removePlaceholder(deckGrid);
+                tile.classList.remove('is-dragging-hidden');
+                const newOrder = Array.from(deckGrid.querySelectorAll('.deck-title')).map(el => el.textContent);
+                await writeOrder('deck', newOrder, scope || 'root');
                 dragTileEl = null;
                 dragTileHeight = 0;
             });
