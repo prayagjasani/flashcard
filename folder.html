@@ -224,6 +224,50 @@
             letter-spacing: -0.01em;
         }
         
+        .study-title {
+            margin: 0 0 12px;
+            text-align: center;
+            font-weight: 400;
+            font-size: 20px;
+        }
+        
+        .study-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .study-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 52px;
+            border-radius: 9999px;
+            border: none;
+            padding: 0 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .study-action--primary {
+            background: #eef0f4;
+            color: var(--text);
+        }
+        
+        .study-action--secondary {
+            background: #eef0f4;
+            color: var(--text);
+        }
+        
+        .study-action__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            font-size: 20px;
+            line-height: 1;
+        }
+        
         .modal__actions {
             display: flex;
             flex-direction: row;
@@ -333,11 +377,20 @@
         <div class="modal__backdrop" data-close="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
             <button id="chooseActionCloseBtn" class="modal__close" type="button">×</button>
-            <h2 id="chooseActionTitle" class="modal__title">Open Deck</h2>
-            <div class="modal__actions">
-                <button class="btn btn--pill" id="openLearnBtn" type="button">Learn</button>
-                <button class="btn btn--pill" id="openFlashBtn" type="button">Flashcard</button>
-                <button class="btn btn--pill" id="openMoveBtn" type="button">Move</button>
+            <h2 id="chooseActionTitle" class="study-title">Open Deck</h2>
+            <div class="study-actions">
+                <button id="openLearnBtn" class="study-action study-action--primary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">school</span>
+                    <span>Learn</span>
+                </button>
+                <button id="openFlashBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">style</span>
+                    <span>Flashcard</span>
+                </button>
+                <button id="openMoveBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">drive_file_move</span>
+                    <span>Move</span>
+                </button>
             </div>
         </div>
     </div>
