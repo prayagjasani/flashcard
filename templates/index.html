@@ -1332,6 +1332,88 @@
             return arr;
         }
 
+        function orderKey(type, scope) {
+            return type === 'folder' ? 'order:folders' : `order:deck:${scope || 'root'}`;
+        }
+        function readOrder(type, scope) {
+            try {
+                const raw = localStorage.getItem(orderKey(type, scope));
+                const arr = raw ? JSON.parse(raw) : [];
+                return Array.isArray(arr) ? arr : [];
+            } catch {
+                return [];
+            }
+        }
+        function writeOrder(type, names, scope) {
+            try {
+                localStorage.setItem(orderKey(type, scope), JSON.stringify(names));
+            } catch {}
+        }
+        function applyOrder(list, type, scope) {
+            const saved = readOrder(type, scope);
+            if (!Array.isArray(saved) || !saved.length) return list.slice();
+            const indexByName = new Map(list.map((x, i) => [x.name, i]));
+            const ordered = [];
+            saved.forEach((n) => {
+                const idx = indexByName.get(n);
+                if (idx !== undefined) ordered.push(list[idx]);
+            });
+            list.forEach((x) => {
+                if (!saved.includes(x.name)) ordered.push(x);
+            });
+            return ordered;
+        }
+        let draggingFolder = null;
+        let draggingDeck = null;
+        function attachFolderDnD(tile, name) {
+            tile.setAttribute('draggable', 'true');
+            tile.addEventListener('dragstart', (e) => {
+                draggingFolder = name;
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            tile.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            tile.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const target = name;
+                const dragged = draggingFolder;
+                draggingFolder = null;
+                if (!dragged || dragged === target) return;
+                const current = applyOrder(cachedFolderList.slice(), 'folder').map((f) => f.name);
+                const from = current.indexOf(dragged);
+                const to = current.indexOf(target);
+                if (from < 0 || to < 0) return;
+                current.splice(to, 0, current.splice(from, 1)[0]);
+                writeOrder('folder', current);
+                renderFolderGrid();
+            });
+        }
+        function attachDeckDnD(tile, name, scope) {
+            tile.setAttribute('draggable', 'true');
+            tile.addEventListener('dragstart', (e) => {
+                draggingDeck = name;
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            tile.addEventListener('dragover', (e) => { e.preventDefault(); });
+            tile.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const target = name;
+                const dragged = draggingDeck;
+                draggingDeck = null;
+                if (!dragged || dragged === target) return;
+                const scopeKey = scope || 'root';
+                const sourceList = (selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList).map(d => d.name);
+                const ordered = applyOrder(sourceList.map(n => ({ name: n })), 'deck', scopeKey).map(x => x.name);
+                const from = ordered.indexOf(dragged);
+                const to = ordered.indexOf(target);
+                if (from < 0 || to < 0) return;
+                ordered.splice(to, 0, ordered.splice(from, 1)[0]);
+                writeOrder('deck', ordered, scopeKey);
+                renderDeckGrid();
+            });
+        }
+
         function closeKebabMenus() {
             document.querySelectorAll('.kebab-menu').forEach(el => {
                 el.classList.remove('is-open');
@@ -1651,8 +1733,9 @@
             if (!deckGrid) return;
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
-            const list = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
-            list.forEach((d, i) => {
+            const base = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
+            const ordered = applyOrder(base, 'deck', selectedFolder || 'root');
+            ordered.forEach((d, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
                 wrap.style.animationDelay = `${i * 40}ms`;
@@ -1667,6 +1750,7 @@
                     chooseActionModal.classList.add('is-open');
                     chooseActionModal.setAttribute('aria-hidden', 'false');
                 });
+                attachDeckDnD(wrap, d.name, selectedFolder || 'root');
                 deckGrid.appendChild(wrap);
             });
         }
@@ -1685,17 +1769,8 @@
         function renderFolderGrid() {
             if (!folderGrid) return;
             folderGrid.innerHTML = '';
-            const base = cachedFolderList.length ? cachedFolderList.slice() : [{
-                name: 'Uncategorized',
-                count: 0
-            }];
-            const ordered = base.filter(f => f && f.name !== 'Uncategorized');
-            let unc = base.find(f => f && f.name === 'Uncategorized');
-            if (!unc) unc = {
-                name: 'Uncategorized',
-                count: 0
-            };
-            ordered.push(unc);
+            const base = cachedFolderList.length ? cachedFolderList.slice() : [{ name: 'Uncategorized', count: 0 }];
+            const ordered = applyOrder(base, 'folder');
             ordered.forEach((f, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
@@ -1745,6 +1820,7 @@
                     wrap.appendChild(kebab);
                     wrap.appendChild(menu);
                 }
+                attachFolderDnD(wrap, f.name);
                 folderGrid.appendChild(wrap);
             });
         }
