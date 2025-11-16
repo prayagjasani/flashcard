@@ -1332,35 +1332,39 @@
             return arr;
         }
 
-        function orderKey(type, scope) {
-            return type === 'folder' ? 'order:folders' : `order:deck:${scope || 'root'}`;
-        }
-        function readOrder(type, scope) {
-            try {
-                const raw = localStorage.getItem(orderKey(type, scope));
-                const arr = raw ? JSON.parse(raw) : [];
-                return Array.isArray(arr) ? arr : [];
-            } catch {
-                return [];
+        const ordersCache = { folders: [], decks: {} };
+        async function writeOrder(type, names, scope) {
+            if (type === 'folder') {
+                const resp = await fetch('/order/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: names }) });
+                if (resp.ok) ordersCache.folders = Array.isArray(names) ? names.slice() : [];
+            } else {
+                const key = scope || 'root';
+                const resp = await fetch('/order/decks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: key, order: names }) });
+                if (resp.ok) ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
             }
         }
-        function writeOrder(type, names, scope) {
+        async function refreshFolderOrder() {
             try {
-                localStorage.setItem(orderKey(type, scope), JSON.stringify(names));
-            } catch {}
+                const resp = await fetch('/order/folders');
+                const arr = await resp.json().catch(() => []);
+                ordersCache.folders = Array.isArray(arr) ? arr : [];
+            } catch { ordersCache.folders = []; }
+        }
+        async function refreshDeckOrder(scope) {
+            const key = scope || 'root';
+            try {
+                const resp = await fetch(`/order/decks?scope=${encodeURIComponent(key)}`);
+                const arr = await resp.json().catch(() => []);
+                ordersCache.decks[key] = Array.isArray(arr) ? arr : [];
+            } catch { ordersCache.decks[key] = []; }
         }
         function applyOrder(list, type, scope) {
-            const saved = readOrder(type, scope);
+            const saved = type === 'folder' ? ordersCache.folders : (ordersCache.decks[scope || 'root'] || []);
             if (!Array.isArray(saved) || !saved.length) return list.slice();
             const indexByName = new Map(list.map((x, i) => [x.name, i]));
             const ordered = [];
-            saved.forEach((n) => {
-                const idx = indexByName.get(n);
-                if (idx !== undefined) ordered.push(list[idx]);
-            });
-            list.forEach((x) => {
-                if (!saved.includes(x.name)) ordered.push(x);
-            });
+            saved.forEach((n) => { const idx = indexByName.get(n); if (idx !== undefined) ordered.push(list[idx]); });
+            list.forEach((x) => { if (!saved.includes(x.name)) ordered.push(x); });
             return ordered;
         }
         let draggingFolder = null;
@@ -1374,7 +1378,7 @@
             tile.addEventListener('dragover', (e) => {
                 e.preventDefault();
             });
-            tile.addEventListener('drop', (e) => {
+            tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const target = name;
                 const dragged = draggingFolder;
@@ -1385,7 +1389,7 @@
                 const to = current.indexOf(target);
                 if (from < 0 || to < 0) return;
                 current.splice(to, 0, current.splice(from, 1)[0]);
-                writeOrder('folder', current);
+                await writeOrder('folder', current);
                 renderFolderGrid();
             });
         }
@@ -1396,7 +1400,7 @@
                 e.dataTransfer.effectAllowed = 'move';
             });
             tile.addEventListener('dragover', (e) => { e.preventDefault(); });
-            tile.addEventListener('drop', (e) => {
+            tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const target = name;
                 const dragged = draggingDeck;
@@ -1409,7 +1413,7 @@
                 const to = ordered.indexOf(target);
                 if (from < 0 || to < 0) return;
                 ordered.splice(to, 0, ordered.splice(from, 1)[0]);
-                writeOrder('deck', ordered, scopeKey);
+                await writeOrder('deck', ordered, scopeKey);
                 renderDeckGrid();
             });
         }
@@ -1729,11 +1733,12 @@
             }
         }
 
-        function renderDeckGrid() {
+        async function renderDeckGrid() {
             if (!deckGrid) return;
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
             const base = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
+            await refreshDeckOrder(selectedFolder || 'root');
             const ordered = applyOrder(base, 'deck', selectedFolder || 'root');
             ordered.forEach((d, i) => {
                 const wrap = document.createElement('div');
@@ -1762,6 +1767,7 @@
                     folders: []
                 }));
                 cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
+                await refreshFolderOrder();
                 renderFolderGrid();
             } catch {}
         }

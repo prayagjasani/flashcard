@@ -422,17 +422,27 @@
         const moveDeckStatus = document.getElementById('moveDeckStatus');
         let selectedDeckForAction = '';
 
-        function orderKey(type, scope) { return type === 'folder' ? 'order:folders' : `order:deck:${scope || 'root'}`; }
-        function readOrder(type, scope) {
-            try {
-                const raw = localStorage.getItem(orderKey(type, scope));
-                const arr = raw ? JSON.parse(raw) : [];
-                return Array.isArray(arr) ? arr : [];
-            } catch { return []; }
+        const ordersCache = { folders: [], decks: {} };
+        async function writeOrder(type, names, scope) {
+            if (type === 'folder') {
+                const resp = await fetch('/order/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: names }) });
+                if (resp.ok) ordersCache.folders = Array.isArray(names) ? names.slice() : [];
+            } else {
+                const key = scope || 'root';
+                const resp = await fetch('/order/decks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: key, order: names }) });
+                if (resp.ok) ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
+            }
         }
-        function writeOrder(type, names, scope) { try { localStorage.setItem(orderKey(type, scope), JSON.stringify(names)); } catch {} }
+        async function refreshDeckOrder(scope) {
+            const key = scope || 'root';
+            try {
+                const resp = await fetch(`/order/decks?scope=${encodeURIComponent(key)}`);
+                const arr = await resp.json().catch(() => []);
+                ordersCache.decks[key] = Array.isArray(arr) ? arr : [];
+            } catch { ordersCache.decks[key] = []; }
+        }
         function applyOrder(list, type, scope) {
-            const saved = readOrder(type, scope);
+            const saved = type === 'folder' ? ordersCache.folders : (ordersCache.decks[scope || 'root'] || []);
             if (!Array.isArray(saved) || !saved.length) return list.slice();
             const indexByName = new Map(list.map((x, i) => [x.name, i]));
             const ordered = [];
@@ -445,7 +455,7 @@
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => { draggingDeck = name; e.dataTransfer.effectAllowed = 'move'; });
             tile.addEventListener('dragover', (e) => { e.preventDefault(); });
-            tile.addEventListener('drop', (e) => {
+            tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const target = name; const dragged = draggingDeck; draggingDeck = null; if (!dragged || dragged === target) return;
                 const sourceNames = Array.from(deckList.querySelectorAll('.deck-title')).map(el => el.textContent);
@@ -453,8 +463,8 @@
                 const from = ordered.indexOf(dragged); const to = ordered.indexOf(target);
                 if (from < 0 || to < 0) return;
                 ordered.splice(to, 0, ordered.splice(from, 1)[0]);
-                writeOrder('deck', ordered, scope);
-                renderList(ordered.map(n => ({ name: n, folder })));
+                await writeOrder('deck', ordered, scope);
+                renderList(ordered.map(n => ({ name: n, folder }))); 
             });
         }
 
@@ -481,6 +491,7 @@
                 const data = resp.ok ? await resp.json() : [];
             const all = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
             const list = all.filter(d => ((d.folder || 'Uncategorized') === folder));
+            await refreshDeckOrder(folder);
             const ordered = applyOrder(list, 'deck', folder);
             renderList(ordered);
             } catch {

@@ -81,6 +81,11 @@ class FolderDelete(BaseModel):
 class DeckMove(BaseModel):
     name: str
     folder: str | None = None
+class FolderOrderUpdate(BaseModel):
+    order: list[str]
+class DeckOrderUpdate(BaseModel):
+    scope: str | None = None
+    order: list[str]
 
 # -------------------------------
 # HELPER FUNCTIONS
@@ -95,6 +100,13 @@ def _safe_tts_key(text: str, lang: str = "de") -> str:
     if not safe:
         safe = "tts"
     return f"{R2_BUCKET_NAME}/tts/{lang}/{safe}.mp3"
+
+def _order_folders_key() -> str:
+    return f"{R2_BUCKET_NAME}/order/folders.json"
+
+def _order_decks_key(scope: str | None) -> str:
+    s = _safe_deck_name(scope or "root") or "root"
+    return f"{R2_BUCKET_NAME}/order/decks/{s}.json"
 
 # -------------------------------
 # BASIC ROUTES
@@ -627,8 +639,21 @@ def get_folders():
     for f in extra:
         names.add(f)
         counts.setdefault(f, 0)
-    out = sorted([{"name": n, "count": counts.get(n, 0)} for n in names], key=lambda x: x["name"].lower())
-    return {"folders": out}
+    base = [{"name": n, "count": counts.get(n, 0)} for n in names]
+    ordered = base
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key())
+        data = obj["Body"].read().decode("utf-8")
+        arr = json.loads(data)
+        if isinstance(arr, list):
+            name_to_item = {x["name"]: x for x in base}
+            ordered = [name_to_item[n] for n in arr if n in name_to_item]
+            for x in base:
+                if x["name"] not in arr:
+                    ordered.append(x)
+    except Exception:
+        ordered = sorted(base, key=lambda x: x["name"].lower())
+    return {"folders": ordered}
 
 @app.post("/folder/create")
 def folder_create(payload: FolderCreate):
@@ -675,6 +700,25 @@ def folder_rename(payload: FolderRename):
     if new not in items:
         items.append(new)
     r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+    # Update folders order list if present
+    try:
+        ok = False
+        okey = _order_folders_key()
+        oitems = []
+        try:
+            oobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=okey)
+            odata = oobj["Body"].read().decode("utf-8")
+            parsed_o = json.loads(odata)
+            if isinstance(parsed_o, list):
+                oitems = parsed_o
+        except Exception:
+            pass
+        if old in oitems:
+            oitems = [new if x == old else x for x in oitems]
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=okey, Body=json.dumps(oitems).encode("utf-8"), ContentType="application/json")
+            ok = True
+    except Exception:
+        pass
     idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
     try:
         idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=idx_key)
@@ -704,7 +748,24 @@ def folder_delete(payload: FolderDelete):
         parsed = json.loads(data)
         if isinstance(parsed, list):
             items = [x for x in parsed if x != name]
-            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+    except Exception:
+        pass
+    # Remove from folders order if present
+    try:
+        okey = _order_folders_key()
+        oitems = []
+        try:
+            oobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=okey)
+            odata = oobj["Body"].read().decode("utf-8")
+            parsed_o = json.loads(odata)
+            if isinstance(parsed_o, list):
+                oitems = parsed_o
+        except Exception:
+            pass
+        if name in oitems:
+            oitems = [x for x in oitems if x != name]
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=okey, Body=json.dumps(oitems).encode("utf-8"), ContentType="application/json")
     except Exception:
         pass
     idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
@@ -735,13 +796,46 @@ def deck_move(payload: DeckMove):
         idx_data = idx_obj["Body"].read().decode("utf-8")
         parsed = json.loads(idx_data)
         if isinstance(parsed, list):
+            prev_folder = None
             for d in parsed:
                 if isinstance(d, dict) and d.get("name") == name:
+                    prev_folder = d.get("folder") or None
                     if folder:
                         d["folder"] = folder
                     else:
                         d.pop("folder", None)
             r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
+            # Update deck order lists: remove from previous, append to target
+            try:
+                if prev_folder:
+                    pkey = _order_decks_key(prev_folder)
+                    plist = []
+                    try:
+                        pobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=pkey)
+                        pdata = pobj["Body"].read().decode("utf-8")
+                        parsed_p = json.loads(pdata)
+                        if isinstance(parsed_p, list):
+                            plist = parsed_p
+                    except Exception:
+                        pass
+                    if name in plist:
+                        plist = [x for x in plist if x != name]
+                        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=pkey, Body=json.dumps(plist).encode("utf-8"), ContentType="application/json")
+                tkey = _order_decks_key(folder or "root")
+                tlist = []
+                try:
+                    tobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=tkey)
+                    tdata = tobj["Body"].read().decode("utf-8")
+                    parsed_t = json.loads(tdata)
+                    if isinstance(parsed_t, list):
+                        tlist = parsed_t
+                except Exception:
+                    pass
+                if name not in tlist:
+                    tlist.append(name)
+                    r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=tkey, Body=json.dumps(tlist).encode("utf-8"), ContentType="application/json")
+            except Exception:
+                pass
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"ok": True, "name": name, "folder": folder or None}
@@ -1004,6 +1098,70 @@ def audio_rebuild(req: AudioRebuildRequest):
             ContentType="audio/mpeg",
         )
         return {"ok": True, "key": key, "url": f"/r2/get?key={key}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# -------------------------------
+# ORDER ROUTES
+# -------------------------------
+@app.get("/order/folders")
+def order_folders_get():
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key())
+        data = obj["Body"].read().decode("utf-8")
+        arr = json.loads(data)
+        if isinstance(arr, list):
+            return arr
+        return []
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return []
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/order/folders")
+def order_folders_set(payload: FolderOrderUpdate):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    names = [ _safe_deck_name(x) for x in (payload.order or []) if _safe_deck_name(x) ]
+    try:
+        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key(), Body=json.dumps(names).encode("utf-8"), ContentType="application/json")
+        return {"ok": True, "order": names}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/order/decks")
+def order_decks_get(scope: str | None = None):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_decks_key(scope))
+        data = obj["Body"].read().decode("utf-8")
+        arr = json.loads(data)
+        if isinstance(arr, list):
+            return arr
+        return []
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return []
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/order/decks")
+def order_decks_set(payload: DeckOrderUpdate):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    scope = _safe_deck_name((payload.scope or "root")) or "root"
+    names = [ _safe_deck_name(x) for x in (payload.order or []) if _safe_deck_name(x) ]
+    try:
+        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=_order_decks_key(scope), Body=json.dumps(names).encode("utf-8"), ContentType="application/json")
+        return {"ok": True, "scope": scope, "order": names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
