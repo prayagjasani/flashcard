@@ -1322,6 +1322,16 @@
         const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
 
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const t = arr[i];
+                arr[i] = arr[j];
+                arr[j] = t;
+            }
+            return arr;
+        }
+
         function closeKebabMenus() {
             document.querySelectorAll('.kebab-menu').forEach(el => {
                 el.classList.remove('is-open');
@@ -1376,27 +1386,21 @@
             }
         }
 
-        // Initialize auto-play state from localStorage
+        // Initialize auto-play state: default OFF and persist as off
         function initAutoPlayState() {
+            isAutoPlayEnabled = false;
             try {
-                const saved = localStorage.getItem('autoPlayEnabled') === 'true';
-                isAutoPlayEnabled = saved;
-            } catch (e) {
-                isAutoPlayEnabled = false;
-            }
+                localStorage.setItem('autoPlayEnabled', 'false');
+            } catch {}
             updateAutoPlayToggle();
         }
 
         // Auto-play toggle event listener
         autoPlayToggle.addEventListener('click', () => {
             isAutoPlayEnabled = !isAutoPlayEnabled;
-
             try {
                 localStorage.setItem('autoPlayEnabled', String(isAutoPlayEnabled));
-            } catch (e) {
-                console.warn('Could not save auto-play preference:', e);
-            }
-
+            } catch {}
             updateAutoPlayToggle();
         });
 
@@ -1487,7 +1491,11 @@
         });
 
         async function loadWordsForDeck(deckName) {
-            showLoader();
+            isAutoPlayEnabled = false;
+            try {
+                localStorage.setItem('autoPlayEnabled', 'false');
+            } catch {}
+            updateAutoPlayToggle();
             const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
             let data = [];
             try {
@@ -1502,6 +1510,7 @@
             }
             originalWords = Array.isArray(data) ? data : [];
             words = originalWords.slice();
+            shuffle(words);
             getNewCard();
             if (deckName) {
                 try {
@@ -1509,21 +1518,17 @@
                 } catch {}
             }
 
-            // Preload audio for all words in the deck
             clearDeckPreloads();
             preloadDeckAudio(deckName);
-            hideLoader();
         }
 
         async function preloadDeckAudio(deckName) {
             try {
                 const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deckName)}`);
                 const data = await resp.json();
-
-                // Store object URLs in cache and prefetch bytes via same-origin proxy
                 if (data && data.audio_urls) {
                     const entries = Object.entries(data.audio_urls);
-                    for (const [text, url] of entries) {
+                    const tasks = entries.map(([text, url]) => (async() => {
                         try {
                             const resp2 = await fetch(url);
                             if (resp2.ok) {
@@ -1540,18 +1545,17 @@
                                 try {
                                     localStorage.setItem(`audio:de:${text}`, String(base64));
                                 } catch {}
+                            } else {
+                                audioCache.set(text, url);
                             }
                         } catch (err) {
-                            // If prefetch fails, keep the same-origin URL as fallback
                             audioCache.set(text, url);
                         }
-                    }
-                    console.log(`Prefetching ${entries.length} audio files for deck ${deckName}`);
-                    console.log('Preloaded audio URL map:', data.audio_urls);
+                    })());
+                    await Promise.allSettled(tasks);
                 }
             } catch (e) {
                 console.error('Error preloading audio:', e);
-                // Continue without preloaded audio - will fall back to on-demand loading
             }
         }
 
@@ -2099,6 +2103,7 @@
 
         resetBtn.addEventListener('click', () => {
             words = Array.isArray(originalWords) ? originalWords.slice() : [];
+            shuffle(words);
             getNewCard();
         });
 
@@ -2207,6 +2212,11 @@
         deckSelect.addEventListener('change', (e) => {
             const name = e.target.value;
             if (!name) return;
+            isAutoPlayEnabled = false;
+            try {
+                localStorage.setItem('autoPlayEnabled', 'false');
+            } catch {}
+            updateAutoPlayToggle();
             loadWordsForDeck(name);
         });
 
@@ -2259,6 +2269,11 @@
         }
 
         async function loadWordsForDecks(deckNames) {
+            isAutoPlayEnabled = false;
+            try {
+                localStorage.setItem('autoPlayEnabled', 'false');
+            } catch {}
+            updateAutoPlayToggle();
             const names = Array.isArray(deckNames) ? deckNames.filter(Boolean) : [];
             if (!names.length) return;
             try {
@@ -2267,12 +2282,10 @@
                 const combined = ([]).concat(...lists);
                 originalWords = Array.isArray(combined) ? combined : [];
                 words = originalWords.slice();
+                shuffle(words);
                 getNewCard();
-                // preload audio for each deck
                 clearDeckPreloads();
-                for (const n of names) {
-                    preloadDeckAudio(n);
-                }
+                names.forEach((n) => preloadDeckAudio(n));
             } catch {
                 originalWords = [];
                 words = [];

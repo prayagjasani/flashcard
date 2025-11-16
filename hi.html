@@ -267,8 +267,8 @@
                 const data = await resp.json();
                 if (data && data.audio_urls) {
                     const entries = Object.entries(data.audio_urls);
-                    for (const [text, url] of entries) {
-                        if (localStorage.getItem(`audio:de:${text}`)) continue;
+                    const tasks = entries.map(([text, url]) => (async() => {
+                        if (localStorage.getItem(`audio:de:${text}`)) return;
                         try {
                             const r2 = await fetch(url);
                             if (r2.ok) {
@@ -285,7 +285,8 @@
                                 audioCache.set(text, String(base64));
                             }
                         } catch {}
-                    }
+                    })());
+                    await Promise.allSettled(tasks);
                 }
             } catch {}
         }
