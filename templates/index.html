@@ -1369,14 +1369,109 @@
         }
         let draggingFolder = null;
         let draggingDeck = null;
+        const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
+        function ensurePlaceholder(container) {
+            if (!container) return null;
+            let ph = container.querySelector('.drop-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'drop-placeholder';
+                ph.style.height = '48px';
+                ph.style.margin = '8px 0';
+                ph.style.border = '2px dashed var(--text-secondary)';
+                ph.style.borderRadius = '12px';
+                ph.style.background = '#eef0f4';
+            }
+            if (!ph.parentElement) container.appendChild(ph);
+            return ph;
+        }
+        function removePlaceholder(container) { const ph = container ? container.querySelector('.drop-placeholder') : null; if (ph && ph.parentElement) ph.parentElement.removeChild(ph); }
+        function placePlaceholder(container, index) {
+            if (!container) return;
+            const tiles = Array.from(container.querySelectorAll('.deck-tile'));
+            const ph = ensurePlaceholder(container);
+            if (!tiles.length) return;
+            const clamped = Math.max(0, Math.min(index, tiles.length));
+            if (clamped >= tiles.length) container.appendChild(ph);
+            else container.insertBefore(ph, tiles[clamped]);
+        }
+        function indexFromFinger(container, fingerY) {
+            const tiles = Array.from(container.querySelectorAll('.deck-tile'));
+            for (let i = 0; i < tiles.length; i++) {
+                const r = tiles[i].getBoundingClientRect();
+                const mid = r.top + r.height / 2;
+                if (fingerY < mid) return i;
+            }
+            return tiles.length;
+        }
+        function attachTouchDnD(tile, name, type, scope, container) {
+            if (!isCoarsePointer) return;
+            let dragging = false;
+            let pressTimer = null;
+            let fingerY = 0;
+            let startY = 0;
+            const LONG_PRESS_MS = 2000;
+            const MOVE_CANCEL_PX = 10;
+            function start(y) {
+                startY = y;
+                pressTimer = setTimeout(() => {
+                    dragging = true;
+                    tile.style.opacity = '0.9';
+                    tile.style.transform = 'scale(1.02)';
+                    tile.style.transition = 'transform 100ms ease';
+                    tile.style.touchAction = 'none';
+                    const tiles = Array.from(container.querySelectorAll('.deck-tile'));
+                    const idx = tiles.indexOf(tile);
+                    placePlaceholder(container, idx < 0 ? 0 : idx);
+                }, LONG_PRESS_MS);
+            }
+            function clearPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+            async function commit() {
+                if (!dragging) return;
+                dragging = false;
+                tile.style.opacity = '';
+                tile.style.transform = '';
+                tile.style.touchAction = 'auto';
+                const tiles = Array.from(container.querySelectorAll('.deck-tile'));
+                if (!tiles.length) { removePlaceholder(container); return; }
+                let targetIndex = indexFromFinger(container, fingerY);
+                let current;
+                if (type === 'folder') {
+                    current = applyOrder(cachedFolderList.slice(), 'folder').map(f => f.name);
+                } else {
+                    const scopeKey = scope || 'root';
+                    const sourceList = (selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList).map(d => d.name);
+                    current = applyOrder(sourceList.map(n => ({ name: n })), 'deck', scopeKey).map(x => x.name);
+                }
+                const fromIndex = current.indexOf(name);
+                let toIndex = targetIndex;
+                if (toIndex > fromIndex) toIndex--;
+                if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) { removePlaceholder(container); return; }
+                current.splice(toIndex, 0, current.splice(fromIndex, 1)[0]);
+                if (type === 'folder') { await writeOrder('folder', current); renderFolderGrid(); } else { await writeOrder('deck', current, scope || 'root'); renderDeckGrid(); }
+                removePlaceholder(container);
+            }
+            tile.style.touchAction = 'auto';
+            tile.style.userSelect = 'none';
+            tile.addEventListener('touchstart', (e) => { const t = e.touches && e.touches[0]; if (!t) return; start(t.clientY); }, { passive: true });
+            tile.addEventListener('touchmove', (e) => { const t = e.touches && e.touches[0]; if (!t) return; fingerY = t.clientY; if (!dragging) { if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) { clearPress(); } return; } e.preventDefault(); const idx = indexFromFinger(container, fingerY); placePlaceholder(container, idx); }, { passive: false });
+            tile.addEventListener('touchend', () => { clearPress(); commit(); });
+            tile.addEventListener('touchcancel', () => { clearPress(); dragging = false; tile.style.opacity = ''; tile.style.transform = ''; tile.style.touchAction = 'auto'; removePlaceholder(container); });
+        }
         function attachFolderDnD(tile, name) {
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
                 draggingFolder = name;
                 e.dataTransfer.effectAllowed = 'move';
+                const tiles = Array.from(folderGrid.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(folderGrid, idx < 0 ? 0 : idx);
             });
             tile.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                const tiles = Array.from(folderGrid.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(folderGrid, idx < 0 ? 0 : idx);
             });
             tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
@@ -1391,15 +1486,21 @@
                 current.splice(to, 0, current.splice(from, 1)[0]);
                 await writeOrder('folder', current);
                 renderFolderGrid();
+                removePlaceholder(folderGrid);
             });
+            tile.addEventListener('dragend', () => { removePlaceholder(folderGrid); });
+            attachTouchDnD(tile, name, 'folder', null, folderGrid);
         }
         function attachDeckDnD(tile, name, scope) {
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
                 draggingDeck = name;
                 e.dataTransfer.effectAllowed = 'move';
+                const tiles = Array.from(deckGrid.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(deckGrid, idx < 0 ? 0 : idx);
             });
-            tile.addEventListener('dragover', (e) => { e.preventDefault(); });
+            tile.addEventListener('dragover', (e) => { e.preventDefault(); const tiles = Array.from(deckGrid.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckGrid, idx < 0 ? 0 : idx); });
             tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const target = name;
@@ -1415,7 +1516,10 @@
                 ordered.splice(to, 0, ordered.splice(from, 1)[0]);
                 await writeOrder('deck', ordered, scopeKey);
                 renderDeckGrid();
+                removePlaceholder(deckGrid);
             });
+            tile.addEventListener('dragend', () => { removePlaceholder(deckGrid); });
+            attachTouchDnD(tile, name, 'deck', scope, deckGrid);
         }
 
         function closeKebabMenus() {
