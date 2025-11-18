@@ -1975,9 +1975,7 @@
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
             const base = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
-            if (selectedFolder) {
-                await refreshDeckOrder(selectedFolder);
-            }
+            await refreshDeckOrder(selectedFolder || 'root');
             const ordered = applyOrder(base, 'deck', selectedFolder || 'root');
             ordered.forEach((d, i) => {
                 const wrap = document.createElement('div');

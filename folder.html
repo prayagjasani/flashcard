@@ -357,6 +357,7 @@
         .modal--multi .modal__actions {
             gap: 12px;
         }
+        
         .is-dragging-hidden {
             position: absolute !important;
             width: 0 !important;
@@ -436,14 +437,34 @@
         const moveDeckStatus = document.getElementById('moveDeckStatus');
         let selectedDeckForAction = '';
 
-        const ordersCache = { folders: [], decks: {} };
+        const ordersCache = {
+            folders: [],
+            decks: {}
+        };
         async function writeOrder(type, names, scope) {
             if (type === 'folder') {
-                const resp = await fetch('/order/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: names }) });
+                const resp = await fetch('/order/folders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order: names
+                    })
+                });
                 if (resp.ok) ordersCache.folders = Array.isArray(names) ? names.slice() : [];
             } else {
                 const key = scope || 'root';
-                const resp = await fetch('/order/decks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: key, order: names }) });
+                const resp = await fetch('/order/decks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        scope: key,
+                        order: names
+                    })
+                });
                 if (resp.ok) ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
             }
         }
@@ -453,21 +474,30 @@
                 const resp = await fetch(`/order/decks?scope=${encodeURIComponent(key)}`);
                 const arr = await resp.json().catch(() => []);
                 ordersCache.decks[key] = Array.isArray(arr) ? arr : [];
-            } catch { ordersCache.decks[key] = []; }
+            } catch {
+                ordersCache.decks[key] = [];
+            }
         }
+
         function applyOrder(list, type, scope) {
             const saved = type === 'folder' ? ordersCache.folders : (ordersCache.decks[scope || 'root'] || []);
             if (!Array.isArray(saved) || !saved.length) return list.slice();
             const indexByName = new Map(list.map((x, i) => [x.name, i]));
             const ordered = [];
-            saved.forEach((n) => { const idx = indexByName.get(n); if (idx !== undefined) ordered.push(list[idx]); });
-            list.forEach((x) => { if (!saved.includes(x.name)) ordered.push(x); });
+            saved.forEach((n) => {
+                const idx = indexByName.get(n);
+                if (idx !== undefined) ordered.push(list[idx]);
+            });
+            list.forEach((x) => {
+                if (!saved.includes(x.name)) ordered.push(x);
+            });
             return ordered;
         }
         let draggingDeck = null;
         let dragTileEl = null;
         let dragTileHeight = 0;
         const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
+
         function ensurePlaceholder(container) {
             if (!container) return null;
             let ph = container.querySelector('.drop-placeholder');
@@ -479,12 +509,26 @@
                 ph.style.border = '2px dashed var(--text-secondary)';
                 ph.style.borderRadius = '12px';
                 ph.style.background = '#eef0f4';
+            } {
+                let __h = dragTileHeight || 48;
+                if (!__h) {
+                    const __src = container.querySelector('.deck-tile');
+                    if (__src) {
+                        const __r = __src.getBoundingClientRect();
+                        __h = Math.max(40, Math.round(__r.height));
+                    }
+                }
+                ph.style.height = __h + 'px';
             }
-            { let __h = dragTileHeight || 48; if (!__h) { const __src = container.querySelector('.deck-tile'); if (__src) { const __r = __src.getBoundingClientRect(); __h = Math.max(40, Math.round(__r.height)); } } ph.style.height = __h + 'px'; }
             if (!ph.parentElement) container.appendChild(ph);
             return ph;
         }
-        function removePlaceholder(container) { const ph = container ? container.querySelector('.drop-placeholder') : null; if (ph && ph.parentElement) ph.parentElement.removeChild(ph); }
+
+        function removePlaceholder(container) {
+            const ph = container ? container.querySelector('.drop-placeholder') : null;
+            if (ph && ph.parentElement) ph.parentElement.removeChild(ph);
+        }
+
         function placePlaceholder(container, index) {
             if (!container) return;
             const tiles = Array.from(container.querySelectorAll('.deck-tile'));
@@ -494,6 +538,7 @@
             if (clamped >= tiles.length) container.appendChild(ph);
             else container.insertBefore(ph, tiles[clamped]);
         }
+
         function indexFromFinger(container, fingerY) {
             const tiles = Array.from(container.querySelectorAll('.deck-tile'));
             for (let i = 0; i < tiles.length; i++) {
@@ -503,6 +548,7 @@
             }
             return tiles.length;
         }
+
         function attachTouchDnD(tile, name, scope, container) {
             if (!isCoarsePointer) return;
             let dragging = false;
@@ -511,6 +557,7 @@
             let startY = 0;
             const LONG_PRESS_MS = 2000;
             const MOVE_CANCEL_PX = 10;
+
             function start(y) {
                 startY = y;
                 pressTimer = setTimeout(() => {
@@ -524,7 +571,13 @@
                     placePlaceholder(container, idx < 0 ? 0 : idx);
                 }, LONG_PRESS_MS);
             }
-            function clearPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+            function clearPress() {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            }
             async function commit() {
                 if (!dragging) return;
                 dragging = false;
@@ -542,18 +595,67 @@
             }
             tile.style.touchAction = 'auto';
             tile.style.userSelect = 'none';
-            tile.addEventListener('touchstart', (e) => { const t = e.touches && e.touches[0]; if (!t) return; start(t.clientY); }, { passive: true });
-            tile.addEventListener('touchmove', (e) => { const t = e.touches && e.touches[0]; if (!t) return; fingerY = t.clientY; if (!dragging) { if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) { clearPress(); } return; } e.preventDefault(); const idx = indexFromFinger(container, fingerY); placePlaceholder(container, idx); }, { passive: false });
-            tile.addEventListener('touchend', () => { clearPress(); commit(); });
-            tile.addEventListener('touchcancel', () => { clearPress(); dragging = false; tile.classList.remove('is-dragging-hidden'); tile.style.touchAction = 'auto'; removePlaceholder(container); dragTileEl = null; dragTileHeight = 0; });
+            tile.addEventListener('touchstart', (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                start(t.clientY);
+            }, {
+                passive: true
+            });
+            tile.addEventListener('touchmove', (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                fingerY = t.clientY;
+                if (!dragging) {
+                    if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) {
+                        clearPress();
+                    }
+                    return;
+                }
+                e.preventDefault();
+                const idx = indexFromFinger(container, fingerY);
+                placePlaceholder(container, idx);
+            }, {
+                passive: false
+            });
+            tile.addEventListener('touchend', () => {
+                clearPress();
+                commit();
+            });
+            tile.addEventListener('touchcancel', () => {
+                clearPress();
+                dragging = false;
+                tile.classList.remove('is-dragging-hidden');
+                tile.style.touchAction = 'auto';
+                removePlaceholder(container);
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
         }
+
         function attachDeckDnD(tile, name, scope) {
             tile.setAttribute('draggable', 'true');
-            tile.addEventListener('dragstart', (e) => { draggingDeck = name; e.dataTransfer.effectAllowed = 'move'; dragTileEl = tile; dragTileHeight = Math.round(tile.getBoundingClientRect().height); tile.classList.add('is-dragging-hidden'); const tiles = Array.from(deckList.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckList, idx < 0 ? 0 : idx); });
-            tile.addEventListener('dragover', (e) => { e.preventDefault(); const tiles = Array.from(deckList.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckList, idx < 0 ? 0 : idx); });
-            tile.addEventListener('drop', async (e) => {
+            tile.addEventListener('dragstart', (e) => {
+                draggingDeck = name;
+                e.dataTransfer.effectAllowed = 'move';
+                dragTileEl = tile;
+                dragTileHeight = Math.round(tile.getBoundingClientRect().height);
+                tile.classList.add('is-dragging-hidden');
+                const tiles = Array.from(deckList.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(deckList, idx < 0 ? 0 : idx);
+            });
+            tile.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                const target = name; const dragged = draggingDeck; draggingDeck = null;
+                const tiles = Array.from(deckList.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(deckList, idx < 0 ? 0 : idx);
+            });
+            tile.addEventListener('drop', async(e) => {
+                e.preventDefault();
+                const target = name;
+                const dragged = draggingDeck;
+                draggingDeck = null;
                 const ph = deckList.querySelector('.drop-placeholder');
                 if (ph && dragTileEl) {
                     deckList.insertBefore(dragTileEl, ph);
@@ -565,7 +667,12 @@
                 dragTileEl = null;
                 dragTileHeight = 0;
             });
-            tile.addEventListener('dragend', () => { tile.classList.remove('is-dragging-hidden'); removePlaceholder(deckList); dragTileEl = null; dragTileHeight = 0; });
+            tile.addEventListener('dragend', () => {
+                tile.classList.remove('is-dragging-hidden');
+                removePlaceholder(deckList);
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
             attachTouchDnD(tile, name, scope, deckList);
         }
 
@@ -590,11 +697,11 @@
             try {
                 const resp = await fetch('/decks');
                 const data = resp.ok ? await resp.json() : [];
-            const all = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
-            const list = all.filter(d => ((d.folder || 'Uncategorized') === folder));
-            await refreshDeckOrder(folder);
-            const ordered = applyOrder(list, 'deck', folder);
-            renderList(ordered);
+                const all = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+                const list = all.filter(d => ((d.folder || 'Uncategorized') === folder));
+                await refreshDeckOrder(folder);
+                const ordered = applyOrder(list, 'deck', folder);
+                renderList(ordered);
             } catch {
                 renderList([]);
             } finally {
