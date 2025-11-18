@@ -1792,7 +1792,15 @@
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
                 try {
-                    await loadFolders();
+                    const counts = {};
+                    cachedDeckList.forEach(d => {
+                        const f = d.folder || 'Uncategorized';
+                        counts[f] = (counts[f] || 0) + 1;
+                    });
+                    const names = Object.keys(counts).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+                    cachedFolderList = names.map(n => ({ name: n, count: counts[n] }));
+                    await refreshFolderOrder();
+                    renderFolderGrid();
                 } catch {}
                 deckSelect.innerHTML = '';
                 // Insert placeholder prompt
