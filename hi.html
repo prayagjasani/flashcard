@@ -64,12 +64,11 @@
         .loading-overlay {
             position: fixed;
             inset: 0;
-            z-index: 50;
+            z-index: 5;
             display: none;
             align-items: center;
             justify-content: center;
             background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(4px);
             transition: opacity 0.2s ease;
         }
         
@@ -210,13 +209,16 @@
         const studyRight = document.getElementById('studyRight');
         const studySpeak = document.getElementById('studySpeak');
         const globalLoader = document.getElementById('globalLoader');
+        const appHeader = document.querySelector('header');
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
+            if (appHeader) appHeader.classList.remove('backdrop-blur-sm');
         }
 
         function hideLoader() {
             if (globalLoader) globalLoader.classList.remove('is-active');
+            if (appHeader) appHeader.classList.add('backdrop-blur-sm');
         }
         const params = new URLSearchParams(location.search);
         const deck = params.get('deck') || '';

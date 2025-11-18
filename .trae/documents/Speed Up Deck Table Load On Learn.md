@@ -1,4 +1,4 @@
-## Goal
+         ## Goal
 Reduce the time-to-first-render and overall load time when opening the Learn view for a specific deck by optimizing data fetch, rendering strategy, and resource contention.
 
 ## Current Bottlenecks
