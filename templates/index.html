@@ -168,7 +168,6 @@
             overflow-x: auto;
             white-space: nowrap;
             -webkit-overflow-scrolling: touch;
-    
         }
         
         .header__actions::-webkit-scrollbar {
@@ -259,6 +258,7 @@
             border-radius: 2px;
             transition: transform 200ms ease, opacity 200ms ease;
         }
+        
         .is-dragging-hidden {
             position: absolute !important;
             width: 0 !important;
@@ -1346,14 +1346,34 @@
             return arr;
         }
 
-        const ordersCache = { folders: [], decks: {} };
+        const ordersCache = {
+            folders: [],
+            decks: {}
+        };
         async function writeOrder(type, names, scope) {
             if (type === 'folder') {
-                const resp = await fetch('/order/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: names }) });
+                const resp = await fetch('/order/folders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order: names
+                    })
+                });
                 if (resp.ok) ordersCache.folders = Array.isArray(names) ? names.slice() : [];
             } else {
                 const key = scope || 'root';
-                const resp = await fetch('/order/decks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: key, order: names }) });
+                const resp = await fetch('/order/decks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        scope: key,
+                        order: names
+                    })
+                });
                 if (resp.ok) ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
             }
         }
@@ -1362,7 +1382,9 @@
                 const resp = await fetch('/order/folders');
                 const arr = await resp.json().catch(() => []);
                 ordersCache.folders = Array.isArray(arr) ? arr : [];
-            } catch { ordersCache.folders = []; }
+            } catch {
+                ordersCache.folders = [];
+            }
         }
         async function refreshDeckOrder(scope) {
             const key = scope || 'root';
@@ -1370,15 +1392,23 @@
                 const resp = await fetch(`/order/decks?scope=${encodeURIComponent(key)}`);
                 const arr = await resp.json().catch(() => []);
                 ordersCache.decks[key] = Array.isArray(arr) ? arr : [];
-            } catch { ordersCache.decks[key] = []; }
+            } catch {
+                ordersCache.decks[key] = [];
+            }
         }
+
         function applyOrder(list, type, scope) {
             const saved = type === 'folder' ? ordersCache.folders : (ordersCache.decks[scope || 'root'] || []);
             if (!Array.isArray(saved) || !saved.length) return list.slice();
             const indexByName = new Map(list.map((x, i) => [x.name, i]));
             const ordered = [];
-            saved.forEach((n) => { const idx = indexByName.get(n); if (idx !== undefined) ordered.push(list[idx]); });
-            list.forEach((x) => { if (!saved.includes(x.name)) ordered.push(x); });
+            saved.forEach((n) => {
+                const idx = indexByName.get(n);
+                if (idx !== undefined) ordered.push(list[idx]);
+            });
+            list.forEach((x) => {
+                if (!saved.includes(x.name)) ordered.push(x);
+            });
             return ordered;
         }
         let draggingFolder = null;
@@ -1386,6 +1416,7 @@
         let dragTileEl = null;
         let dragTileHeight = 0;
         const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
+
         function ensurePlaceholder(container) {
             if (!container) return null;
             let ph = container.querySelector('.drop-placeholder');
@@ -1397,12 +1428,26 @@
                 ph.style.border = '2px dashed var(--text-secondary)';
                 ph.style.borderRadius = '12px';
                 ph.style.background = '#eef0f4';
+            } {
+                let __h = dragTileHeight || 48;
+                if (!__h) {
+                    const __src = container.querySelector('.deck-tile');
+                    if (__src) {
+                        const __r = __src.getBoundingClientRect();
+                        __h = Math.max(40, Math.round(__r.height));
+                    }
+                }
+                ph.style.height = __h + 'px';
             }
-            { let __h = dragTileHeight || 48; if (!__h) { const __src = container.querySelector('.deck-tile'); if (__src) { const __r = __src.getBoundingClientRect(); __h = Math.max(40, Math.round(__r.height)); } } ph.style.height = __h + 'px'; }
             if (!ph.parentElement) container.appendChild(ph);
             return ph;
         }
-        function removePlaceholder(container) { const ph = container ? container.querySelector('.drop-placeholder') : null; if (ph && ph.parentElement) ph.parentElement.removeChild(ph); }
+
+        function removePlaceholder(container) {
+            const ph = container ? container.querySelector('.drop-placeholder') : null;
+            if (ph && ph.parentElement) ph.parentElement.removeChild(ph);
+        }
+
         function placePlaceholder(container, index) {
             if (!container) return;
             const tiles = Array.from(container.querySelectorAll('.deck-tile'));
@@ -1412,6 +1457,7 @@
             if (clamped >= tiles.length) container.appendChild(ph);
             else container.insertBefore(ph, tiles[clamped]);
         }
+
         function indexFromFinger(container, fingerY) {
             const tiles = Array.from(container.querySelectorAll('.deck-tile'));
             for (let i = 0; i < tiles.length; i++) {
@@ -1421,6 +1467,7 @@
             }
             return tiles.length;
         }
+
         function attachTouchDnD(tile, name, type, scope, container) {
             if (!isCoarsePointer) return;
             let dragging = false;
@@ -1429,6 +1476,7 @@
             let startY = 0;
             const LONG_PRESS_MS = 2000;
             const MOVE_CANCEL_PX = 10;
+
             function start(y) {
                 startY = y;
                 pressTimer = setTimeout(() => {
@@ -1442,7 +1490,13 @@
                     placePlaceholder(container, idx < 0 ? 0 : idx);
                 }, LONG_PRESS_MS);
             }
-            function clearPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+            function clearPress() {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            }
             async function commit() {
                 if (!dragging) return;
                 dragging = false;
@@ -1464,11 +1518,44 @@
             }
             tile.style.touchAction = 'auto';
             tile.style.userSelect = 'none';
-            tile.addEventListener('touchstart', (e) => { const t = e.touches && e.touches[0]; if (!t) return; start(t.clientY); }, { passive: true });
-            tile.addEventListener('touchmove', (e) => { const t = e.touches && e.touches[0]; if (!t) return; fingerY = t.clientY; if (!dragging) { if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) { clearPress(); } return; } e.preventDefault(); const idx = indexFromFinger(container, fingerY); placePlaceholder(container, idx); }, { passive: false });
-            tile.addEventListener('touchend', () => { clearPress(); commit(); });
-            tile.addEventListener('touchcancel', () => { clearPress(); dragging = false; tile.classList.remove('is-dragging-hidden'); tile.style.touchAction = 'auto'; removePlaceholder(container); dragTileEl = null; dragTileHeight = 0; });
+            tile.addEventListener('touchstart', (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                start(t.clientY);
+            }, {
+                passive: true
+            });
+            tile.addEventListener('touchmove', (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                fingerY = t.clientY;
+                if (!dragging) {
+                    if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) {
+                        clearPress();
+                    }
+                    return;
+                }
+                e.preventDefault();
+                const idx = indexFromFinger(container, fingerY);
+                placePlaceholder(container, idx);
+            }, {
+                passive: false
+            });
+            tile.addEventListener('touchend', () => {
+                clearPress();
+                commit();
+            });
+            tile.addEventListener('touchcancel', () => {
+                clearPress();
+                dragging = false;
+                tile.classList.remove('is-dragging-hidden');
+                tile.style.touchAction = 'auto';
+                removePlaceholder(container);
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
         }
+
         function attachFolderDnD(tile, name) {
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
@@ -1487,7 +1574,7 @@
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(folderGrid, idx < 0 ? 0 : idx);
             });
-            tile.addEventListener('drop', async (e) => {
+            tile.addEventListener('drop', async(e) => {
                 e.preventDefault();
                 const target = name;
                 const dragged = draggingFolder;
@@ -1503,9 +1590,15 @@
                 dragTileEl = null;
                 dragTileHeight = 0;
             });
-            tile.addEventListener('dragend', () => { tile.classList.remove('is-dragging-hidden'); removePlaceholder(folderGrid); dragTileEl = null; dragTileHeight = 0; });
+            tile.addEventListener('dragend', () => {
+                tile.classList.remove('is-dragging-hidden');
+                removePlaceholder(folderGrid);
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
             attachTouchDnD(tile, name, 'folder', null, folderGrid);
         }
+
         function attachDeckDnD(tile, name, scope) {
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
@@ -1518,8 +1611,13 @@
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(deckGrid, idx < 0 ? 0 : idx);
             });
-            tile.addEventListener('dragover', (e) => { e.preventDefault(); const tiles = Array.from(deckGrid.querySelectorAll('.deck-tile')); const idx = tiles.indexOf(tile); placePlaceholder(deckGrid, idx < 0 ? 0 : idx); });
-            tile.addEventListener('drop', async (e) => {
+            tile.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const tiles = Array.from(deckGrid.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(deckGrid, idx < 0 ? 0 : idx);
+            });
+            tile.addEventListener('drop', async(e) => {
                 e.preventDefault();
                 const target = name;
                 const dragged = draggingDeck;
@@ -1535,7 +1633,12 @@
                 dragTileEl = null;
                 dragTileHeight = 0;
             });
-            tile.addEventListener('dragend', () => { tile.classList.remove('is-dragging-hidden'); removePlaceholder(deckGrid); dragTileEl = null; dragTileHeight = 0; });
+            tile.addEventListener('dragend', () => {
+                tile.classList.remove('is-dragging-hidden');
+                removePlaceholder(deckGrid);
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
             attachTouchDnD(tile, name, 'deck', scope, deckGrid);
         }
 
@@ -1797,8 +1900,13 @@
                         const f = d.folder || 'Uncategorized';
                         counts[f] = (counts[f] || 0) + 1;
                     });
-                    const names = Object.keys(counts).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-                    cachedFolderList = names.map(n => ({ name: n, count: counts[n] }));
+                    const names = Object.keys(counts).sort((a, b) => a.localeCompare(b, undefined, {
+                        sensitivity: 'base'
+                    }));
+                    cachedFolderList = names.map(n => ({
+                        name: n,
+                        count: counts[n]
+                    }));
                     await refreshFolderOrder();
                     renderFolderGrid();
                 } catch {}
@@ -1867,7 +1975,9 @@
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
             const base = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
-            await refreshDeckOrder(selectedFolder || 'root');
+            if (selectedFolder) {
+                await refreshDeckOrder(selectedFolder);
+            }
             const ordered = applyOrder(base, 'deck', selectedFolder || 'root');
             ordered.forEach((d, i) => {
                 const wrap = document.createElement('div');
@@ -1904,7 +2014,10 @@
         function renderFolderGrid() {
             if (!folderGrid) return;
             folderGrid.innerHTML = '';
-            const base = cachedFolderList.length ? cachedFolderList.slice() : [{ name: 'Uncategorized', count: 0 }];
+            const base = cachedFolderList.length ? cachedFolderList.slice() : [{
+                name: 'Uncategorized',
+                count: 0
+            }];
             const ordered = applyOrder(base, 'folder');
             ordered.forEach((f, i) => {
                 const wrap = document.createElement('div');
