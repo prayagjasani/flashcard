@@ -119,6 +119,10 @@ def read_root():
 def learn_screen():
     return FileResponse('hi.html')
 
+@app.get("/spelling")
+def spelling_screen():
+    return FileResponse('spelling.html')
+
 @app.get("/folder")
 def folder_screen():
     return FileResponse('folder.html')

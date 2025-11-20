@@ -223,14 +223,14 @@
             filter: brightness(1.05);
             transform: translateY(-1px) scale(1.03);
         }
-
+        
         .btn--danger {
             background: var(--danger);
             color: #fff;
             border-color: rgba(239, 68, 68, 0.55);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.30);
         }
-
+        
         .btn--danger:hover {
             filter: brightness(1.05);
             transform: translateY(-1px) scale(1.03);
@@ -1183,9 +1183,9 @@
                     <span class="link__text link__text--primary">Edit</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Edit</span>
                 </button>
-                <button class="nav__link nav__link--button" id="learnBtn" type="button">
-                    <span class="link__text link__text--primary">Learn</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Learn</span>
+                <button class="nav__link nav__link--button" id="spellingBtn" type="button">
+                    <span class="link__text link__text--primary">Spelling</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Spelling</span>
                 </button>
             </div>
         </div>
@@ -1314,7 +1314,7 @@
         const speakBtn = document.getElementById('speak');
         const autoPlayToggle = document.getElementById('autoPlayToggle');
         const header = document.querySelector('.site-header');
-        const learnBtn = document.getElementById('learnBtn');
+        const spellingBtn = document.getElementById('spellingBtn');
         const homeBtn = document.getElementById('homeBtn');
         const deckGrid = document.getElementById('deckGrid');
         const homeDeckList = document.getElementById('homeDeckList');
@@ -2557,10 +2557,10 @@
             loadWordsForDeck(name);
         });
 
-        if (learnBtn) learnBtn.addEventListener('click', () => {
+        if (spellingBtn) spellingBtn.addEventListener('click', () => {
             const name = deckSelect && deckSelect.value;
-            if (name) window.location.href = `/learn?deck=${encodeURIComponent(name)}`;
-            else window.location.href = '/learn';
+            if (name) window.location.href = `/spelling?deck=${encodeURIComponent(name)}`;
+            else window.location.href = '/spelling';
         });
 
         // Multi-deck modal interactions
