@@ -28,15 +28,15 @@ body{min-height:max(884px,100dvh)}
 @media (prefers-color-scheme: dark){.loading-dots{color:#92adc9}.loading-overlay{background:rgba(0,0,0,.6)}}
 .card{border:1px solid #e5e7eb;border-radius:16px;background:#fff}
 .card-dark{border-color:#1f2937;background:#19242E}
-.pair-btn{height:88px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;color:#333;display:flex;align-items:center;justify-content:center;user-select:none;transition:background-color .36s ease,border-color .36s ease,box-shadow .36s ease}
+.pair-btn{height:88px;border:1px solid #e5e7eb;border-radius:10px;background:transparent;color:#333;display:flex;align-items:center;justify-content:center;user-select:none;transition:background-color .36s ease,border-color .36s ease,box-shadow .36s ease}
 .pair-btn.active{outline:2px solid #3b82f6;background:#e8f0fe}
 .pair-btn.correct{background:#dcfce7;color:#166534;border-color:#86efac}
 .pair-btn.wrong{background:#fee2e2;color:#991b1b;border-color:#fecaca}
-.pair-text{height:88px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;color:#333;display:flex;align-items:center;justify-content:center;padding:0 10px;transition:background-color .36s ease,border-color .36s ease,box-shadow .36s ease}
+.pair-text{height:88px;border:1px solid #e5e7eb;border-radius:10px;background:transparent;color:#333;display:flex;align-items:center;justify-content:center;padding:0 10px;transition:background-color .36s ease,border-color .36s ease,box-shadow .36s ease}
 .pair-text.active{outline:2px solid #3b82f6;background:#e8f0fe}
 .pair-text.correct{background:#dcfce7;color:#166534;border-color:#86efac}
 .pair-text.wrong{background:#fee2e2;color:#991b1b;border-color:#fecaca}
-@media (prefers-color-scheme: dark){.card{background:#19242E;border-color:#1f2937}.pair-btn{background:#1f2937;color:#E5E7EB;border-color:#374151}.pair-text{background:#0b1220;color:#E5E7EB;border-color:#374151}}
+@media (prefers-color-scheme: dark){.card{background:#19242E;border-color:#1f2937}.pair-btn{background:transparent;color:#E5E7EB;border-color:#374151}.pair-text{background:transparent;color:#E5E7EB;border-color:#374151}}
 .form-toggle{accent-color:#64748b}
 @media (prefers-color-scheme: dark){.form-toggle{accent-color:#9ca3af}}
 .fade-out{opacity:0;transition:opacity .36s ease}
@@ -49,21 +49,18 @@ body{min-height:max(884px,100dvh)}
 <body class="bg-background-light dark:bg-background-dark font-display">
 <div class="relative flex min-h-screen w-full flex-col">
  <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
-  <div class="mx-auto max-w-md px-3 py-2 flex items-center gap-2">
+  <div class="mx-auto max-w-2xl px-2 py-2 flex items-center gap-2">
     <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span class="material-symbols-outlined text-xl">close</span></button>
     <div class="flex-1 text-center text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark" id="progressText">0/0</div>
     <button id="homeBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Home"><span class="material-symbols-outlined text-xl">home</span></button>
   </div>
  </header>
  <div id="globalLoader" class="loading-overlay" aria-hidden="true"><div class="loading-dots"><span></span><span></span><span></span></div></div>
- <main class="mx-auto max-w-md p-4 w-full">
-  <section class="mb-4">
-    <label for="deckSelect" class="block text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">Deck</label>
-    <select id="deckSelect" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-card-light dark:bg-card-dark text-text-primary-light dark:text-text-primary-dark"></select>
-  </section>
-  <section class="card dark:card-dark rounded-xl p-6">
-    <h2 class="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3">Select the matching pairs</h2>
-    <div class="mb-3 flex items-center gap-2">
+ <main class="mx-auto max-w-2xl p-2 w-full">
+  
+  <div id="matchBody">
+    <h2 class="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-2">Select the matching pairs</h2>
+    <div class="mb-2 flex items-center gap-2">
       <input id="showGermanToggle" type="checkbox" class="rounded form-toggle" />
       <label for="showGermanToggle" class="text-sm text-text-secondary-light dark:text-text-secondary-dark">Show German words (instead of audio)</label>
     </div>
@@ -71,14 +68,13 @@ body{min-height:max(884px,100dvh)}
       <div id="leftCol" class="space-y-3"></div>
       <div id="rightCol" class="space-y-3"></div>
     </div>
-    <div id="feedback" class="mt-3 text-sm"></div>
-  </section>
+    <div id="feedback" class="mt-3 text-sm" hidden></div>
+  </div>
  </main>
 </div>
 <script>
 const backBtn=document.getElementById('backBtn');
 const homeBtn=document.getElementById('homeBtn');
-const deckSelect=document.getElementById('deckSelect');
 const leftCol=document.getElementById('leftCol');
 const rightCol=document.getElementById('rightCol');
 const showGermanToggle=document.getElementById('showGermanToggle');
@@ -137,19 +133,18 @@ function replaceAfterThree(){const leftNodes=Array.from(leftCol.children);const 
 }
 function showDone(){leftCol.innerHTML='';rightCol.innerHTML='';feedback.hidden=false;feedback.textContent='Done — all pairs completed!';feedback.className='mt-6 text-base font-semibold text-green-600 dark:text-green-400'}
 function nextRound(){if(used.size>=cards.length){showDone();return;}pickRound();renderRound();setProgress();}
-async function loadDecks(){showLoader();try{const resp=await fetch('/decks');const list=await resp.json();deckSelect.innerHTML='';const ph=document.createElement('option');ph.value='';ph.textContent='Select a deck';deckSelect.appendChild(ph);list.forEach(d=>{const opt=document.createElement('option');opt.value=d.name;opt.textContent=d.name;deckSelect.appendChild(opt);});if(currentDeck){deckSelect.value=currentDeck;} }catch{const ph=document.createElement('option');ph.value='';ph.textContent='No decks';deckSelect.appendChild(ph);}finally{hideLoader();}}
 async function loadCards(name){showLoader();try{const resp=await fetch(`/cards?deck=${encodeURIComponent(name)}`);const data=await resp.json();cards=Array.isArray(data)?data:[];used.clear();pickRound();renderRound();setProgress();try{feedback.hidden=true;feedback.textContent='';}catch{} }catch{cards=[];used.clear();leftCol.innerHTML='';rightCol.innerHTML='';}finally{hideLoader();}}
 backBtn.addEventListener('click',()=>{history.length>1?history.back():location.href='/'});
 homeBtn.addEventListener('click',()=>{location.href='/'});
-deckSelect.addEventListener('change',e=>{currentDeck=e.target.value;loadCards(currentDeck)});
+ 
 function animateToggleSwap(){const nodes=Array.from(leftCol.children);nodes.forEach((oldEl,idx)=>{oldEl.classList.add('fade-out');});setTimeout(()=>{nodes.forEach((oldEl,idx)=>{const c=round[idx];const newBtn=document.createElement('button');if(showGermanLeft){newBtn.className='pair-text w-full';newBtn.textContent=c.de;newBtn.addEventListener('click',()=>{leftSelected=idx;updateSelection();checkMatch();});}else{newBtn.className='pair-btn w-full';newBtn.innerHTML='<span class="material-symbols-outlined">volume_up</span>';newBtn.addEventListener('click',()=>{play(c.de);leftSelected=idx;updateSelection();checkMatch();});}if(matchedIndices.has(idx)){newBtn.classList.add('correct');newBtn.disabled=true;}newBtn.classList.add('fade-in');oldEl.replaceWith(newBtn);});setTimeout(()=>{Array.from(leftCol.children).forEach(el=>el.classList.remove('fade-in'));},720);},360);} 
 showGermanToggle.addEventListener('change',()=>{if(isAnimatingWrong){showGermanToggle.checked=showGermanLeft;return;}showGermanLeft=showGermanToggle.checked;try{localStorage.setItem('matchShowGermanLeft',showGermanLeft?'1':'0');}catch{}animateToggleSwap();});
-function shouldClear(t){if(t.closest('.pair-btn,.pair-text'))return false;if(t.closest('#showGermanToggle'))return false;if(t.closest('#deckSelect'))return false;return true}
+function shouldClear(t){if(t.closest('.pair-btn,.pair-text'))return false;if(t.closest('#showGermanToggle'))return false;return true}
 document.addEventListener('click',(e)=>{if(isAnimatingWrong)return;const t=e.target;if(!shouldClear(t))return;clearActive();leftSelected=-1;rightSelected=-1;});
 // initialize toggle state
 try{showGermanLeft=(localStorage.getItem('matchShowGermanLeft')==='1');}catch{showGermanLeft=false}
 showGermanToggle.checked=showGermanLeft;
-loadDecks();if(currentDeck)loadCards(currentDeck);
+if(currentDeck)loadCards(currentDeck);
 </script>
 </body>
 </html>
