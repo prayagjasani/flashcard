@@ -534,11 +534,22 @@
                     currentEn.add(key);
                     newCards.push(candidate);
                 }
+                // shuffle new cards and independently shuffle right indices to avoid predictable patterns
+                const shuffledNew = newCards.slice();
+                for (let i = shuffledNew.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledNew[i], shuffledNew[j]] = [shuffledNew[j], shuffledNew[i]];
+                }
+                const rightSlots = pendingRightIndices.slice();
+                for (let i = rightSlots.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [rightSlots[i], rightSlots[j]] = [rightSlots[j], rightSlots[i]];
+                }
                 for (let i = 0; i < count; i++) {
-                    const newCard = newCards[i];
+                    const newCard = shuffledNew[i];
                     if (!newCard) continue;
                     const lIdx = pendingIndices[i];
-                    const rIdx = pendingRightIndices[i];
+                    const rIdx = rightSlots[i];
                     round[lIdx] = newCard;
                     // left element
                     const oldL = leftNodes[lIdx];
