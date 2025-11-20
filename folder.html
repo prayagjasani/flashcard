@@ -433,8 +433,32 @@
         const chooseActionModal = document.getElementById('chooseActionModal');
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
-        const openSpellingBtn = document.getElementById('openSpellingBtn');
+        let openSpellingBtn = document.getElementById('openSpellingBtn');
+        let openMatchBtn = document.getElementById('openMatchBtn');
         const openMoveBtn = document.getElementById('openMoveBtn');
+        const studyActionsEl = document.querySelector('#chooseActionModal .study-actions');
+        if (!openSpellingBtn && studyActionsEl) {
+            const btn = document.createElement('button');
+            btn.id = 'openSpellingBtn';
+            btn.className = 'study-action study-action--secondary';
+            btn.type = 'button';
+            btn.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span><span>Spelling</span>';
+            const moveBtnEl = document.getElementById('openMoveBtn');
+            if (moveBtnEl) studyActionsEl.insertBefore(btn, moveBtnEl);
+            else studyActionsEl.appendChild(btn);
+            openSpellingBtn = btn;
+        }
+        if (!openMatchBtn && studyActionsEl) {
+            const btn2 = document.createElement('button');
+            btn2.id = 'openMatchBtn';
+            btn2.className = 'study-action study-action--secondary';
+            btn2.type = 'button';
+            btn2.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span><span>Match</span>';
+            const moveBtnEl2 = document.getElementById('openMoveBtn');
+            if (moveBtnEl2) studyActionsEl.insertBefore(btn2, moveBtnEl2);
+            else studyActionsEl.appendChild(btn2);
+            openMatchBtn = btn2;
+        }
         const moveDeckModal = document.getElementById('moveDeckModal');
         const moveDeckList = document.getElementById('moveDeckList');
         const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
@@ -816,6 +840,11 @@
             if (!selectedDeckForAction) return;
             const fromParam = `&from=${encodeURIComponent(folder)}`;
             window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+        });
+        if (openMatchBtn) openMatchBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            const fromParam = `&from=${encodeURIComponent(folder)}`;
+            window.location.href = `/match?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
         if (openMoveBtn) openMoveBtn.addEventListener('click', openMoveDeckModal);
 

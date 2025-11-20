@@ -123,6 +123,10 @@ def learn_screen():
 def spelling_screen():
     return FileResponse('spelling.html')
 
+@app.get("/match")
+def match_screen():
+    return FileResponse('match.html')
+
 @app.get("/folder")
 def folder_screen():
     return FileResponse('folder.html')
