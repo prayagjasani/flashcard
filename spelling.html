@@ -30,8 +30,8 @@ body{min-height:max(884px,100dvh)}
 .practice-card:hover{transform:none;box-shadow:none}
 @media (prefers-color-scheme: dark){.practice-card:hover{box-shadow:none}}
 .inline-tooltip{position:fixed;left:0;top:0;transform:translate(-50%,0);padding:8px 12px;border-radius:12px;background:#eef0f4;border:1px solid #e5e7eb;color:#333;z-index:1000;box-shadow:none}
-.inline-tooltip:after{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #eef0f4}
-@media (prefers-color-scheme: dark){.inline-tooltip{background:#1f2937;border-color:#374151;color:#e5e7eb}.inline-tooltip:after{border-bottom-color:#1f2937}}
+.inline-tooltip:after{content:"";position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-top:7px solid #eef0f4}
+@media (prefers-color-scheme: dark){.inline-tooltip{background:#1f2937;border-color:#374151;color:#e5e7eb}.inline-tooltip:after{border-top-color:#1f2937}}
 </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display">
