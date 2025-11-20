@@ -402,6 +402,10 @@
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">style</span>
                     <span>Flashcard</span>
                 </button>
+                <button id="openSpellingBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span>
+                    <span>Spelling</span>
+                </button>
                 <button id="openMoveBtn" class="study-action study-action--secondary" type="button">
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">drive_file_move</span>
                     <span>Move</span>
@@ -429,6 +433,7 @@
         const chooseActionModal = document.getElementById('chooseActionModal');
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
+        const openSpellingBtn = document.getElementById('openSpellingBtn');
         const openMoveBtn = document.getElementById('openMoveBtn');
         const moveDeckModal = document.getElementById('moveDeckModal');
         const moveDeckList = document.getElementById('moveDeckList');
@@ -806,6 +811,11 @@
         if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
             window.location.href = `/?mode=flash&deck=${encodeURIComponent(selectedDeckForAction)}`;
+        });
+        if (openSpellingBtn) openSpellingBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            const fromParam = `&from=${encodeURIComponent(folder)}`;
+            window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
         if (openMoveBtn) openMoveBtn.addEventListener('click', openMoveDeckModal);
 
