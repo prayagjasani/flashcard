@@ -21,10 +21,21 @@
                         "background-dark": "#101922",
                         "card-light": "#FFFFFF",
                         "card-dark": "#19242E",
-                        "text-primary-light": "#111827",
-                        "text-primary-dark": "#F3F4F6",
-                        "text-secondary-light": "#6B7280",
-                        "text-secondary-dark": "#9CA3AF",
+                        "text-primary-light": "#333333",
+                        "text-primary-dark": "#E5E7EB",
+                        "text-secondary-light": "#8E8E93",
+                        "text-secondary-dark": "#92adc9"
+                    },
+                    fontFamily: {
+                        display: [
+                            ["Lexend", "sans-serif"]
+                        ]
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
                     }
                 }
             }
@@ -42,11 +53,12 @@
         .loading-overlay {
             position: fixed;
             inset: 0;
-            z-index: 50;
+            z-index: 5;
             display: none;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, .6);
+            transition: opacity .2s ease
         }
         
         .loading-overlay.is-active {
@@ -56,7 +68,7 @@
         .loading-dots {
             display: flex;
             gap: 8px;
-            color: #8E8E93;
+            color: #8E8E93
         }
         
         .loading-dots span {
@@ -79,39 +91,43 @@
         @keyframes dotPulse {
             0% {
                 transform: scale(1);
-                opacity: 0.35;
+                opacity: .35
             }
             50% {
                 transform: scale(1.25);
-                opacity: 1;
+                opacity: 1
             }
             100% {
                 transform: scale(1);
-                opacity: 0.35;
+                opacity: .35
+            }
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .loading-dots {
+                color: #92adc9
+            }
+            .loading-overlay {
+                background: rgba(0, 0, 0, .6)
             }
         }
     </style>
 </head>
 
-<body class="min-h-screen bg-background-light dark:bg-background-dark font-[Lexend]">
-    <div class="mx-auto max-w-4xl p-4">
-        <header class="flex items-center justify-between mb-4">
-            <a href="/" class="flex items-center gap-2 text-primary">
-                <span class="material-symbols-outlined">arrow_back</span>
-                <span>Decks</span>
-            </a>
-            <h1 class="text-xl font-bold text-text-primary-light dark:text-text-primary-dark">Line Generator</h1>
-            <button id="themeToggle" class="rounded-full h-10 px-4 bg-gray-100 dark:bg-gray-800 text-text-primary-light dark:text-text-primary-dark">Theme</button>
+<body class="bg-background-light dark:bg-background-dark font-display">
+    <div class="relative flex min-h-screen w-full flex-col">
+        <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+            <div class="mx-auto max-w-md px-3 py-2 flex items-center gap-2">
+                <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Back"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
+                <div class="flex-1 text-center text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark" id="progressText"></div>
+                <button id="homeBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Home"><span class="material-symbols-outlined text-xl">home</span></button>
+            </div>
         </header>
         <div id="globalLoader" class="loading-overlay" aria-hidden="true">
             <div class="loading-dots"><span></span><span></span><span></span></div>
         </div>
 
-        <!-- Controls removed: auto-generates for the selected deck passed in query string -->
-
-        <div id="status" class="mt-3 text-sm text-text-secondary-light dark:text-text-secondary-dark"></div>
-
-        <main class="mt-4">
+        <main class="mx-auto max-w-md p-4 w-full">
             <div id="lineList" class="space-y-3"></div>
         </main>
     </div>
@@ -119,10 +135,11 @@
     <script>
         const params = new URLSearchParams(location.search);
         const deck = params.get('deck') || '';
-        const LIMIT_DEFAULT = 100;
         const lineList = document.getElementById('lineList');
-        const statusEl = document.getElementById('status');
         const globalLoader = document.getElementById('globalLoader');
+        const backBtn = document.getElementById('backBtn');
+        const homeBtn = document.getElementById('homeBtn');
+        const progressText = document.getElementById('progressText');
 
         function showLoader() {
             globalLoader.classList.add('is-active');
@@ -133,7 +150,7 @@
         }
 
         function setStatus(t) {
-            statusEl.textContent = t || '';
+            progressText.textContent = t || '';
         }
 
         function init() {
@@ -154,7 +171,7 @@
                 const len = (it.line_en || '').trim().length + (it.line_de || '').trim().length;
                 if (!len) return;
                 const card = document.createElement('div');
-                card.className = 'rounded-2xl bg-card-light dark:bg-card-dark p-4 shadow-sm';
+                card.className = 'rounded-xl bg-card-light dark:bg-card-dark p-4 shadow-sm';
                 card.innerHTML = `
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -180,11 +197,10 @@
                 lastItems.push(it);
             });
             const total = items.length;
-            setStatus(`Generated ${shown.length} of ${total} words`);
+            setStatus(`Generated ${shown.length}${total?` of ${total}`:''} lines`);
         }
 
         async function generate() {
-            const limit = LIMIT_DEFAULT;
             if (!deck) {
                 setStatus('Select a deck');
                 return;
@@ -192,7 +208,7 @@
             showLoader();
             try {
                 setStatus('Generating...');
-                const resp = await fetch(`/lines/generate?deck=${encodeURIComponent(deck)}&limit=${limit}`);
+                const resp = await fetch(`/lines/generate?deck=${encodeURIComponent(deck)}`);
                 const out = await resp.json();
                 if (!resp.ok) throw new Error(out.detail || 'Failed');
                 renderRows(out.items || []);
@@ -221,6 +237,8 @@
             a.remove();
         }
 
+        backBtn.addEventListener('click',()=>{history.length>1?history.back():location.href='/'});
+        homeBtn.addEventListener('click',()=>{location.href='/'});
         init();
     </script>
 </body>

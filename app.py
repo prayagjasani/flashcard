@@ -61,103 +61,74 @@ GEMINI_API_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
 print(f"DEBUG: Loading Gemini API key: {GEMINI_API_KEY[:20]}..." if GEMINI_API_KEY else "DEBUG: No Gemini API key found!")
 
 def _gemini_generate_lines(cards):
-    """
-    Generate real-life example sentences for German–English vocabulary pairs.
-    """
-
-    # No fallback when no API key
     if not GEMINI_API_KEY:
         return []
 
-    # Model + endpoint
-    model = "gemini-2.5-flash"  # Faster, more reliable model
+    model = "gemini-2.5-flash"
     endpoint = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent?key={GEMINI_API_KEY}"
     )
 
-    # Vocabulary list for the prompt
-    vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in cards])
-
-    # ----------------------------------------------------------------------
-    # ⭐ Strong prompt — prevents useless sentences like “This is body.”
-    # ----------------------------------------------------------------------
-    prompt = f"""
+    def run_chunk(chunk):
+        vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in chunk])
+        prompt = f"""
 You are an expert German language teacher.
 
-TASK:
 Generate PRACTICAL, REAL-LIFE example sentences for A1–B1 learners.
 
-### Output rules:
-- Output ONLY a JSON array, no text before or after it.
-- Each element must match:
-  {{
-    "de": "<German word>",
-    "en": "<English word>",
-    "line_de": "<real-life German sentence>",
-    "line_en": "<real-life English sentence>"
-  }}
+Output ONLY a JSON array with objects of fields: de,en,line_de,line_en.
 
-IMPORTANT:
-- Echo the input values for fields "de" and "en" exactly as provided.
-- Do not change, translate, normalize, or shorten these field values.
+Echo the input values for fields de and en exactly as provided.
 
-### Sentence rules:
-- 8–14 words each.
-- Use daily-life contexts: doctor visit, sports, work, family, morning routine.
-- German must use correct grammar (cases, articles, verb placement).
-- English and German sentences must NOT be literal translations.
-- Use realistic daily actions and contexts.
+Sentences 8–14 words; daily-life contexts; not literal translations; correct German grammar.
 
-### Vocabulary:
+Vocabulary:
 {vocab_list}
 """
-
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-
-    # ----------------------------------------------------------------------
-    # ⭐ API REQUEST
-    # ----------------------------------------------------------------------
-    try:
+        body = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"response_mime_type": "application/json"},
+        }
         req = urllib.request.Request(
             endpoint,
             data=json.dumps(body).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode("utf-8")
-
         parsed = json.loads(raw)
-
-        # Standard: result inside candidates → content → parts → text
         candidates = parsed.get("candidates") or []
         if candidates:
             parts = candidates[0].get("content", {}).get("parts", [])
             if parts:
                 p0 = parts[0]
                 if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])   # JSON array directly
+                    return json.loads(p0["text"])  
                 if isinstance(p0, dict) and "inlineData" in p0:
                     data_b64 = p0["inlineData"].get("data", "")
                     if data_b64:
                         raw_json = base64.b64decode(data_b64).decode("utf-8")
                         return json.loads(raw_json)
-
-        # Some Gemini variants directly return JSON arrays
         if isinstance(parsed, list):
             return parsed
-
-        raise ValueError("Could not extract JSON output from Gemini response.")
-
-    except Exception as e:
-        print("Gemini error:", e)
-        traceback.print_exc()
         return []
+
+    all_items = []
+    CHUNK_SIZE = 30
+    i = 0
+    while i < len(cards):
+        chunk = cards[i:i+CHUNK_SIZE]
+        try:
+            res = run_chunk(chunk) or []
+            if isinstance(res, list):
+                all_items.extend(res)
+        except Exception as e:
+            print("Gemini error:", e)
+            traceback.print_exc()
+        i += CHUNK_SIZE
+    return all_items
 
 # -------------------------------
 # MODELS
@@ -1055,14 +1026,13 @@ def tts(text: str, lang: str = "de", slow: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/lines/generate")
-def generate_lines(deck: str, limit: int = 100):
+def generate_lines(deck: str, limit: int | None = None):
     safe = _safe_deck_name(deck)
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid deck name")
 
     try:
         cards = get_cards(deck)
-        cards = cards[: max(1, limit)]
         items = _gemini_generate_lines(cards)
         cleaned = []
         # Build index by German term only (AI may normalize English)
@@ -1101,11 +1071,13 @@ def generate_lines(deck: str, limit: int = 100):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/lines/debug")
-def lines_debug(deck: str, limit: int = 10):
+def lines_debug(deck: str, limit: int | None = None):
     safe = _safe_deck_name(deck)
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid deck name")
-    cards = get_cards(deck)[: max(1, limit)]
+    cards = get_cards(deck)
+    if isinstance(limit, int) and limit > 0:
+        cards = cards[:limit]
     
     # Debug: show what key we're using
     print(f"DEBUG: In lines_debug, GEMINI_API_KEY: {GEMINI_API_KEY[:20]}...")
