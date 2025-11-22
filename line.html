@@ -220,29 +220,64 @@
                 if (!resp.ok) throw new Error(out.detail || 'Failed');
                 renderRows(out.items || []);
                 setStatus(`Generated ${out.count} lines`);
-                try {
-                    const r = await fetch(`/preload_lines_audio?deck=${encodeURIComponent(deck)}`);
-                    const j = await r.json().catch(() => ({audio_urls:{}}));
-                    const map = j && j.audio_urls ? j.audio_urls : {};
-                    Object.entries(map).forEach(([t,u]) => lineAudioURLs.set(t, u));
-                } catch {}
+                hideLoader();
+                const prefetch = fetch(`/preload_lines_audio?deck=${encodeURIComponent(deck)}`)
+                    .then(r => r.json())
+                    .then(j => {
+                        const map = j && j.audio_urls ? j.audio_urls : {};
+                        Object.entries(map).forEach(([t,u]) => lineAudioURLs.set(t, u));
+                        if ('requestIdleCallback' in window) {
+                            requestIdleCallback(() => preloadLineAudio(map));
+                        } else {
+                            setTimeout(() => preloadLineAudio(map), 300);
+                        }
+                    })
+                    .catch(() => {});
             } catch (e) {
                 setStatus(String(e.message || e));
-            } finally {
                 hideLoader();
             }
         }
 
         const audio = new Audio();
+        audio.preload = 'auto';
         const lineAudioURLs = new Map();
+        const lineAudioCache = new Map();
         function playLine(text) {
-            const url = lineAudioURLs.get(text);
-            if (url) {
-                audio.src = url;
+            const key = `audio:de:${text}`;
+            const ls = localStorage.getItem(key);
+            if (ls) {
+                audio.src = ls;
             } else {
-                audio.src = `/tts?text=${encodeURIComponent(text)}&lang=de`;
+                const cached = lineAudioCache.get(text) || lineAudioURLs.get(text);
+                audio.src = cached || `/tts?text=${encodeURIComponent(text)}&lang=de`;
             }
             audio.play().catch(() => {});
+        }
+
+        async function preloadLineAudio(map) {
+            try {
+                const entries = Object.entries(map);
+                const tasks = entries.map(([text, url]) => (async () => {
+                    try {
+                        const r = await fetch(url);
+                        if (!r.ok) return;
+                        const b = await r.blob();
+                        const objUrl = URL.createObjectURL(b);
+                        lineAudioCache.set(text, objUrl);
+                        const base64 = await new Promise((resolve, reject) => {
+                            const fr = new FileReader();
+                            fr.onloadend = () => resolve(fr.result);
+                            fr.onerror = reject;
+                            fr.readAsDataURL(b);
+                        });
+                        try {
+                            localStorage.setItem(`audio:de:${text}`, base64);
+                        } catch {}
+                    } catch {}
+                })());
+                await Promise.allSettled(tasks);
+            } catch {}
         }
 
         function exportCSV() {
