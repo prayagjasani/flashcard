@@ -188,6 +188,10 @@ def _order_decks_key(scope: str | None) -> str:
     s = _safe_deck_name(scope or "root") or "root"
     return f"{R2_BUCKET_NAME}/order/decks/{s}.json"
 
+def _lines_key(deck: str) -> str:
+    safe = _safe_deck_name(deck)
+    return f"{R2_BUCKET_NAME}/lines/{safe}.json"
+
 # -------------------------------
 # BASIC ROUTES
 # -------------------------------
@@ -1031,11 +1035,33 @@ def generate_lines(deck: str, limit: int | None = None):
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid deck name")
 
+    # Serve cached lines if available
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            key = _lines_key(deck)
+            obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+            data = obj["Body"].read().decode("utf-8")
+            parsed = json.loads(data)
+            if isinstance(parsed, list):
+                items = parsed
+            elif isinstance(parsed, dict):
+                items = parsed.get("items") or []
+            else:
+                items = []
+            if isinstance(limit, int) and limit > 0:
+                items = items[:limit]
+            return {"deck": deck, "count": len(items), "items": items, "cached": True}
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code not in ("404", "NoSuchKey", "NotFound"):
+                raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            pass
+
     try:
         cards = get_cards(deck)
         items = _gemini_generate_lines(cards)
         cleaned = []
-        # Build index by German term only (AI may normalize English)
         by_de = {}
         for it in items or []:
             k = (it.get('de') or '').strip().lower()
@@ -1064,7 +1090,60 @@ def generate_lines(deck: str, limit: int | None = None):
                 })
             else:
                 cleaned.append({"de": de, "en": en, "line_en": '', "line_de": ''})
-        return {"deck": deck, "count": len(cleaned), "items": cleaned}
+
+        # Save to R2 for caching
+        saved = False
+        if r2_client and R2_BUCKET_NAME:
+            try:
+                key = _lines_key(deck)
+                payload = json.dumps({"deck": deck, "items": cleaned}).encode("utf-8")
+                r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=payload, ContentType="application/json")
+                saved = True
+            except Exception:
+                saved = False
+
+        if r2_client and R2_BUCKET_NAME:
+            try:
+                import asyncio
+                from concurrent.futures import ThreadPoolExecutor
+                async def process_one(it):
+                    text = (it.get("line_de") or "").strip()
+                    if not text:
+                        return None
+                    r2_key = _safe_tts_key(text, "de")
+                    def check_and_generate():
+                        try:
+                            r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
+                            return True
+                        except ClientError:
+                            try:
+                                buf = io.BytesIO()
+                                gTTS(text=text, lang="de").write_to_fp(buf)
+                                buf.seek(0)
+                                r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=r2_key, Body=buf.getvalue(), ContentType="audio/mpeg")
+                                return True
+                            except Exception:
+                                return None
+                    loop = asyncio.get_event_loop()
+                    with ThreadPoolExecutor(max_workers=10) as executor:
+                        return await loop.run_in_executor(executor, check_and_generate)
+                sem = asyncio.Semaphore(10)
+                async def with_sem(it):
+                    async with sem:
+                        return await process_one(it)
+                tasks = [with_sem(it) for it in cleaned]
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+            except Exception:
+                pass
+
+        if isinstance(limit, int) and limit > 0:
+            cleaned = cleaned[:limit]
+        return {"deck": deck, "count": len(cleaned), "items": cleaned, "cached": False, "saved": saved}
     except HTTPException:
         raise
     except Exception as e:
@@ -1193,6 +1272,65 @@ async def preload_deck_audio(deck: str, lang: str = "de"):
         return {"audio_urls": audio_urls}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to preload deck audio: {str(e)}")
+
+@app.get("/preload_lines_audio")
+async def preload_lines_audio(deck: str, lang: str = "de"):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+    try:
+        key = _lines_key(deck)
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        items = parsed.get("items") if isinstance(parsed, dict) else parsed
+        items = items or []
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        async def process_one(it):
+            text = (it.get("line_de") or "").strip()
+            if not text:
+                return None, None
+            r2_key = _safe_tts_key(text, lang)
+            def check_and_generate():
+                try:
+                    r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
+                    return text, f"/r2/get?key={r2_key}"
+                except ClientError:
+                    try:
+                        buf = io.BytesIO()
+                        gTTS(text=text, lang=lang).write_to_fp(buf)
+                        buf.seek(0)
+                        r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=r2_key, Body=buf.getvalue(), ContentType="audio/mpeg")
+                        return text, f"/r2/get?key={r2_key}"
+                    except Exception:
+                        return None, None
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                return await loop.run_in_executor(executor, check_and_generate)
+        sem = asyncio.Semaphore(10)
+        async def with_sem(it):
+            async with sem:
+                return await process_one(it)
+        tasks = [with_sem(it) for it in items]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        audio_urls = {}
+        for r in results:
+            if isinstance(r, Exception):
+                continue
+            t, u = r
+            if t and u:
+                audio_urls[t] = u
+        return {"audio_urls": audio_urls}
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return {"audio_urls": {}}
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # -------------------------------
 # R2 UTILITIES

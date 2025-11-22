@@ -185,7 +185,7 @@
                     </div>
                     <div class="mt-3">
                         <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">German Line</div>
-                        <div class="text-sm text-text-primary-light dark:text-text-primary-dark">${it.line_de || ''}</div>
+                        <div class="text-sm text-text-primary-light dark:text-text-primary-dark line-de">${it.line_de || ''}</div>
                     </div>
                     <div class="mt-3">
                         <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">English Line</div>
@@ -195,6 +195,13 @@
                 lineList.appendChild(card);
                 shown.push(it);
                 lastItems.push(it);
+                const btn = card.querySelector('.line-de');
+                if (btn && (it.line_de || '').trim()) {
+                    btn.style.cursor = 'pointer';
+                    btn.addEventListener('click', () => {
+                        playLine((it.line_de || '').trim());
+                    });
+                }
             });
             const total = items.length;
             setStatus(`Generated ${shown.length}${total?` of ${total}`:''} lines`);
@@ -213,11 +220,29 @@
                 if (!resp.ok) throw new Error(out.detail || 'Failed');
                 renderRows(out.items || []);
                 setStatus(`Generated ${out.count} lines`);
+                try {
+                    const r = await fetch(`/preload_lines_audio?deck=${encodeURIComponent(deck)}`);
+                    const j = await r.json().catch(() => ({audio_urls:{}}));
+                    const map = j && j.audio_urls ? j.audio_urls : {};
+                    Object.entries(map).forEach(([t,u]) => lineAudioURLs.set(t, u));
+                } catch {}
             } catch (e) {
                 setStatus(String(e.message || e));
             } finally {
                 hideLoader();
             }
+        }
+
+        const audio = new Audio();
+        const lineAudioURLs = new Map();
+        function playLine(text) {
+            const url = lineAudioURLs.get(text);
+            if (url) {
+                audio.src = url;
+            } else {
+                audio.src = `/tts?text=${encodeURIComponent(text)}&lang=de`;
+            }
+            audio.play().catch(() => {});
         }
 
         function exportCSV() {
