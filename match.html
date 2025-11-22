@@ -521,7 +521,10 @@
                 }
             } else {
                 attempts++;
-                mistakes.push({ en: leftCard.en, de: leftCard.de });
+                mistakes.push({
+                    en: leftCard.en,
+                    de: leftCard.de
+                });
                 const lEl = Array.from(leftCol.children)[leftSelected];
                 const rEl = Array.from(rightCol.children)[rightSelected];
                 clearActive();
@@ -806,7 +809,10 @@
                 const k = (m.en || '') + '|' + (m.de || '');
                 if (!map.has(k)) map.set(k, m);
             });
-            cards = Array.from(map.values()).map(m => ({ en: m.en, de: m.de }));
+            cards = Array.from(map.values()).map(m => ({
+                en: m.en,
+                de: m.de
+            }));
             used.clear();
             pendingIndices = [];
             pendingRightIndices = [];

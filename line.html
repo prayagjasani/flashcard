@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Line Generator</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#007AFF",
+                        "background-light": "#F9F9F9",
+                        "background-dark": "#101922",
+                        "card-light": "#FFFFFF",
+                        "card-dark": "#19242E",
+                        "text-primary-light": "#111827",
+                        "text-primary-dark": "#F3F4F6",
+                        "text-secondary-light": "#6B7280",
+                        "text-secondary-dark": "#9CA3AF",
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .card {
+            background: var(--tw-bg-opacity, 1);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        
+        .loading-overlay.is-active {
+            display: flex;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 8px;
+            color: #8E8E93;
+        }
+        
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+            animation: dotPulse 1000ms infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 150ms;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 300ms;
+        }
+        
+        @keyframes dotPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+            50% {
+                transform: scale(1.25);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-background-light dark:bg-background-dark font-[Lexend]">
+    <div class="mx-auto max-w-4xl p-4">
+        <header class="flex items-center justify-between mb-4">
+            <a href="/" class="flex items-center gap-2 text-primary">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span>Decks</span>
+            </a>
+            <h1 class="text-xl font-bold text-text-primary-light dark:text-text-primary-dark">Line Generator</h1>
+            <button id="themeToggle" class="rounded-full h-10 px-4 bg-gray-100 dark:bg-gray-800 text-text-primary-light dark:text-text-primary-dark">Theme</button>
+        </header>
+        <div id="globalLoader" class="loading-overlay" aria-hidden="true">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+
+        <!-- Controls removed: auto-generates for the selected deck passed in query string -->
+
+        <div id="status" class="mt-3 text-sm text-text-secondary-light dark:text-text-secondary-dark"></div>
+
+        <main class="mt-4">
+            <div id="lineList" class="space-y-3"></div>
+        </main>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const deck = params.get('deck') || '';
+        const LIMIT_DEFAULT = 100;
+        const lineList = document.getElementById('lineList');
+        const statusEl = document.getElementById('status');
+        const globalLoader = document.getElementById('globalLoader');
+
+        function showLoader() {
+            globalLoader.classList.add('is-active');
+        }
+
+        function hideLoader() {
+            globalLoader.classList.remove('is-active');
+        }
+
+        function setStatus(t) {
+            statusEl.textContent = t || '';
+        }
+
+        function init() {
+            if (!deck) {
+                setStatus('Open Line from a deck');
+                return;
+            }
+            generate();
+        }
+
+        let lastItems = [];
+
+        function renderRows(items) {
+            lineList.innerHTML = '';
+            lastItems = [];
+            const shown = [];
+            items.forEach(it => {
+                const len = (it.line_en || '').trim().length + (it.line_de || '').trim().length;
+                if (!len) return;
+                const card = document.createElement('div');
+                card.className = 'rounded-2xl bg-card-light dark:bg-card-dark p-4 shadow-sm';
+                card.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">German</div>
+                            <div class="text-base font-semibold text-text-primary-light dark:text-text-primary-dark">${it.de || ''}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">English</div>
+                            <div class="text-base font-semibold text-text-primary-light dark:text-text-primary-dark">${it.en || ''}</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">German Line</div>
+                        <div class="text-sm text-text-primary-light dark:text-text-primary-dark">${it.line_de || ''}</div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">English Line</div>
+                        <div class="text-sm text-text-primary-light dark:text-text-primary-dark">${it.line_en || ''}</div>
+                    </div>
+                `;
+                lineList.appendChild(card);
+                shown.push(it);
+                lastItems.push(it);
+            });
+            const total = items.length;
+            setStatus(`Generated ${shown.length} of ${total} words`);
+        }
+
+        async function generate() {
+            const limit = LIMIT_DEFAULT;
+            if (!deck) {
+                setStatus('Select a deck');
+                return;
+            }
+            showLoader();
+            try {
+                setStatus('Generating...');
+                const resp = await fetch(`/lines/generate?deck=${encodeURIComponent(deck)}&limit=${limit}`);
+                const out = await resp.json();
+                if (!resp.ok) throw new Error(out.detail || 'Failed');
+                renderRows(out.items || []);
+                setStatus(`Generated ${out.count} lines`);
+            } catch (e) {
+                setStatus(String(e.message || e));
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function exportCSV() {
+            const rows = (lastItems || []).map(it => [it.de || '', it.en || '', it.line_en || '', it.line_de || ''].map(x => String(x).replace(/"/g, '""')));
+            const header = ['German', 'English', 'English Line', 'German Line'];
+            const csv = [header].concat(rows).map(r => r.map(x => `"${x}"`).join(',')).join('\n');
+            const blob = new Blob([csv], {
+                type: 'text/csv'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (deck || 'lines') + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            a.remove();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

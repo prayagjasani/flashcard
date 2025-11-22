@@ -13,6 +13,10 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import json
 from botocore.config import Config
+import base64
+import urllib.request
+import urllib.error
+import traceback
 
 app = FastAPI()
 
@@ -49,6 +53,111 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT:
         )
     except Exception:
         r2_client = None
+
+# Gemini API - Force load from .env file to override system env vars
+from dotenv import load_dotenv
+load_dotenv(override=True)  # Force override system environment variables
+GEMINI_API_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
+print(f"DEBUG: Loading Gemini API key: {GEMINI_API_KEY[:20]}..." if GEMINI_API_KEY else "DEBUG: No Gemini API key found!")
+
+def _gemini_generate_lines(cards):
+    """
+    Generate real-life example sentences for German–English vocabulary pairs.
+    """
+
+    # No fallback when no API key
+    if not GEMINI_API_KEY:
+        return []
+
+    # Model + endpoint
+    model = "gemini-2.5-flash"  # Faster, more reliable model
+    endpoint = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={GEMINI_API_KEY}"
+    )
+
+    # Vocabulary list for the prompt
+    vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in cards])
+
+    # ----------------------------------------------------------------------
+    # ⭐ Strong prompt — prevents useless sentences like “This is body.”
+    # ----------------------------------------------------------------------
+    prompt = f"""
+You are an expert German language teacher.
+
+TASK:
+Generate PRACTICAL, REAL-LIFE example sentences for A1–B1 learners.
+
+### Output rules:
+- Output ONLY a JSON array, no text before or after it.
+- Each element must match:
+  {{
+    "de": "<German word>",
+    "en": "<English word>",
+    "line_de": "<real-life German sentence>",
+    "line_en": "<real-life English sentence>"
+  }}
+
+IMPORTANT:
+- Echo the input values for fields "de" and "en" exactly as provided.
+- Do not change, translate, normalize, or shorten these field values.
+
+### Sentence rules:
+- 8–14 words each.
+- Use daily-life contexts: doctor visit, sports, work, family, morning routine.
+- German must use correct grammar (cases, articles, verb placement).
+- English and German sentences must NOT be literal translations.
+- Use realistic daily actions and contexts.
+
+### Vocabulary:
+{vocab_list}
+"""
+
+    body = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"response_mime_type": "application/json"},
+    }
+
+    # ----------------------------------------------------------------------
+    # ⭐ API REQUEST
+    # ----------------------------------------------------------------------
+    try:
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode("utf-8")
+
+        parsed = json.loads(raw)
+
+        # Standard: result inside candidates → content → parts → text
+        candidates = parsed.get("candidates") or []
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                p0 = parts[0]
+                if isinstance(p0, dict) and "text" in p0:
+                    return json.loads(p0["text"])   # JSON array directly
+                if isinstance(p0, dict) and "inlineData" in p0:
+                    data_b64 = p0["inlineData"].get("data", "")
+                    if data_b64:
+                        raw_json = base64.b64decode(data_b64).decode("utf-8")
+                        return json.loads(raw_json)
+
+        # Some Gemini variants directly return JSON arrays
+        if isinstance(parsed, list):
+            return parsed
+
+        raise ValueError("Could not extract JSON output from Gemini response.")
+
+    except Exception as e:
+        print("Gemini error:", e)
+        traceback.print_exc()
+        return []
 
 # -------------------------------
 # MODELS
@@ -126,6 +235,10 @@ def match_screen():
 @app.get("/spelling")
 def spelling_screen():
     return FileResponse('spelling.html')
+
+@app.get("/line")
+def line_screen():
+    return FileResponse('line.html')
 
 @app.get("/folder")
 def folder_screen():
@@ -940,6 +1053,98 @@ def tts(text: str, lang: str = "de", slow: bool = False):
         return StreamingResponse(io.BytesIO(buf.getvalue()), media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/lines/generate")
+def generate_lines(deck: str, limit: int = 100):
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+
+    try:
+        cards = get_cards(deck)
+        cards = cards[: max(1, limit)]
+        items = _gemini_generate_lines(cards)
+        cleaned = []
+        # Build index by German term only (AI may normalize English)
+        by_de = {}
+        for it in items or []:
+            k = (it.get('de') or '').strip().lower()
+            if k and k not in by_de:
+                by_de[k] = it
+        for c in cards:
+            de = c.get('de', '')
+            en = c.get('en', '')
+            chosen = by_de.get((de or '').strip().lower())
+            en_raw = en.strip()
+            en_clean = re.sub(r"\(.*?\)", "", en_raw).strip()
+            if ':' in en_clean:
+                en_clean = en_clean.split(':', 1)[0].strip()
+            is_verb = en_clean.lower().startswith('to ')
+            base = en_clean[3:].strip() if is_verb else en_clean
+            bad_en = False
+            if chosen:
+                le = (chosen.get('line_en') or '').strip().lower()
+                bad_en = (not le) or le.startswith('this is') or le.startswith('that is') or le.startswith('i the') or (' to ' in le)
+            if chosen:
+                cleaned.append({
+                    "de": de,
+                    "en": en,
+                    "line_en": (chosen.get('line_en') or '').strip(),
+                    "line_de": (chosen.get('line_de') or '').strip(),
+                })
+            else:
+                cleaned.append({"de": de, "en": en, "line_en": '', "line_de": ''})
+        return {"deck": deck, "count": len(cleaned), "items": cleaned}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/lines/debug")
+def lines_debug(deck: str, limit: int = 10):
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+    cards = get_cards(deck)[: max(1, limit)]
+    
+    # Debug: show what key we're using
+    print(f"DEBUG: In lines_debug, GEMINI_API_KEY: {GEMINI_API_KEY[:20]}...")
+    print(f"DEBUG: Key length: {len(GEMINI_API_KEY) if GEMINI_API_KEY else 'None'}")
+    
+    try:
+        # Make the same request but capture raw response too
+        model = "gemini-2.5-flash"
+        endpoint = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={GEMINI_API_KEY}"
+        )
+        print(f"DEBUG: Using endpoint: {endpoint[:100]}...")
+        print(f"DEBUG: API key length: {len(GEMINI_API_KEY) if GEMINI_API_KEY else 'None'}")
+        vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in cards])
+        prompt = f"Generate practical sentences and return ONLY JSON array with fields de,en,line_de,line_en for these pairs:\n{vocab_list}"
+        body = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"response_mime_type": "application/json"},
+        }
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode("utf-8")
+        parsed = json.loads(raw)
+        items = _gemini_generate_lines(cards)
+        return {"deck": deck, "raw": parsed, "items": items}
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode()
+        except Exception:
+            body = ""
+        return {"error": f"HTTP {e.code} {e.reason}", "body": body}
+    except Exception as e:
+        return {"error": str(e), "items": _gemini_generate_lines(cards)}
 
 @app.get("/preload_deck_audio")
 async def preload_deck_audio(deck: str, lang: str = "de"):

@@ -1222,6 +1222,10 @@
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span>
                     <span>Spelling</span>
                 </button>
+                <button id="openLineBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span>
+                    <span>Line</span>
+                </button>
                 <button id="openMatchBtn" class="study-action study-action--secondary" type="button">
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">match_word</span>
                     <span>Match</span>
@@ -1351,6 +1355,7 @@
         const openFlashBtn = document.getElementById('openFlashBtn');
         let openSpellingBtn = document.getElementById('openSpellingBtn');
         let openMatchBtn = document.getElementById('openMatchBtn');
+        let openLineBtn = document.getElementById('openLineBtn');
         const openMoveBtn = document.getElementById('openMoveBtn');
         const studyActionsEl = document.querySelector('#chooseActionModal .study-actions');
         if (!openSpellingBtn && studyActionsEl) {
@@ -1374,6 +1379,17 @@
             if (moveBtnEl2) studyActionsEl.insertBefore(btn2, moveBtnEl2);
             else studyActionsEl.appendChild(btn2);
             openMatchBtn = btn2;
+        }
+        if (!openLineBtn && studyActionsEl) {
+            const btn3 = document.createElement('button');
+            btn3.id = 'openLineBtn';
+            btn3.className = 'study-action study-action--secondary';
+            btn3.type = 'button';
+            btn3.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span><span>Line</span>';
+            const moveBtnEl3 = document.getElementById('openMoveBtn');
+            if (moveBtnEl3) studyActionsEl.insertBefore(btn3, moveBtnEl3);
+            else studyActionsEl.appendChild(btn3);
+            openLineBtn = btn3;
         }
         const moveDeckModal = document.getElementById('moveDeckModal');
         const moveDeckList = document.getElementById('moveDeckList');
@@ -2261,6 +2277,11 @@
             if (!selectedDeckForAction) return;
             const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
             window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+        });
+        if (openLineBtn) openLineBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+            window.location.href = `/line?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
         if (openMatchBtn) openMatchBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
