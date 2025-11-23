@@ -378,9 +378,7 @@
                 if (!data?.audio_urls) return;
                 
                 const entries = Object.entries(data.audio_urls);
-                const tasks = entries.map(([text, url]) => 
-                    fetchAudioAndCache(text, url)
-                );
+                const tasks = entries.map(([text, url]) => fetchAudioAndCache(text, url));
                 
                 await Promise.allSettled(tasks);
             } catch (error) {
@@ -390,19 +388,19 @@
         
         async function fetchAudioAndCache(text, url) {
             const cacheKey = `audio:de:${text}`;
-            if (localStorage.getItem(cacheKey)) return;
-            
+            if (audioCache.has(text) || localStorage.getItem(cacheKey)) return;
             try {
                 const response = await fetch(url);
                 if (!response.ok) return;
-                
                 const blob = await response.blob();
-                const base64 = await blobToBase64(blob);
-                
+                const objUrl = URL.createObjectURL(blob);
+                cleanupAudioCache();
+                audioCache.set(text, objUrl);
                 try {
+                    const base64 = await blobToBase64(blob);
                     localStorage.setItem(cacheKey, base64);
-                    audioCache.set(text, base64);
                 } catch (storageError) {
+                    // Keep in-memory cache even if persistent storage fails
                     console.warn('Storage quota exceeded for audio cache');
                 }
             } catch (error) {
@@ -502,6 +500,7 @@
 
         async function initializeApp() {
             try {
+                hydrateAudioFromLocalStorage();
                 await loadDeck();
                 if ('requestIdleCallback' in window) {
                     requestIdleCallback(() => preloadDeckAudio());
