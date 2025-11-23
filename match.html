@@ -792,9 +792,10 @@
         });
         // initialize toggle state
         try {
-            showGermanLeft = (localStorage.getItem('matchShowGermanLeft') === '1');
+            const saved = localStorage.getItem('matchShowGermanLeft');
+            showGermanLeft = (saved == null) ? true : (saved === '1');
         } catch {
-            showGermanLeft = false
+            showGermanLeft = true
         }
         showGermanToggle.checked = !showGermanLeft;
         if (currentDeck) loadCards(currentDeck);
