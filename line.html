@@ -111,6 +111,22 @@
                 background: rgba(0, 0, 0, .6)
             }
         }
+        
+        .tile-enter {
+            animation: slideDown 380ms ease-out both;
+            will-change: transform, opacity
+        }
+        
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-6px);
+                opacity: 0
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1
+            }
+        }
     </style>
 </head>
 
@@ -167,11 +183,13 @@
             lineList.innerHTML = '';
             lastItems = [];
             const shown = [];
-            items.forEach(it => {
+            items.forEach((it, i) => {
                 const len = (it.line_en || '').trim().length + (it.line_de || '').trim().length;
                 if (!len) return;
                 const card = document.createElement('div');
                 card.className = 'rounded-xl bg-card-light dark:bg-card-dark p-4 shadow-sm';
+                card.classList.add('tile-enter');
+                card.style.animationDelay = `${i * 40}ms`;
                 card.innerHTML = `
                     <div class="grid grid-cols-2 gap-4">
                         <div>
