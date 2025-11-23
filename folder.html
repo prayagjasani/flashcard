@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)" />
     <meta name="msapplication-navbutton-color" content="#ffffff" />
@@ -366,6 +367,24 @@
             padding: 0 !important;
             opacity: 0 !important;
             pointer-events: none !important;
+        }
+    </style>
+    <style>
+        html {
+            color-scheme: light;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .modal__dialog {
+                background: var(--card-bg) !important;
+                border-color: var(--card-border) !important;
+            }
+            .loading-overlay {
+                background: rgba(255, 255, 255, 0.6) !important;
+            }
+            .loading-dots {
+                color: #8E8E93 !important;
+            }
         }
     </style>
 </head>

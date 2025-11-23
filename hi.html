@@ -5,6 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)" />
     <meta name="msapplication-navbutton-color" content="#ffffff" />
@@ -47,7 +48,7 @@
         }
     </script>
     <style>
-        :root {
+         :root {
             --loading-dot-size: 8px;
             --loading-dot-gap: 8px;
             --loading-animation-duration: 1000ms;
@@ -119,7 +120,6 @@
             .loading-dots {
                 color: #92adc9;
             }
-            
             .loading-overlay {
                 background: rgba(0, 0, 0, 0.6);
             }
@@ -140,6 +140,20 @@
         @media (prefers-color-scheme: dark) {
             .study-card:hover {
                 box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            }
+        }
+    </style>
+    <style>
+        html {
+            color-scheme: light;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .loading-overlay {
+                background: rgba(255, 255, 255, 0.6) !important;
+            }
+            .loading-dots {
+                color: #8E8E93 !important;
             }
         }
     </style>
@@ -233,7 +247,7 @@
         const audioPlayer = new Audio();
         const audioCache = new Map();
         const MAX_CACHE_SIZE = 50;
-        
+
         function cleanupAudioCache() {
             if (audioCache.size > MAX_CACHE_SIZE) {
                 const entries = Array.from(audioCache.entries());
@@ -247,39 +261,47 @@
             }
         }
         const eventListeners = [];
-        
+
         function addEventListenerWithCleanup(element, event, handler) {
             element.addEventListener(event, handler);
-            eventListeners.push({ element, event, handler });
+            eventListeners.push({
+                element,
+                event,
+                handler
+            });
         }
-        
+
         function cleanupEventListeners() {
-            eventListeners.forEach(({ element, event, handler }) => {
+            eventListeners.forEach(({
+                element,
+                event,
+                handler
+            }) => {
                 element.removeEventListener(event, handler);
             });
             eventListeners.length = 0;
         }
-        
+
         addEventListenerWithCleanup(backBtn, 'click', () => {
             if (from) location.href = `/folder?name=${encodeURIComponent(from)}`;
             else location.href = '/';
         });
-        
+
         addEventListenerWithCleanup(homeBtn, 'click', () => {
             location.href = '/';
         });
         async function loadDeck() {
             showLoader();
-            
+
             if (!deck) {
                 cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">No deck selected</div>';
                 hideLoader();
                 return;
             }
-            
+
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
-            
+
             try {
                 const response = await fetch(`/cards?deck=${encodeURIComponent(deck)}`, {
                     signal: controller.signal,
@@ -288,17 +310,17 @@
                         'Cache-Control': 'no-cache'
                     }
                 });
-                
+
                 clearTimeout(timeoutId);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const data = await response.json();
                 cards = Array.isArray(data) ? data : [];
                 renderGrid();
-                
+
             } catch (error) {
                 if (error.name === 'AbortError') {
                     console.warn('Deck loading timed out');
@@ -318,18 +340,18 @@
                 cardGrid.innerHTML = '<div class="mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">This deck is empty</div>';
                 return;
             }
-            
+
             const table = document.createElement('table');
             table.className = 'w-full table-fixed border-collapse bg-card-light dark:bg-card-dark rounded-xl overflow-hidden shadow-sm';
             const tbody = document.createElement('tbody');
             table.appendChild(tbody);
-            
+
             cardGrid.innerHTML = '';
             cardGrid.appendChild(table);
-            
+
             const batchSize = 50;
             let index = 0;
-            
+
             function appendBatch() {
                 const fragment = document.createDocumentFragment();
                 const end = Math.min(index + batchSize, cards.length);
@@ -338,15 +360,15 @@
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer';
                     tr.dataset.text = c.de || '';
-                    
+
                     const tdDe = document.createElement('td');
                     tdDe.className = 'align-middle px-3 py-2 text-[15px] font-medium text-text-primary-light dark:text-text-primary-dark border-r border-slate-300 dark:border-slate-700 border-b border-slate-300 dark:border-slate-700 break-words';
                     tdDe.textContent = c.de;
-                    
+
                     const tdEn = document.createElement('td');
                     tdEn.className = 'align-middle px-3 py-2 text-[15px] text-text-secondary-light dark:text-text-secondary-dark border-b border-slate-300 dark:border-slate-700 break-words';
                     tdEn.textContent = c.en;
-                    
+
                     tr.appendChild(tdDe);
                     tr.appendChild(tdEn);
                     fragment.appendChild(tr);
@@ -356,7 +378,7 @@
                     requestAnimationFrame(appendBatch);
                 }
             }
-            
+
             appendBatch();
         }
 
@@ -369,23 +391,23 @@
         }
         async function preloadDeckAudio() {
             if (!deck) return;
-            
+
             try {
                 const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deck)}`);
                 if (!resp.ok) return;
-                
+
                 const data = await resp.json();
-                if (!data?.audio_urls) return;
-                
+                if (!data || !data.audio_urls) return;
+
                 const entries = Object.entries(data.audio_urls);
                 const tasks = entries.map(([text, url]) => fetchAudioAndCache(text, url));
-                
+
                 await Promise.allSettled(tasks);
             } catch (error) {
                 console.warn('Audio preloading failed:', error);
             }
         }
-        
+
         async function fetchAudioAndCache(text, url) {
             const cacheKey = `audio:de:${text}`;
             if (audioCache.has(text) || localStorage.getItem(cacheKey)) return;
@@ -407,7 +429,7 @@
                 console.warn(`Failed to cache audio for "${text}":`, error);
             }
         }
-        
+
         function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -444,32 +466,32 @@
         }
         async function speak(text) {
             if (!text) return;
-            
+
             try {
                 audioPlayer.pause();
                 audioPlayer.currentTime = 0;
-                
+
                 const cacheKey = `audio:de:${text}`;
                 const stored = localStorage.getItem(cacheKey);
                 if (stored && !audioCache.has(text)) {
                     audioCache.set(text, stored);
                 }
-                
+
                 if (audioCache.has(text)) {
                     audioPlayer.src = audioCache.get(text);
                     await audioPlayer.play();
                     return;
                 }
-                
+
                 const resp = await fetch(`/tts?text=${encodeURIComponent(text)}&lang=de`);
                 if (resp.ok) {
                     const blob = await resp.blob();
-                const url = URL.createObjectURL(blob);
-                
-                cleanupAudioCache();
-                audioCache.set(text, url);
-                audioPlayer.src = url;
-                await audioPlayer.play();
+                    const url = URL.createObjectURL(blob);
+
+                    cleanupAudioCache();
+                    audioCache.set(text, url);
+                    audioPlayer.src = url;
+                    await audioPlayer.play();
                 }
             } catch (error) {
                 console.warn('Audio playback failed:', error);
@@ -495,7 +517,7 @@
         addEventListenerWithCleanup(studySpeak, 'click', () => {
             if (current && current.de) speak(current.de);
         });
-        
+
         window.addEventListener('beforeunload', cleanupEventListeners);
 
         async function initializeApp() {
@@ -511,7 +533,7 @@
                 console.error('App initialization failed:', error);
             }
         }
-        
+
         initializeApp();
     </script>
 </body>

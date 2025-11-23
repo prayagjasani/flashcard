@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="color-scheme" content="light" />
     <title>Line Generator</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
@@ -125,6 +126,19 @@
             100% {
                 transform: translateY(0);
                 opacity: 1
+            }
+        }
+        
+        html {
+            color-scheme: light;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .loading-overlay {
+                background: rgba(255, 255, 255, .6) !important;
+            }
+            .loading-dots {
+                color: #8E8E93 !important;
             }
         }
     </style>
