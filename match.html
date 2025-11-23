@@ -196,12 +196,12 @@
                 background: #19242E;
                 border-color: #1f2937
             }
-            .pair-btn {
+            .pair-btn:not(.active):not(.correct):not(.wrong) {
                 background: #ffffff;
                 color: #333;
                 border-color: #374151
             }
-            .pair-text {
+            .pair-text:not(.active):not(.correct):not(.wrong) {
                 background: #ffffff;
                 color: #333;
                 border-color: #374151
@@ -256,27 +256,27 @@
         
         @media (prefers-color-scheme: dark) {
             .loading-overlay {
-                background: rgba(255, 255, 255, .6) !important;
+                background: rgba(255, 255, 255, .6);
             }
             .loading-dots {
-                color: #8E8E93 !important;
+                color: #8E8E93;
             }
             .card {
-                background: #fff !important;
-                border-color: #e5e7eb !important;
+                background: #fff;
+                border-color: #e5e7eb;
             }
-            .pair-btn {
-                background: #fff !important;
-                color: #333 !important;
-                border-color: #e5e7eb !important;
+            .pair-btn:not(.active):not(.correct):not(.wrong) {
+                background: #fff;
+                color: #333;
+                border-color: #e5e7eb;
             }
-            .pair-text {
-                background: #fff !important;
-                color: #333 !important;
-                border-color: #e5e7eb !important;
+            .pair-text:not(.active):not(.correct):not(.wrong) {
+                background: #fff;
+                color: #333;
+                border-color: #e5e7eb;
             }
             .form-toggle {
-                accent-color: #64748b !important;
+                accent-color: #64748b;
             }
         }
     </style>
