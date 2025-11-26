@@ -116,6 +116,31 @@
                 opacity: 1;
             }
         }
+        .manage-card {
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            background: #fff;
+            padding: 8px;
+        }
+        .manage-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: transparent;
+        }
+        .manage-title {
+            font-weight: 600;
+        }
+        .manage-body {
+            margin-top: 8px;
+        }
+        .manage-card.collapsed .manage-body {
+            display: none;
+        }
+        
     </style>
 </head>
 
@@ -128,26 +153,38 @@
 </button>
             </div>
             <h1 id="deckTitle" class="text-lg font-semibold text-near-black dark:text-white">Deck</h1>
-            <div class="w-10"></div>
+            <div class="flex items-center gap-1">
+                <button id="navAddBtn" class="flex size-10 items-center justify-center text-near-black dark:text-white" aria-label="Add">
+                    <span class="material-symbols-outlined text-2xl">add</span>
+                </button>
+            </div>
         </header>
         <main class="flex-1 px-4 py-6 pb-24">
             <div class="mb-4 flex items-center gap-3">
-                <label for="deckSelectEdit" class="text-sm font-medium text-near-black dark:text-white">Deck</label>
+                <label id="deckLabelEdit" for="deckSelectEdit" class="text-sm font-medium text-near-black dark:text-white cursor-pointer">Deck</label>
                 <select id="deckSelectEdit" class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white"></select>
             </div>
-            <div class="mb-4 flex items-center gap-3">
-                <input id="renameInput" type="text" class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white" placeholder="New deck name" />
-                <button id="renameBtn" class="h-10 rounded-lg bg-primary px-4 text-white">Rename</button>
+            <div id="cardList" class="space-y-3 mt-4"></div>
+            <div id="manageCard" class="manage-card collapsed mt-4">
+                <button id="manageToggle" class="manage-toggle" type="button">
+                    <span class="manage-title">Manage deck</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+                <div class="manage-body">
+                    <div class="mb-4 flex items-center gap-3">
+                        <input id="renameInput" type="text" class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white" placeholder="New deck name" />
+                        <button id="renameBtn" class="h-10 rounded-lg bg-primary px-4 text-white">Rename</button>
+                    </div>
+                    <div class="mb-3">
+                        <button id="deleteDeckBtn" class="h-10 w-full rounded-lg border border-destructive-red text-destructive-red">Delete deck</button>
+                    </div>
+                </div>
             </div>
-            <div class="mb-6">
-                <button id="deleteDeckBtn" class="h-10 w-full rounded-lg border border-destructive-red text-destructive-red">Delete deck</button>
-            </div>
-            <div id="cardList" class="space-y-3"></div>
         </main>
         <div id="globalLoader" class="loading-overlay" aria-hidden="true">
             <div class="loading-dots"><span></span><span></span><span></span></div>
         </div>
-        <div id="editModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/40 p-4">
+        <div id="editModal" class="fixed inset-0 z-40 hidden flex items-center justify-center bg-black/40 p-4">
             <div class="w-full max-w-sm rounded-xl bg-background-light dark:bg-background-dark p-4 shadow-xl">
                 <h2 class="text-base font-semibold text-near-black dark:text-white">Edit Card</h2>
                 <div class="mt-3 space-y-3">
@@ -160,11 +197,7 @@
                 </div>
             </div>
         </div>
-        <div class="fixed bottom-6 right-6 z-20">
-            <button id="addBtn" class="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95">
-                <span class="material-symbols-outlined text-3xl">add</span>
-            </button>
-        </div>
+        
     </div>
 
 </body>
@@ -179,12 +212,15 @@
     const editDe = document.getElementById('editDe');
     const editCancel = document.getElementById('editCancel');
     const editSave = document.getElementById('editSave');
-    const addBtn = document.getElementById('addBtn');
+    const manageCard = document.getElementById('manageCard');
+    const manageToggle = document.getElementById('manageToggle');
     const params = new URLSearchParams(location.search);
     const deckSelectEdit = document.getElementById('deckSelectEdit');
+    const deckLabelEdit = document.getElementById('deckLabelEdit');
     const renameInput = document.getElementById('renameInput');
     const renameBtn = document.getElementById('renameBtn');
     const deleteDeckBtn = document.getElementById('deleteDeckBtn');
+    const navAddBtn = document.getElementById('navAddBtn');
     const audioPlayer = new Audio();
     const audioCache = new Map();
     const MAX_CACHE_SIZE = 50;
@@ -194,7 +230,18 @@
     let cards = [];
     let editingIndex = -1;
     let didInitialAnimation = false;
-
+    if (navAddBtn) navAddBtn.addEventListener('click', () => {
+        editingIndex = -1;
+        editEn.value = '';
+        editDe.value = '';
+        editModal.classList.remove('hidden');
+    });
+    if (deckLabelEdit && manageCard) {
+        deckLabelEdit.addEventListener('click', () => {
+            manageCard.classList.remove('collapsed');
+            manageCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }
     function showLoader() {
         if (globalLoader) globalLoader.classList.add('is-active');
     }
@@ -205,6 +252,11 @@
     backBtn.addEventListener('click', () => {
         location.href = '/';
     });
+    if (manageToggle && manageCard) {
+        manageToggle.addEventListener('click', () => {
+            manageCard.classList.toggle('collapsed');
+        });
+    }
     async function loadCards() {
         showLoader();
         try {
@@ -225,8 +277,10 @@
     function renderList() {
         cardList.innerHTML = '';
         if (!cards.length) {
-            cardList.innerHTML = '<div class="text-center text-neutral-gray">No cards</div>';
-            return;
+            const none = document.createElement('div');
+            none.className = 'text-center text-neutral-gray';
+            none.textContent = 'No cards';
+            cardList.appendChild(none);
         }
         cards.forEach((c, i) => {
             const row = document.createElement('div');
@@ -248,11 +302,6 @@
             btnEdit.className = 'flex size-10 items-center justify-center rounded-full text-neutral-gray transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700';
             btnEdit.innerHTML = '<span class="material-symbols-outlined text-xl">edit</span>';
             btnEdit.addEventListener('click', () => openEdit(i));
-            const btnReload = document.createElement('button');
-            btnReload.className = 'flex size-10 items-center justify-center rounded-full text-neutral-gray transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700';
-            btnReload.innerHTML = '<span class="material-symbols-outlined text-xl">cached</span>';
-            btnReload.title = 'Reload audio';
-            btnReload.addEventListener('click', () => reloadAudio(i));
             const btnDelete = document.createElement('button');
             btnDelete.className = 'flex size-10 items-center justify-center rounded-full text-destructive-red transition-colors hover:bg-red-50 dark:hover:bg-red-500/10';
             btnDelete.innerHTML = '<span class="material-symbols-outlined text-xl">delete</span>';
@@ -260,7 +309,6 @@
             row.appendChild(left);
             row.appendChild(right);
             right.appendChild(btnEdit);
-            right.appendChild(btnReload);
             right.appendChild(btnDelete);
             row.addEventListener('click', (e) => {
                 if (e.target.closest('button')) return;
@@ -292,7 +340,7 @@
         const en = (editEn.value || '').trim();
         const de = (editDe.value || '').trim();
         if (!en || !de) return;
-        if (editingIndex === -1) cards.push({ en, de });
+        if (editingIndex === -1) cards.unshift({ en, de });
         else cards[editingIndex] = { en, de };
         closeEdit();
         renderList();
@@ -342,31 +390,8 @@
         saveDeckSilent();
         if (removed && removed.de) removeAudioCacheForWord(removed.de);
     }
-    async function reloadAudio(i) {
-        const text = (cards[i] && cards[i].de || '').trim();
-        if (!text) return;
-        showLoader();
-        try {
-            await fetch('/audio/rebuild', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    text,
-                    lang: 'de'
-                })
-            }).then(r => r.json()).catch(() => {});
-        } catch {} finally {
-            hideLoader();
-        }
-    }
-    addBtn.addEventListener('click', () => {
-        editingIndex = -1;
-        editEn.value = '';
-        editDe.value = '';
-        editModal.classList.remove('hidden');
-    });
+    
+    
     loadCards();
 
     async function loadDecks() {
