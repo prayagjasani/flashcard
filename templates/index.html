@@ -925,9 +925,7 @@
             width: 100%;
             margin: 0;
             margin-top: 16px;
-            /* ~mt-16 */
             padding: 32px 0 16px;
-            /* more space on top, none on sides */
         }
         
         .deck-grid {
@@ -965,6 +963,23 @@
         
         .deck-tile:hover {
             box-shadow: var(--card-shadow-hover);
+        }
+        .create-tile {
+            background: transparent;
+            border: 1px dashed var(--card-border);
+            box-shadow: none;
+        }
+        .create-tile:hover {
+            box-shadow: none;
+            background: rgba(2, 8, 23, 0.02);
+        }
+        .create-tile__icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--text-secondary);
+            height: 24px;
         }
         
         .tile-enter {
@@ -1215,7 +1230,6 @@
         </div>
         <div class="deck-grid" id="deckGrid" style="display:none"></div>
     </section>
-    <button id="createFolderBtn" class="fab-btn" type="button" aria-label="Create Folder">+</button>
     <div class="modal modal--center-actions" id="chooseActionModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-action="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chooseActionTitle">
@@ -2145,6 +2159,15 @@
                 attachFolderDnD(wrap, f.name);
                 folderGrid.appendChild(wrap);
             });
+            const createTile = document.createElement('div');
+            createTile.className = 'deck-tile tile-enter create-tile';
+            createTile.style.animationDelay = `${ordered.length * 40}ms`;
+            const plus = document.createElement('div');
+            plus.className = 'create-tile__icon';
+            plus.textContent = '+';
+            createTile.appendChild(plus);
+            createTile.addEventListener('click', openCreateFolderModal);
+            folderGrid.appendChild(createTile);
         }
 
         function sanitizeName(name) {
@@ -2203,6 +2226,7 @@
                 createFolderSaveBtn.textContent = 'Create';
             }
         });
+
 
         function openRenameFolderModal(name) {
             folderToManage = name;
