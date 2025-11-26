@@ -187,6 +187,7 @@
     const deleteDeckBtn = document.getElementById('deleteDeckBtn');
     const audioPlayer = new Audio();
     const audioCache = new Map();
+    const MAX_CACHE_SIZE = 50;
     let deck = params.get('deck') || '';
     if (deck) deckTitle.textContent = deck;
     if (renameInput) renameInput.value = deck || '';
@@ -211,6 +212,8 @@
             const data = r.ok ? await r.json() : [];
             cards = Array.isArray(data) ? data : [];
             renderList();
+            hydrateAudioFromLocalStorage();
+            if (deck) preloadDeckAudio();
             hideLoader();
         } catch {
             cards = [];
@@ -499,6 +502,65 @@
                 await audioPlayer.play();
             }
         } catch {}
+    }
+
+    function cleanupAudioCache() {
+        if (audioCache.size > MAX_CACHE_SIZE) {
+            const entries = Array.from(audioCache.entries());
+            const toRemove = entries.slice(0, entries.length - MAX_CACHE_SIZE);
+            toRemove.forEach(([key, url]) => {
+                if (typeof url === 'string' && url.startsWith('blob:')) {
+                    try { URL.revokeObjectURL(url); } catch {}
+                }
+                audioCache.delete(key);
+            });
+        }
+    }
+
+    function hydrateAudioFromLocalStorage() {
+        cards.forEach(c => {
+            const key = `audio:de:${c.de}`;
+            const val = localStorage.getItem(key);
+            if (val) audioCache.set(c.de, val);
+        });
+    }
+
+    async function preloadDeckAudio() {
+        if (!deck) return;
+        try {
+            const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deck)}`);
+            if (!resp.ok) return;
+            const data = await resp.json().catch(() => ({}));
+            const entries = Object.entries((data && data.audio_urls) || {});
+            const tasks = entries.map(([text, url]) => fetchAudioAndCache(text, url));
+            await Promise.allSettled(tasks);
+        } catch {}
+    }
+
+    async function fetchAudioAndCache(text, url) {
+        const cacheKey = `audio:de:${text}`;
+        if (audioCache.has(text) || localStorage.getItem(cacheKey)) return;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return;
+            const blob = await response.blob();
+            const objUrl = URL.createObjectURL(blob);
+            cleanupAudioCache();
+            audioCache.set(text, objUrl);
+            try {
+                const base64 = await blobToBase64(blob);
+                localStorage.setItem(cacheKey, base64);
+            } catch {}
+        } catch {}
+    }
+
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
     }
 </script>
 
