@@ -185,6 +185,8 @@
     const renameInput = document.getElementById('renameInput');
     const renameBtn = document.getElementById('renameBtn');
     const deleteDeckBtn = document.getElementById('deleteDeckBtn');
+    const audioPlayer = new Audio();
+    const audioCache = new Map();
     let deck = params.get('deck') || '';
     if (deck) deckTitle.textContent = deck;
     if (renameInput) renameInput.value = deck || '';
@@ -257,6 +259,11 @@
             right.appendChild(btnEdit);
             right.appendChild(btnReload);
             right.appendChild(btnDelete);
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                const t = (c.de || '').trim();
+                if (t) speak(t);
+            });
             cardList.appendChild(row);
         });
         didInitialAnimation = true;
@@ -467,6 +474,32 @@
     });
 
     loadDecks();
+
+    async function speak(text) {
+        if (!text) return;
+        try {
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            const cacheKey = `audio:de:${text}`;
+            const stored = localStorage.getItem(cacheKey);
+            if (stored && !audioCache.has(text)) {
+                audioCache.set(text, stored);
+            }
+            if (audioCache.has(text)) {
+                audioPlayer.src = audioCache.get(text);
+                await audioPlayer.play();
+                return;
+            }
+            const resp = await fetch(`/tts?text=${encodeURIComponent(text)}&lang=de`);
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                audioCache.set(text, url);
+                audioPlayer.src = url;
+                await audioPlayer.play();
+            }
+        } catch {}
+    }
 </script>
 
 </html>
