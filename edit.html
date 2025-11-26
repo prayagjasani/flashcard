@@ -116,6 +116,11 @@
                 opacity: 1;
             }
         }
+
+        .row-processing {
+            background: rgba(245, 158, 11, 0.16);
+            border: 1px solid rgba(245, 158, 11, 0.45);
+        }
     </style>
 </head>
 
@@ -188,6 +193,7 @@
     const audioPlayer = new Audio();
     const audioCache = new Map();
     const MAX_CACHE_SIZE = 50;
+    const processingWords = new Set();
     let deck = params.get('deck') || '';
     if (deck) deckTitle.textContent = deck;
     if (renameInput) renameInput.value = deck || '';
@@ -232,6 +238,7 @@
             const row = document.createElement('div');
             row.className = 'flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800/50' + (didInitialAnimation ? '' : ' row-enter');
             if (!didInitialAnimation) row.style.animationDelay = `${i*40}ms`;
+            if (processingWords.has(c.de)) row.classList.add('row-processing');
             const left = document.createElement('div');
             left.className = 'flex flex-1 flex-col justify-center';
             const de = document.createElement('p');
@@ -292,16 +299,17 @@
         const en = (editEn.value || '').trim();
         const de = (editDe.value || '').trim();
         if (!en || !de) return;
-        if (editingIndex === -1) cards.push({
-            en,
-            de
-        });
-        else cards[editingIndex] = {
-            en,
-            de
-        };
+        if (editingIndex === -1) cards.push({ en, de });
+        else cards[editingIndex] = { en, de };
         closeEdit();
-        await saveDeck();
+        processingWords.add(de);
+        renderList();
+        const p1 = saveDeckSilent();
+        const p2 = preloadAudioForWord(de);
+        Promise.allSettled([p1, p2]).then(() => {
+            processingWords.delete(de);
+            renderList();
+        });
     });
     async function saveDeck() {
         showLoader();
@@ -323,6 +331,18 @@
             hideLoader();
         } finally {
             hideLoader();
+        }
+    }
+    async function saveDeckSilent() {
+        try {
+            const content = cards.map(r => `${r.en},${r.de}`).join('\n');
+            return fetch('/deck/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: deck, content })
+            }).then(r => r.json()).catch(() => ({}));
+        } catch {
+            return Promise.resolve({});
         }
     }
     async function deleteCard(i) {
@@ -535,6 +555,12 @@
             const tasks = entries.map(([text, url]) => fetchAudioAndCache(text, url));
             await Promise.allSettled(tasks);
         } catch {}
+    }
+
+    function preloadAudioForWord(text) {
+        if (!text) return Promise.resolve();
+        const url = `/tts?text=${encodeURIComponent(text)}&lang=de`;
+        return fetchAudioAndCache(text, url);
     }
 
     async function fetchAudioAndCache(text, url) {
