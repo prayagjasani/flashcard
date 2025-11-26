@@ -116,11 +116,6 @@
                 opacity: 1;
             }
         }
-
-        .row-processing {
-            background: rgba(245, 158, 11, 0.16);
-            border: 1px solid rgba(245, 158, 11, 0.45);
-        }
     </style>
 </head>
 
@@ -193,7 +188,6 @@
     const audioPlayer = new Audio();
     const audioCache = new Map();
     const MAX_CACHE_SIZE = 50;
-    const processingWords = new Set();
     let deck = params.get('deck') || '';
     if (deck) deckTitle.textContent = deck;
     if (renameInput) renameInput.value = deck || '';
@@ -238,7 +232,6 @@
             const row = document.createElement('div');
             row.className = 'flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800/50' + (didInitialAnimation ? '' : ' row-enter');
             if (!didInitialAnimation) row.style.animationDelay = `${i*40}ms`;
-            if (processingWords.has(c.de)) row.classList.add('row-processing');
             const left = document.createElement('div');
             left.className = 'flex flex-1 flex-col justify-center';
             const de = document.createElement('p');
@@ -302,12 +295,10 @@
         if (editingIndex === -1) cards.push({ en, de });
         else cards[editingIndex] = { en, de };
         closeEdit();
-        processingWords.add(de);
         renderList();
         const p1 = saveDeckSilent();
         const p2 = preloadAudioForWord(de);
         Promise.allSettled([p1, p2]).then(() => {
-            processingWords.delete(de);
             renderList();
         });
     });

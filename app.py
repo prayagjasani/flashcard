@@ -1424,6 +1424,104 @@ def audio_rebuild(req: AudioRebuildRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/audio/cleanup")
+def audio_cleanup(dry_run: bool = False):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    try:
+        valid_texts = set()
+        idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
+        decks = []
+        try:
+            idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=idx_key)
+            idx_data = idx_obj["Body"].read().decode("utf-8")
+            parsed = json.loads(idx_data)
+            if isinstance(parsed, list):
+                decks = parsed
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code not in ("404", "NoSuchKey", "NotFound"):
+                raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            decks = []
+
+        for d in decks:
+            if not isinstance(d, dict):
+                continue
+            name = d.get("name") or ""
+            file_key = d.get("file") or f"{R2_BUCKET_NAME}/csv/{_safe_deck_name(name)}.csv"
+            try:
+                obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=file_key)
+                data = obj["Body"].read().decode("utf-8")
+                reader = csv.reader(io.StringIO(data))
+                for row in reader:
+                    if len(row) >= 2:
+                        de = (row[1] or "").strip()
+                        if de:
+                            valid_texts.add(de)
+            except Exception:
+                pass
+            try:
+                lkey = _lines_key(name)
+                lobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=lkey)
+                ldata = lobj["Body"].read().decode("utf-8")
+                lparsed = json.loads(ldata)
+                items = lparsed.get("items") if isinstance(lparsed, dict) else lparsed
+                items = items or []
+                for it in items:
+                    if isinstance(it, dict):
+                        t = (it.get("line_de") or "").strip()
+                        if t:
+                            valid_texts.add(t)
+            except Exception:
+                pass
+
+        valid_keys = set(_safe_tts_key(t, "de") for t in valid_texts)
+        prefix = f"{R2_BUCKET_NAME}/tts/de/"
+        continuation = None
+        total = 0
+        deleted = 0
+        kept = 0
+        errors = 0
+        while True:
+            kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": prefix}
+            if continuation:
+                kwargs["ContinuationToken"] = continuation
+            resp = r2_client.list_objects_v2(**kwargs)
+            contents = resp.get("Contents", [])
+            for obj in contents:
+                key = obj.get("Key", "")
+                if not key.endswith(".mp3"):
+                    continue
+                total += 1
+                if key in valid_keys:
+                    kept += 1
+                else:
+                    if dry_run:
+                        deleted += 1
+                    else:
+                        try:
+                            r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=key)
+                            deleted += 1
+                        except Exception:
+                            errors += 1
+            if resp.get("IsTruncated"):
+                continuation = resp.get("NextContinuationToken")
+            else:
+                break
+
+        return {
+            "ok": True,
+            "dry_run": dry_run,
+            "tts_total": total,
+            "kept": kept,
+            "deleted": deleted,
+            "errors": errors,
+            "valid_texts": len(valid_texts),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup audio: {e}")
+
 # -------------------------------
 # ORDER ROUTES
 # -------------------------------
