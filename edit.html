@@ -337,8 +337,10 @@
         }
     }
     async function deleteCard(i) {
-        cards.splice(i, 1);
-        await saveDeck();
+        const removed = cards.splice(i, 1)[0];
+        renderList();
+        saveDeckSilent();
+        if (removed && removed.de) removeAudioCacheForWord(removed.de);
     }
     async function reloadAudio(i) {
         const text = (cards[i] && cards[i].de || '').trim();
@@ -578,6 +580,20 @@
             reader.onerror = reject;
             reader.readAsDataURL(blob);
         });
+    }
+
+    function removeAudioCacheForWord(text) {
+        if (!text) return;
+        try {
+            const val = audioCache.get(text);
+            if (val && typeof val === 'string' && val.startsWith('blob:')) {
+                try { URL.revokeObjectURL(val); } catch {}
+            }
+            audioCache.delete(text);
+        } catch {}
+        try {
+            localStorage.removeItem(`audio:de:${text}`);
+        } catch {}
     }
 </script>
 
