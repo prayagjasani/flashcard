@@ -1,22 +1,22 @@
 import csv
 import os
 import re
+import io
+import json
+import base64
+import urllib.request
+import urllib.error
+
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from gtts import gTTS
-import uvicorn
-import io
+from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
-import json
 from botocore.config import Config
-import base64
-import urllib.request
-import urllib.error
-import traceback
+import uvicorn
 
 app = FastAPI()
 
@@ -55,10 +55,8 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT:
         r2_client = None
 
 # Gemini API - Force load from .env file to override system env vars
-from dotenv import load_dotenv
 load_dotenv(override=True)  # Force override system environment variables
 GEMINI_API_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
-print(f"DEBUG: Loading Gemini API key: {GEMINI_API_KEY[:20]}..." if GEMINI_API_KEY else "DEBUG: No Gemini API key found!")
 
 def _gemini_generate_lines(cards):
     if not GEMINI_API_KEY:
@@ -124,9 +122,8 @@ Vocabulary:
             res = run_chunk(chunk) or []
             if isinstance(res, list):
                 all_items.extend(res)
-        except Exception as e:
-            print("Gemini error:", e)
-            traceback.print_exc()
+        except Exception:
+            pass  # Skip failed chunks silently
         i += CHUNK_SIZE
     return all_items
 
@@ -201,27 +198,27 @@ def read_root():
 
 @app.get("/learn")
 def learn_screen():
-    return FileResponse('hi.html')
+    return FileResponse('templates/hi.html')
 
 @app.get("/match")
 def match_screen():
-    return FileResponse('match.html')
+    return FileResponse('templates/match.html')
 
 @app.get("/spelling")
 def spelling_screen():
-    return FileResponse('spelling.html')
+    return FileResponse('templates/spelling.html')
 
 @app.get("/line")
 def line_screen():
-    return FileResponse('line.html')
+    return FileResponse('templates/line.html')
 
 @app.get("/folder")
 def folder_screen():
-    return FileResponse('folder.html')
+    return FileResponse('templates/folder.html')
 
 @app.get("/edit")
 def edit_screen():
-    return FileResponse('edit.html')
+    return FileResponse('templates/edit.html')
 
 @app.get("/create")
 def create_screen():
@@ -1158,10 +1155,6 @@ def lines_debug(deck: str, limit: int | None = None):
     if isinstance(limit, int) and limit > 0:
         cards = cards[:limit]
     
-    # Debug: show what key we're using
-    print(f"DEBUG: In lines_debug, GEMINI_API_KEY: {GEMINI_API_KEY[:20]}...")
-    print(f"DEBUG: Key length: {len(GEMINI_API_KEY) if GEMINI_API_KEY else 'None'}")
-    
     try:
         # Make the same request but capture raw response too
         model = "gemini-2.5-flash"
@@ -1169,8 +1162,6 @@ def lines_debug(deck: str, limit: int | None = None):
             f"https://generativelanguage.googleapis.com/v1beta/models/"
             f"{model}:generateContent?key={GEMINI_API_KEY}"
         )
-        print(f"DEBUG: Using endpoint: {endpoint[:100]}...")
-        print(f"DEBUG: API key length: {len(GEMINI_API_KEY) if GEMINI_API_KEY else 'None'}")
         vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in cards])
         prompt = f"Generate practical sentences and return ONLY JSON array with fields de,en,line_de,line_en for these pairs:\n{vocab_list}"
         body = {

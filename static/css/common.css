@@ -1,0 +1,340 @@
+/* Common styles shared across all pages */
+
+/* CSS Variables */
+:root {
+    --loading-dot-size: 8px;
+    --loading-dot-gap: 8px;
+    --loading-animation-duration: 1000ms;
+    
+    --bg: #f6f7fb;
+    --text: #0f172a;
+    --card-bg: #ffffff;
+    --card-border: #e5e7eb;
+    --accent: #3b82f6;
+    --muted: #64748b;
+    --card-shadow: 0 8px 20px rgba(2, 8, 23, 0.06);
+    --card-shadow-hover: 0 12px 26px rgba(2, 8, 23, 0.10);
+    --text-primary: var(--text);
+    --text-secondary: var(--muted);
+}
+
+/* Force light color scheme */
+html {
+    color-scheme: light;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.6);
+    transition: opacity 0.2s ease;
+}
+
+.loading-overlay.is-active {
+    display: flex;
+}
+
+.loading-dots {
+    display: flex;
+    gap: var(--loading-dot-gap);
+    color: #8E8E93;
+}
+
+.loading-dots span {
+    width: var(--loading-dot-size);
+    height: var(--loading-dot-size);
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+    animation: dotPulse var(--loading-animation-duration) infinite ease-in-out;
+    will-change: transform, opacity;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: 150ms;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: 300ms;
+}
+
+@keyframes dotPulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.35;
+    }
+    50% {
+        transform: scale(1.25);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.35;
+    }
+}
+
+/* Tile entry animation */
+.tile-enter {
+    animation: slideDown 380ms ease-out both;
+    will-change: transform, opacity;
+}
+
+.row-enter {
+    animation: slideDown 360ms ease-out both;
+    will-change: transform, opacity;
+}
+
+@keyframes slideDown {
+    0% {
+        transform: translateY(-6px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Fade animations */
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.36s ease;
+}
+
+.fade-in {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: fadeIn 0.64s ease forwards;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Drag and drop helpers */
+.is-dragging-hidden {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Disable interactions helper */
+.disable-interactions {
+    pointer-events: none;
+}
+
+.no-anim {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Modal base styles */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal.is-open {
+    display: flex;
+}
+
+.modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 8, 23, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.modal__dialog {
+    position: relative;
+    width: 90%;
+    max-width: 420px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    box-shadow: var(--card-shadow);
+    padding: 16px;
+}
+
+.modal__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.modal__close:hover {
+    background: #eef0f4;
+}
+
+/* Button base styles */
+.btn {
+    appearance: none;
+    border: 1px solid var(--card-border);
+    background: #ffffff;
+    color: #0f172a;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn--pill {
+    border-radius: 9999px;
+    background: #f3f4f6;
+    color: var(--text);
+    border-color: var(--card-border);
+    box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
+}
+
+.btn--pill:hover {
+    background: #eef0f4;
+}
+
+/* Deck tile styles */
+.deck-tile {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 20px;
+    cursor: pointer;
+    box-shadow: var(--card-shadow);
+    overflow: visible;
+    z-index: 0;
+}
+
+.deck-tile:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.deck-title {
+    font-weight: 400;
+    color: var(--text-primary);
+    font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+.deck-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Study action buttons */
+.study-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.study-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    border-radius: 9999px;
+    border: none;
+    padding: 0 18px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.study-action--primary,
+.study-action--secondary {
+    background: #eef0f4;
+    color: var(--text);
+}
+
+.study-action__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    font-size: 20px;
+    line-height: 1;
+}
+
+/* Card styles for study modes */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+}
+
+/* Match game pair buttons */
+.pair-btn,
+.pair-text {
+    height: 88px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background-color 0.36s ease, border-color 0.36s ease, box-shadow 0.36s ease;
+}
+
+.pair-text {
+    padding: 0 10px;
+}
+
+.pair-btn.active,
+.pair-text.active {
+    outline: 2px solid #3b82f6;
+    background: #e8f0fe;
+}
+
+.pair-btn.correct,
+.pair-text.correct {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+.pair-btn.wrong,
+.pair-text.wrong {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+}
+
