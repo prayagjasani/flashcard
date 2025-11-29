@@ -1027,13 +1027,13 @@ def tts(text: str, lang: str = "de", slow: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/lines/generate")
-def generate_lines(deck: str, limit: int | None = None):
+def generate_lines(deck: str, limit: int | None = None, refresh: bool = False):
     safe = _safe_deck_name(deck)
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid deck name")
 
-    # Serve cached lines if available
-    if r2_client and R2_BUCKET_NAME:
+    # Serve cached lines if available (unless explicit refresh requested)
+    if not refresh and r2_client and R2_BUCKET_NAME:
         try:
             key = _lines_key(deck)
             obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)

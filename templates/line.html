@@ -150,6 +150,9 @@
             <div class="mx-auto max-w-md px-3 py-2 flex items-center gap-2">
                 <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Back"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
                 <div class="flex-1 text-center text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark" id="progressText"></div>
+                <button id="refreshBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Refresh lines">
+                    <span class="material-symbols-outlined text-xl">refresh</span>
+                </button>
                 <button id="homeBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Home"><span class="material-symbols-outlined text-xl">home</span></button>
             </div>
         </header>
@@ -169,6 +172,7 @@
         const globalLoader = document.getElementById('globalLoader');
         const backBtn = document.getElementById('backBtn');
         const homeBtn = document.getElementById('homeBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
         const progressText = document.getElementById('progressText');
 
         function showLoader() {
@@ -198,8 +202,11 @@
             lastItems = [];
             const shown = [];
             items.forEach((it, i) => {
-                const len = (it.line_en || '').trim().length + (it.line_de || '').trim().length;
-                if (!len) return;
+                const hasContent = ((it.de || '').trim().length +
+                    (it.en || '').trim().length +
+                    (it.line_en || '').trim().length +
+                    (it.line_de || '').trim().length) > 0;
+                if (!hasContent) return;
                 const card = document.createElement('div');
                 card.className = 'rounded-xl bg-card-light dark:bg-card-dark p-4 shadow-sm';
                 card.classList.add('tile-enter');
@@ -239,15 +246,16 @@
             setStatus(`Generated ${shown.length}${total?` of ${total}`:''} lines`);
         }
 
-        async function generate() {
+        async function generate(refresh = false) {
             if (!deck) {
                 setStatus('Select a deck');
                 return;
             }
             showLoader();
             try {
-                setStatus('Generating...');
-                const resp = await fetch(`/lines/generate?deck=${encodeURIComponent(deck)}`);
+                setStatus(refresh ? 'Refreshing...' : 'Generating...');
+                const url = `/lines/generate?deck=${encodeURIComponent(deck)}${refresh ? '&refresh=1' : ''}`;
+                const resp = await fetch(url);
                 const out = await resp.json();
                 if (!resp.ok) throw new Error(out.detail || 'Failed');
                 renderRows(out.items || []);
@@ -331,6 +339,14 @@
 
         backBtn.addEventListener('click',()=>{history.length>1?history.back():location.href='/'});
         homeBtn.addEventListener('click',()=>{location.href='/'});
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                // Clear current list and request fresh data from the server
+                lineList.innerHTML = '';
+                lastItems = [];
+                generate(true);
+            });
+        }
         init();
     </script>
 </body>
