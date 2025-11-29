@@ -432,8 +432,17 @@
         .footer-row {
             display: flex;
             justify-content: center;
+            align-items: center;
             gap: 12px;
             flex-wrap: nowrap;
+            width: 100%;
+            max-width: 380px;
+        }
+        
+        .footer-row button {
+            flex: 1 1 0;
+            width: auto;
+            max-width: 180px;
         }
         
         button {
@@ -589,9 +598,23 @@
             .toggle-text {
                 display: none;
             }
-            #autoPlayToggle {
-                width: 180px;
-                padding: 12px 24px;
+            .buttons,
+            .footer-row {
+                display: flex !important;
+                width: 100%;
+                max-width: 100%;
+                padding: 0 8px;
+                box-sizing: border-box;
+            }
+            .buttons button,
+            .footer-row button {
+                flex: 1 1 0 !important;
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                padding: 12px 8px !important;
+                font-size: 14px;
+                height: 50px;
             }
         }
         
@@ -1364,7 +1387,7 @@
         </div>
         <div class="actions footer-actions">
             <div class="footer-row">
-                <button id="prev">← Previous</button>
+                <button id="prev">Previous</button>
                 <button id="speak">Speak</button>
             </div>
             <div class="footer-row">
