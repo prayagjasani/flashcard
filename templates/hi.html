@@ -462,6 +462,28 @@
             });
         }
 
+        function removeAudioCacheForWord(text) {
+            if (!text) return;
+            try {
+                const val = audioCache.get(text);
+                if (val && typeof val === 'string' && val.startsWith('blob:')) {
+                    try {
+                        URL.revokeObjectURL(val);
+                    } catch {}
+                }
+                audioCache.delete(text);
+            } catch {}
+            try {
+                localStorage.removeItem(`audio:de:${text}`);
+            } catch {}
+        }
+
+        function preloadAudioForWord(text) {
+            if (!text) return Promise.resolve();
+            const url = `/tts?text=${encodeURIComponent(text)}&lang=de`;
+            return fetchAudioAndCache(text, url);
+        }
+
         async function saveDeckSilent() {
             if (!deck) return;
             try {
@@ -667,6 +689,9 @@
                 const newDe = (editDe.value || '').trim();
                 const newEn = (editEn.value || '').trim();
                 if (!newDe || !newEn) return;
+
+                const prevDe = (cards[editingIndex] && cards[editingIndex].de) || '';
+
                 cards[editingIndex] = {
                     en: newEn,
                     de: newDe
@@ -676,7 +701,35 @@
                 queue = cards.slice();
                 current = queue.length ? queue[0] : null;
                 showingFront = true;
+
+                // Persist deck changes (also updates R2 audio for added/removed words)
                 await saveDeckSilent();
+
+                // Clear any cached audio for the old and new words
+                if (prevDe && prevDe !== newDe) {
+                    removeAudioCacheForWord(prevDe);
+                }
+                removeAudioCacheForWord(newDe);
+
+                // Ask backend to rebuild audio for this word so R2 and cache stay in sync
+                try {
+                    await fetch('/audio/rebuild', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            text: newDe,
+                            lang: 'de',
+                            old_text: prevDe && prevDe !== newDe ? prevDe : null
+                        })
+                    }).then(r => r.json()).catch(() => ({}));
+                } catch {}
+
+                // Preload fresh audio for the updated word
+                try {
+                    await preloadAudioForWord(newDe);
+                } catch {}
             });
         }
 
