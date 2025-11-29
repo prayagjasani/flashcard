@@ -423,6 +423,19 @@
             flex-wrap: wrap;
         }
         
+        .footer-actions {
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .footer-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: nowrap;
+        }
+        
         button {
             appearance: none;
             border: none;
@@ -476,6 +489,18 @@
         #reset {
             background: #71717A;
             box-shadow: 0 4px 12px rgba(113, 113, 122, 0.25);
+            border-radius: 9999px;
+            border: none;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            padding: 12px 24px;
+            height: 50px;
+        }
+        
+        #prev {
+            background: #3B82F6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
             border-radius: 9999px;
             border: none;
             color: white;
@@ -565,8 +590,8 @@
                 display: none;
             }
             #autoPlayToggle {
-                width: 60px;
-                padding: 12px;
+                width: 180px;
+                padding: 12px 24px;
             }
         }
         
@@ -1338,12 +1363,17 @@
             <button id="right">✓ Right</button>
         </div>
         <div class="actions footer-actions">
-            <button id="reset">↺ Reset</button>
-            <button id="speak">Speak</button>
-            <button id="autoPlayToggle" class="auto-play-toggle" aria-label="Toggle auto-play audio" role="switch" aria-checked="false" title="Enable/disable automatic audio playback">
-                <span class="toggle-icon">🔇</span>
-                <span class="toggle-text">Auto-Play Audio</span>
-            </button>
+            <div class="footer-row">
+                <button id="prev">← Previous</button>
+                <button id="speak">Speak</button>
+            </div>
+            <div class="footer-row">
+                <button id="autoPlayToggle" class="auto-play-toggle" aria-label="Toggle auto-play audio" role="switch" aria-checked="false" title="Enable/disable automatic audio playback">
+                    <span class="toggle-icon">🔇</span>
+                    <span class="toggle-text">Auto-Play Audio</span>
+                </button>
+                <button id="reset">↺ Reset</button>
+            </div>
         </div>
     </div>
 
@@ -1352,6 +1382,7 @@
         const wrongBtn = document.getElementById('wrong');
         const rightBtn = document.getElementById('right');
         const resetBtn = document.getElementById('reset');
+        const prevBtn = document.getElementById('prev');
         const speakBtn = document.getElementById('speak');
         const autoPlayToggle = document.getElementById('autoPlayToggle');
         const header = document.querySelector('.site-header');
@@ -1762,6 +1793,7 @@
         let frontLang = 'de';
         let backLang = 'en';
         let isAutoPlayEnabled = false;
+        let lastCard = null;
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
@@ -1899,6 +1931,7 @@
                 localStorage.setItem('autoPlayEnabled', 'false');
             } catch {}
             updateAutoPlayToggle();
+            lastCard = null;
             const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
             let data = [];
             try {
@@ -2477,12 +2510,9 @@
             else window.location.href = '/edit';
         });
 
-        function getNewCard() {
-            if (words.length === 0) {
-                card.innerText = 'You have learned all the words!';
-                return;
-            }
-            currentCard = words.shift();
+        function showCardData(cardData) {
+            if (!cardData) return;
+            currentCard = cardData;
             card.innerText = currentCard[frontLang];
             showingFront = true;
 
@@ -2493,6 +2523,18 @@
                     autoPlayAudio();
                 }, 100);
             }
+        }
+
+        function getNewCard() {
+            if (currentCard) {
+                lastCard = currentCard;
+            }
+            if (words.length === 0) {
+                card.innerText = 'You have learned all the words!';
+                return;
+            }
+            const next = words.shift();
+            showCardData(next);
         }
 
         let recentlyTouched = false;
@@ -2533,7 +2575,9 @@
         });
 
         wrongBtn.addEventListener('click', () => {
-            words.push(currentCard);
+            if (currentCard) {
+                words.push(currentCard);
+            }
             getNewCard();
         });
 
@@ -2541,9 +2585,23 @@
             getNewCard();
         });
 
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (!lastCard) return;
+                // Put current card back to the front of the queue so it isn't lost
+                if (currentCard && currentCard !== lastCard) {
+                    words.unshift(currentCard);
+                }
+                const previous = lastCard;
+                lastCard = null;
+                showCardData(previous);
+            });
+        }
+
         resetBtn.addEventListener('click', () => {
             words = Array.isArray(originalWords) ? originalWords.slice() : [];
             shuffle(words);
+            lastCard = null;
             getNewCard();
         });
 
