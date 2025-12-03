@@ -1257,9 +1257,9 @@
                     <span class="link__text link__text--primary">Create </span>
                     <span class="link__text link__text--hover" aria-hidden="true">Create</span>
                 </button>
-                <button class="nav__link nav__link--button" id="multiDeckBtn" type="button">
-                    <span class="link__text link__text--primary">Multi-Deck</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Multi-Deck</span>
+                <button class="nav__link nav__link--button" id="flashMultiBtn" type="button">
+                    <span class="link__text link__text--primary">Flashcard</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Flashcard</span>
                 </button>
                 <button class="nav__link nav__link--button" id="editDeckBtn" type="button">
                     <span class="link__text link__text--primary">Edit</span>
@@ -2094,6 +2094,8 @@
                             if (flashApp) flashApp.style.display = 'block';
                             if (homeDeckList) homeDeckList.style.display = 'none';
                             if (createFolderBtn) createFolderBtn.style.display = 'none';
+                            isOnFlashcardScreen = true;
+                            updateFlashMultiBtn();
                         } else if (qsMode === 'learn') {
                             window.location.href = `/learn?deck=${encodeURIComponent(qsDeck)}`;
                         }
@@ -2392,6 +2394,8 @@
             if (flashApp) flashApp.style.display = 'block';
             if (homeDeckList) homeDeckList.style.display = 'none';
             if (createFolderBtn) createFolderBtn.style.display = 'none';
+            isOnFlashcardScreen = true;
+            updateFlashMultiBtn();
         });
         if (chooseActionCloseBtn) chooseActionCloseBtn.addEventListener('click', () => {
             chooseActionModal.classList.remove('is-open');
@@ -2748,8 +2752,22 @@
         });
 
         // Multi-deck modal interactions
-        const multiDeckBtn = document.getElementById('multiDeckBtn');
+        const flashMultiBtn = document.getElementById('flashMultiBtn');
         const multiDeckModal = document.getElementById('multiDeckModal');
+        let isOnFlashcardScreen = false;
+
+        function updateFlashMultiBtn() {
+            if (!flashMultiBtn) return;
+            const primaryText = flashMultiBtn.querySelector('.link__text--primary');
+            const hoverText = flashMultiBtn.querySelector('.link__text--hover');
+            if (isOnFlashcardScreen) {
+                if (primaryText) primaryText.textContent = 'Multi-Deck';
+                if (hoverText) hoverText.textContent = 'Multi-Deck';
+            } else {
+                if (primaryText) primaryText.textContent = 'Flashcard';
+                if (hoverText) hoverText.textContent = 'Flashcard';
+            }
+        }
         const multiDeckList = document.getElementById('multiDeckList');
         const multiDeckCancelBtn = document.getElementById('multiDeckCancelBtn');
         const multiDeckSaveBtn = document.getElementById('multiDeckSaveBtn');
@@ -2814,7 +2832,19 @@
             }
         }
 
-        if (multiDeckBtn) multiDeckBtn.addEventListener('click', openMultiDeckModal);
+        if (flashMultiBtn) flashMultiBtn.addEventListener('click', () => {
+            if (isOnFlashcardScreen) {
+                // On flashcard screen - open multi-deck modal
+                openMultiDeckModal();
+            } else {
+                // On home screen - show flashcard screen
+                if (flashApp) flashApp.style.display = 'block';
+                if (homeDeckList) homeDeckList.style.display = 'none';
+                if (createFolderBtn) createFolderBtn.style.display = 'none';
+                isOnFlashcardScreen = true;
+                updateFlashMultiBtn();
+            }
+        });
         if (multiDeckCancelBtn) multiDeckCancelBtn.addEventListener('click', closeMultiDeckModal);
         multiDeckModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeMulti === 'true') closeMultiDeckModal();
@@ -2828,6 +2858,10 @@
             }
             closeMultiDeckModal();
             loadWordsForDecks(selected);
+            if (flashApp) flashApp.style.display = 'block';
+            if (homeDeckList) homeDeckList.style.display = 'none';
+            isOnFlashcardScreen = true;
+            updateFlashMultiBtn();
         });
 
         // Header interactions
