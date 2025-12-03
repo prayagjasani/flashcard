@@ -864,7 +864,7 @@
         
         .multi-deck-list.is-transitioning-back {
             opacity: 0;
-            transform: translateX(20px);
+            transform: translateX(-20px);
         }
         
         .multi-deck-list {
@@ -3210,13 +3210,12 @@
                 return;
             }
 
-            // Apply same deck order as home screen
-            const scope = folderName === 'Uncategorized' ? 'root' : folderName;
+            // Apply same deck order as folder page (use folder name directly as scope)
             const baseDecks = decksInFolder.map(d => ({
                 name: d.name,
                 _raw: d
             }));
-            const orderedDecks = applyOrder(baseDecks, 'deck', scope);
+            const orderedDecks = applyOrder(baseDecks, 'deck', folderName);
 
             orderedDecks.forEach((entry, index) => {
                 const d = entry._raw;
@@ -3253,6 +3252,10 @@
             populateMultiDeckFolders();
             multiDeckModal.classList.add('is-open');
             multiDeckModal.setAttribute('aria-hidden', 'false');
+
+            // Preload deck orders for all folders in background (no delay when clicking folder)
+            const folders = new Set(cachedDeckList.map(d => d.folder || 'Uncategorized'));
+            folders.forEach(f => refreshDeckOrder(f));
         }
 
         function closeMultiDeckModal() {
