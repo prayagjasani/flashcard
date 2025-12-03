@@ -347,6 +347,9 @@
             max-width: 640px;
             text-align: center;
             margin-top: 80px;
+            cursor: default;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
             /* avoid overlap under fixed header */
         }
         
@@ -647,6 +650,35 @@
             color: var(--text);
         }
         
+        .selected-deck-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            padding: 4px 16px;
+            margin-bottom: 4px;
+            word-break: break-word;
+            cursor: default;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #flashApp h1,
+        #flashApp .deck-select,
+        #flashApp .deck-select *,
+        #flashApp .front-toggle,
+        #flashApp .front-toggle *,
+        #flashApp .buttons,
+        #flashApp .actions,
+        #flashApp .footer-actions {
+            cursor: default;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #flashApp button {
+            cursor: default;
+        }
+        
         .front-toggle {
             margin-top: 8px;
             font-size: 14px;
@@ -705,6 +737,17 @@
             inset: 0;
             background: rgba(2, 8, 23, 0.5);
             backdrop-filter: blur(2px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: default;
+        }
+        
+        .modal.is-open .modal__backdrop {
+            opacity: 1;
+        }
+        
+        .modal--multi .modal__backdrop {
+            cursor: default;
         }
         
         .modal__dialog {
@@ -718,14 +761,88 @@
             padding: 20px;
         }
         
+        .modal--multi {
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .modal--multi.is-open {
+            pointer-events: auto;
+        }
+        
         .modal--multi .modal__dialog {
             max-width: 420px;
-            padding: 20px;
+            width: 100%;
+            margin: 0;
+            padding: 24px;
+            border-radius: 24px 24px 0 0;
+            border: none;
+            border-top: 1px solid var(--card-border);
+            background: var(--card-bg);
+            transform: translateY(100%);
+            opacity: 0;
+            animation: slideOutDown 0.25s ease-in forwards;
+        }
+        
+        .modal--multi.is-open .modal__dialog {
+            transform: translateY(0);
+            opacity: 1;
+            animation: slideInUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+            transition: height 0.25s ease, min-height 0.25s ease, max-height 0.25s ease;
+        }
+        
+        .modal--multi.is-closing .modal__dialog {
+            animation: slideOutDown 0.25s ease-in forwards;
+        }
+        
+        .modal--multi.is-closing .modal__backdrop {
+            opacity: 0;
+        }
+        
+        @keyframes slideInUp {
+            0% {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutDown {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+        }
+        
+        .modal__dialog--bottom {
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+        }
+        
+        .modal__selected-names {
+            font-size: 13px;
+            color: var(--accent);
+            text-align: center;
+            margin: 0 0 12px 0;
+            min-height: 18px;
+            word-break: break-word;
         }
         
         .multi-deck-list {
-            max-height: 280px;
+            height: 320px;
+            min-height: 320px;
+            max-height: 320px;
             overflow-y: auto;
+            margin-bottom: 16px;
+            background: var(--card-bg);
         }
         
         .multi-deck-list {
@@ -737,6 +854,108 @@
             width: 0 !important;
             height: 0 !important;
             background: transparent !important;
+        }
+        
+        .multi-deck-list.is-transitioning {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        
+        .multi-deck-list.is-transitioning-back {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        
+        .multi-deck-list {
+            transition: opacity 0.2s ease, transform 0.2s ease, max-height 0.25s ease;
+        }
+        
+        .multi-deck-folder {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: default;
+            transition: background 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        
+        .multi-deck-folder:active {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        
+        .multi-deck-folder.is-selected {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .multi-deck-folder.is-selected .folder-label {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        
+        .multi-deck-folder .folder-label {
+            color: var(--text);
+        }
+        
+        .multi-deck-folder .folder-arrow {
+            color: var(--muted);
+            font-size: 18px;
+        }
+        
+        .multi-deck-folder.is-selected .folder-arrow {
+            color: var(--accent);
+        }
+        
+        .multi-deck-divider {
+            border: none;
+            border-top: 1px solid var(--card-border);
+            margin: 0;
+        }
+        
+        .modal__actions--grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .btn--cancel {
+            background: #F3F4F6 !important;
+            color: var(--text) !important;
+            border: none !important;
+            font-weight: 600;
+            border-radius: 10px;
+            height: 44px;
+            box-shadow: none !important;
+            transition: background 0.15s ease, transform 0.1s ease;
+            cursor: default;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .btn--cancel:active {
+            background: #E5E7EB !important;
+            transform: scale(0.98);
+            box-shadow: none !important;
+        }
+        
+        .btn--primary {
+            background: #E5E7EB !important;
+            color: var(--text) !important;
+            border: none !important;
+            font-weight: 600;
+            border-radius: 10px;
+            height: 44px;
+            box-shadow: none !important;
+            transition: background 0.15s ease, transform 0.1s ease;
+            cursor: default;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .btn--primary:active {
+            background: #D1D5DB !important;
+            transform: scale(0.98);
+            box-shadow: none !important;
         }
         
         .multi-deck-list::-webkit-scrollbar-thumb {
@@ -751,12 +970,26 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px;
-            border-bottom: 1px solid var(--card-border);
+            padding: 14px 16px;
+            margin: 4px 0;
+            border-radius: 10px;
+            cursor: default;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: background 0.15s ease;
         }
         
-        .multi-deck-item:last-child {
-            border-bottom: none;
+        .multi-deck-item:active {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        
+        .multi-deck-item.is-selected {
+            background: rgba(59, 130, 246, 0.12);
+        }
+        
+        .multi-deck-item.is-selected span {
+            color: var(--accent);
+            font-weight: 500;
         }
         
         .multi-deck-item span {
@@ -764,10 +997,13 @@
             flex: 1;
         }
         
-        .multi-deck-checkbox {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--accent);
+        .modal--multi .modal__dialog {
+            cursor: default;
+            user-select: none;
+        }
+        
+        .modal--multi .modal__dialog * {
+            cursor: default;
         }
         
         .modal--multi .modal__actions {
@@ -833,6 +1069,46 @@
             font-size: 20px;
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             letter-spacing: -0.01em;
+            color: var(--text);
+        }
+        
+        .modal__title--center {
+            text-align: center;
+            margin-bottom: 0;
+            flex: 1;
+        }
+        
+        .modal__header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .modal__back-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: default;
+            -webkit-tap-highlight-color: transparent;
+            padding: 0;
+            box-shadow: none !important;
+        }
+        
+        .modal__back-btn:active {
+            opacity: 0.6;
+        }
+        
+        .modal__back-btn .material-symbols-outlined {
+            font-size: 28px;
+        }
+        
+        .modal__header-spacer {
+            width: 36px;
         }
         
         .study-title {
@@ -1328,12 +1604,19 @@
     </div>
     <div class="modal modal--multi" id="multiDeckModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-multi="true"></div>
-        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="multiDeckModalTitle">
-            <h2 id="multiDeckModalTitle" class="modal__title">Select Multiple Decks</h2>
+        <div class="modal__dialog modal__dialog--bottom" role="dialog" aria-modal="true" aria-labelledby="multiDeckModalTitle">
+            <div class="modal__header">
+                <button class="modal__back-btn" id="multiDeckBackBtn" type="button" style="visibility:hidden;">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <h2 id="multiDeckModalTitle" class="modal__title modal__title--center">Select Folder</h2>
+                <div class="modal__header-spacer"></div>
+            </div>
+            <p id="multiDeckSelectedNames" class="modal__selected-names"></p>
             <div class="multi-deck-list" id="multiDeckList"></div>
-            <div class="modal__actions">
-                <button class="btn" id="multiDeckCancelBtn" type="button">Cancel</button>
-                <button class="btn btn--signup" id="multiDeckSaveBtn" type="button">Save</button>
+            <div class="modal__actions modal__actions--grid">
+                <button class="btn btn--cancel" id="multiDeckCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--primary" id="multiDeckSaveBtn" type="button">Save</button>
             </div>
             <p class="modal__status" id="multiDeckStatus"></p>
         </div>
@@ -1373,8 +1656,8 @@
     <div id="flashApp" class="app" style="display:none">
         <h1>Flashcards</h1>
         <div class="deck-select">
-            <label for="deckSelect">Deck</label>
-            <select id="deckSelect"></select>
+            <div class="selected-deck-name" id="selectedDeckName" style="display:none;"></div>
+            <select id="deckSelect" style="display:none;"></select>
             <div class="front-toggle">
                 <input type="checkbox" id="englishFrontToggle" />
                 <label for="englishFrontToggle">English on front</label>
@@ -1916,8 +2199,23 @@
         }
 
         const deckSelect = document.getElementById('deckSelect');
+        const selectedDeckNameEl = document.getElementById('selectedDeckName');
         const englishFrontToggle = document.getElementById('englishFrontToggle');
         const editDeckBtn = document.getElementById('editDeckBtn');
+
+        function updateSelectedDeckName(names) {
+            if (!selectedDeckNameEl) return;
+            if (Array.isArray(names) && names.length > 0) {
+                selectedDeckNameEl.textContent = names.join(', ');
+                selectedDeckNameEl.style.display = 'block';
+            } else if (typeof names === 'string' && names) {
+                selectedDeckNameEl.textContent = names;
+                selectedDeckNameEl.style.display = 'block';
+            } else {
+                selectedDeckNameEl.textContent = '';
+                selectedDeckNameEl.style.display = 'none';
+            }
+        }
 
         function applyFrontPreference(isEnglishFront) {
             frontLang = isEnglishFront ? 'en' : 'de';
@@ -1955,6 +2253,7 @@
             } catch {}
             updateAutoPlayToggle();
             lastCard = null;
+            updateSelectedDeckName(deckName);
             const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
             let data = [];
             try {
@@ -2577,6 +2876,16 @@
             recentlyTouched = true;
             // prevent synthetic click and any default touch feedback
             e.preventDefault();
+
+            // If no deck selected, open multi-deck modal
+            if (!originalWords || originalWords.length === 0) {
+                openMultiDeckModal();
+                setTimeout(() => {
+                    recentlyTouched = false;
+                }, 400);
+                return;
+            }
+
             card.classList.add('is-pressed');
             card.classList.add('tap-pop');
             flipCard();
@@ -2598,6 +2907,13 @@
         // Click for mouse/non-touch; ignore if a touch just happened
         card.addEventListener('click', (e) => {
             if (recentlyTouched) return;
+
+            // If no deck selected, open multi-deck modal
+            if (!originalWords || originalWords.length === 0) {
+                openMultiDeckModal();
+                return;
+            }
+
             flipCard();
         });
 
@@ -2772,39 +3088,169 @@
         const multiDeckCancelBtn = document.getElementById('multiDeckCancelBtn');
         const multiDeckSaveBtn = document.getElementById('multiDeckSaveBtn');
         const multiDeckStatus = document.getElementById('multiDeckStatus');
+        const multiDeckBackBtn = document.getElementById('multiDeckBackBtn');
         let cachedDeckList = [];
 
-        function populateMultiDeckList() {
+        let multiDeckSelectedFolder = null;
+        const multiDeckModalTitle = document.getElementById('multiDeckModalTitle');
+
+        function updateMultiDeckBackBtn(show) {
+            if (multiDeckBackBtn) {
+                multiDeckBackBtn.style.visibility = show ? 'visible' : 'hidden';
+            }
+        }
+        const multiDeckSelectedNamesEl = document.getElementById('multiDeckSelectedNames');
+        let multiDeckSelectedNames = new Set();
+
+        function updateMultiDeckSelectedNames() {
+            if (!multiDeckSelectedNamesEl) return;
+            const arr = Array.from(multiDeckSelectedNames);
+            multiDeckSelectedNamesEl.textContent = arr.length ? arr.join(', ') : '';
+        }
+
+        function populateMultiDeckFolders() {
             multiDeckList.innerHTML = '';
-            if (!cachedDeckList.length) {
-                multiDeckList.innerHTML = '<p>No decks available.</p>';
+            multiDeckSelectedFolder = null;
+            if (multiDeckModalTitle) multiDeckModalTitle.textContent = 'Select Folder';
+            updateMultiDeckBackBtn(false);
+
+            // Build folder list from cached decks
+            const folderCounts = {};
+            cachedDeckList.forEach(d => {
+                const f = d.folder || 'Uncategorized';
+                folderCounts[f] = (folderCounts[f] || 0) + 1;
+            });
+
+            const folderList = Object.keys(folderCounts).map(name => ({
+                name,
+                count: folderCounts[name]
+            }));
+
+            if (!folderList.length) {
+                multiDeckList.innerHTML = '<p style="padding:14px;color:var(--muted);text-align:center;">No folders available.</p>';
                 return;
             }
-            cachedDeckList.forEach(d => {
+
+            // Apply same order as home screen
+            const orderedFolders = applyOrder(folderList, 'folder');
+
+            orderedFolders.forEach((folder, index) => {
+                const row = document.createElement('div');
+                row.className = 'multi-deck-folder';
+
+                // Check if any deck in this folder is selected
+                const decksInFolder = cachedDeckList.filter(d => (d.folder || 'Uncategorized') === folder.name);
+                const hasSelectedDeck = decksInFolder.some(d => multiDeckSelectedNames.has(d.name));
+                if (hasSelectedDeck) row.classList.add('is-selected');
+
+                const label = document.createElement('span');
+                label.className = 'folder-label';
+                label.textContent = `${folder.name} (${folder.count} deck${folder.count === 1 ? '' : 's'})`;
+
+                const arrow = document.createElement('span');
+                arrow.className = 'folder-arrow material-symbols-outlined';
+                arrow.textContent = hasSelectedDeck ? 'check_circle' : 'arrow_forward_ios';
+
+                row.appendChild(label);
+                row.appendChild(arrow);
+                row.addEventListener('click', () => {
+                    // Add transition animation
+                    multiDeckList.classList.add('is-transitioning');
+                    setTimeout(() => {
+                        populateMultiDeckDecks(folder.name);
+                        multiDeckList.classList.remove('is-transitioning');
+                    }, 150);
+                });
+                multiDeckList.appendChild(row);
+
+                // Add divider except after last item
+                if (index < orderedFolders.length - 1) {
+                    const divider = document.createElement('hr');
+                    divider.className = 'multi-deck-divider';
+                    multiDeckList.appendChild(divider);
+                }
+            });
+
+            updateMultiDeckSelectedNames();
+        }
+
+        function populateMultiDeckDecks(folderName) {
+            multiDeckList.innerHTML = '';
+            multiDeckSelectedFolder = folderName;
+            if (multiDeckModalTitle) multiDeckModalTitle.textContent = folderName;
+            updateMultiDeckBackBtn(true);
+
+            // Filter decks by folder
+            const decksInFolder = cachedDeckList.filter(d => (d.folder || 'Uncategorized') === folderName);
+
+            if (!decksInFolder.length) {
+                const empty = document.createElement('p');
+                empty.textContent = 'No decks in this folder.';
+                empty.style.padding = '14px';
+                empty.style.color = 'var(--muted)';
+                empty.style.textAlign = 'center';
+                multiDeckList.appendChild(empty);
+                return;
+            }
+
+            // Apply same deck order as home screen
+            const scope = folderName === 'Uncategorized' ? 'root' : folderName;
+            const baseDecks = decksInFolder.map(d => ({
+                name: d.name,
+                _raw: d
+            }));
+            const orderedDecks = applyOrder(baseDecks, 'deck', scope);
+
+            orderedDecks.forEach((entry, index) => {
+                const d = entry._raw;
                 const row = document.createElement('div');
                 row.className = 'multi-deck-item';
+                if (multiDeckSelectedNames.has(d.name)) row.classList.add('is-selected');
+
                 const label = document.createElement('span');
                 label.textContent = d.name;
-                const cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.value = d.name;
-                cb.className = 'multi-deck-checkbox';
                 row.appendChild(label);
-                row.appendChild(cb);
+
+                // Toggle selection on click
+                row.addEventListener('click', () => {
+                    if (multiDeckSelectedNames.has(d.name)) {
+                        multiDeckSelectedNames.delete(d.name);
+                        row.classList.remove('is-selected');
+                    } else {
+                        multiDeckSelectedNames.add(d.name);
+                        row.classList.add('is-selected');
+                    }
+                    updateMultiDeckSelectedNames();
+                });
+
                 multiDeckList.appendChild(row);
             });
+
+            updateMultiDeckSelectedNames();
         }
 
         function openMultiDeckModal() {
             multiDeckStatus.textContent = '';
-            populateMultiDeckList();
+            multiDeckSelectedNames = new Set();
+            updateMultiDeckSelectedNames();
+            populateMultiDeckFolders();
             multiDeckModal.classList.add('is-open');
             multiDeckModal.setAttribute('aria-hidden', 'false');
         }
 
         function closeMultiDeckModal() {
-            multiDeckModal.classList.remove('is-open');
-            multiDeckModal.setAttribute('aria-hidden', 'true');
+            // Add closing class to trigger exit animation
+            multiDeckModal.classList.add('is-closing');
+
+            // Wait for animation to complete before hiding
+            setTimeout(() => {
+                multiDeckModal.classList.remove('is-open');
+                multiDeckModal.classList.remove('is-closing');
+                multiDeckModal.setAttribute('aria-hidden', 'true');
+                multiDeckSelectedFolder = null;
+                multiDeckSelectedNames = new Set();
+                updateMultiDeckSelectedNames();
+            }, 250); // Match animation duration
         }
 
         async function loadWordsForDecks(deckNames) {
@@ -2815,6 +3261,7 @@
             updateAutoPlayToggle();
             const names = Array.isArray(deckNames) ? deckNames.filter(Boolean) : [];
             if (!names.length) return;
+            updateSelectedDeckName(names);
             try {
                 const promises = names.map((n) => fetch(`/cards?deck=${encodeURIComponent(n)}`).then(r => r.ok ? r.json() : []).catch(() => []));
                 const lists = await Promise.all(promises);
@@ -2846,12 +3293,20 @@
             }
         });
         if (multiDeckCancelBtn) multiDeckCancelBtn.addEventListener('click', closeMultiDeckModal);
+        if (multiDeckBackBtn) multiDeckBackBtn.addEventListener('click', () => {
+            // Add transition animation (reverse direction)
+            multiDeckList.classList.add('is-transitioning-back');
+            setTimeout(() => {
+                populateMultiDeckFolders();
+                multiDeckList.classList.remove('is-transitioning-back');
+            }, 150);
+        });
         multiDeckModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeMulti === 'true') closeMultiDeckModal();
         });
 
         if (multiDeckSaveBtn) multiDeckSaveBtn.addEventListener('click', () => {
-            const selected = Array.from(document.querySelectorAll('.multi-deck-checkbox:checked')).map(cb => cb.value);
+            const selected = Array.from(multiDeckSelectedNames);
             if (!selected.length) {
                 multiDeckStatus.textContent = 'Please select at least one deck.';
                 return;

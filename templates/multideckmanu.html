@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Select Folder Menu V3</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#4285F4", // A vibrant blue for primary actions
+                        "background-light": "#F8F9FA", // Light grey background for light mode
+                        "background-dark": "#121212", // Dark background for dark mode
+                        "modal-light": "#FFFFFF", // White modal background for light mode
+                        "modal-dark": "#1E1E1E", // Slightly lighter dark for modal background
+                        "text-light": "#1F2937", // Dark grey text for light mode
+                        "text-dark": "#E5E7EB", // Light grey text for dark mode
+                        "subtle-light": "#6B7280", // Muted grey for secondary text in light mode
+                        "subtle-dark": "#9CA3AF", // Muted grey for secondary text in dark mode
+                        "border-light": "#E5E7EB", // Light border for light mode
+                        "border-dark": "#374151", // Dark border for dark mode
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "1rem", // 16px
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24
+        }
+    </style>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display flex items-end justify-center min-h-screen">
+    <div class="w-full h-full bg-gray-900 bg-opacity-50 dark:bg-opacity-70 fixed inset-0"></div>
+    <div class="bg-modal-light dark:bg-modal-dark w-full max-w-md mx-auto rounded-t-3xl shadow-lg p-6 relative">
+        <div class="text-center mb-6">
+            <h1 class="text-xl font-bold text-text-light dark:text-text-dark">Select Folder</h1>
+        </div>
+        <div class="space-y-2 mb-8">
+            <a class="flex justify-between items-center p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" href="#">
+                <span class="text-text-light dark:text-text-dark">Adjektive (2 decks)</span>
+                <span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">arrow_forward_ios</span>
+            </a>
+            <hr class="border-border-light dark:border-border-dark" />
+            <a class="flex justify-between items-center p-4 rounded-lg bg-primary/10 dark:bg-primary/20 transition-colors" href="#">
+                <span class="text-primary font-medium">Mock_Test (3 decks)</span>
+                <span class="material-symbols-outlined text-primary">check_circle</span>
+            </a>
+            <hr class="border-border-light dark:border-border-dark" />
+            <a class="flex justify-between items-center p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" href="#">
+                <span class="text-text-light dark:text-text-dark">Normal_T-D_Stark (3 decks)</span>
+                <span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">arrow_forward_ios</span>
+            </a>
+            <hr class="border-border-light dark:border-border-dark" />
+            <a class="flex justify-between items-center p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" href="#">
+                <span class="text-text-light dark:text-text-dark">Objekte (12 decks)</span>
+                <span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">arrow_forward_ios</span>
+            </a>
+            <hr class="border-border-light dark:border-border-dark" />
+            <a class="flex justify-between items-center p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" href="#">
+                <span class="text-text-light dark:text-text-dark">Songs (1 deck)</span>
+                <span class="material-symbols-outlined text-subtle-light dark:text-subtle-dark">arrow_forward_ios</span>
+            </a>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <button class="w-full py-4 px-4 bg-gray-100 dark:bg-gray-700 text-text-light dark:text-text-dark font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 transition-colors">
+                Cancel
+            </button>
+            <button class="w-full py-4 px-4 bg-primary text-white font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors shadow-lg shadow-primary/30">
+                Save
+            </button>
+        </div>
+    </div>
+
+</body>
+
+</html>
