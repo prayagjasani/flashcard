@@ -783,6 +783,7 @@
             transform: translateY(100%);
             opacity: 0;
             animation: slideOutDown 0.25s ease-in forwards;
+            box-sizing: border-box;
         }
         
         .modal--multi.is-open .modal__dialog {
@@ -918,6 +919,16 @@
             display: grid !important;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
+            width: 100%;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .modal__actions--grid .btn--cancel,
+        .modal__actions--grid .btn--primary {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
         }
         
         .btn--cancel {
@@ -931,6 +942,7 @@
             transition: background 0.15s ease, transform 0.1s ease;
             cursor: default;
             -webkit-tap-highlight-color: transparent;
+            width: auto;
         }
         
         .btn--cancel:active {
@@ -950,6 +962,7 @@
             transition: background 0.15s ease, transform 0.1s ease;
             cursor: default;
             -webkit-tap-highlight-color: transparent;
+            width: auto;
         }
         
         .btn--primary:active {
@@ -1009,12 +1022,16 @@
         .modal--multi .modal__actions {
             flex-direction: row !important;
             gap: 10px;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .modal--multi .modal__actions .btn {
             flex: 1 1 0;
             height: 48px;
             font-weight: 600;
+            width: auto !important;
+            min-width: 0 !important;
         }
         
         .modal--center-actions .modal__dialog {
