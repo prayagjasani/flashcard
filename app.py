@@ -355,6 +355,19 @@ def get_deck_csv(deck: str):
             raise HTTPException(status_code=404, detail="Deck not found")
         raise HTTPException(status_code=500, detail=str(e))
 
+def _background_audio_cleanup_and_generate(to_delete: set, to_generate: set):
+    """Delete old audio and generate new audio in background."""
+    # Delete old audio files
+    for w in to_delete:
+        try:
+            r2_key = _safe_tts_key(w, "de")
+            r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
+        except Exception:
+            pass
+    # Generate new audio files in parallel
+    if to_generate:
+        _background_audio_generation(list(to_generate))
+
 @app.post("/deck/update")
 def update_deck(payload: DeckUpdate):
     """Update an existing deck's CSV content in R2."""
@@ -383,7 +396,7 @@ def update_deck(payload: DeckUpdate):
             Body=content.encode("utf-8"),
             ContentType="text/csv",
         )
-        # Compute German word changes and sync audio
+        # Compute German word changes
         def parse_de_words(csv_text: str):
             words = set()
             try:
@@ -402,31 +415,14 @@ def update_deck(payload: DeckUpdate):
         to_delete = old_de - new_de
         to_generate = new_de - old_de
 
-        audios_deleted = 0
-        audios_generated = 0
-        audio_errors = 0
-
-        for w in to_delete:
-            try:
-                r2_key = _safe_tts_key(w, "de")
-                r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
-                audios_deleted += 1
-            except Exception:
-                audio_errors += 1
-
-        for w in to_generate:
-            try:
-                buf_mp3 = io.BytesIO()
-                gTTS(text=w, lang="de").write_to_fp(buf_mp3)
-                r2_client.put_object(
-                    Bucket=R2_BUCKET_NAME,
-                    Key=_safe_tts_key(w, "de"),
-                    Body=buf_mp3.getvalue(),
-                    ContentType="audio/mpeg",
-                )
-                audios_generated += 1
-            except Exception:
-                audio_errors += 1
+        # Start background audio cleanup and generation (non-blocking)
+        if to_delete or to_generate:
+            thread = threading.Thread(
+                target=_background_audio_cleanup_and_generate, 
+                args=(to_delete, to_generate), 
+                daemon=True
+            )
+            thread.start()
 
         rows_count = sum(1 for line in content.splitlines() if "," in line)
         return {
@@ -434,12 +430,59 @@ def update_deck(payload: DeckUpdate):
             "r2_bucket": R2_BUCKET_NAME,
             "r2_csv_key": key,
             "rows": rows_count,
-            "audios_deleted": audios_deleted,
-            "audios_generated": audios_generated,
-            "audio_errors": audio_errors,
+            "audio_status": "processing_in_background",
+            "words_to_delete": len(to_delete),
+            "words_to_generate": len(to_generate),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update deck CSV: {e}")
+
+import threading
+
+# Background task queue for audio generation
+_audio_generation_executor = None
+
+def _get_audio_executor():
+    global _audio_generation_executor
+    if _audio_generation_executor is None:
+        from concurrent.futures import ThreadPoolExecutor
+        _audio_generation_executor = ThreadPoolExecutor(max_workers=4)
+    return _audio_generation_executor
+
+def _generate_audio_for_word(de_word: str):
+    """Generate TTS audio for a single word (background task)."""
+    if not r2_client or not R2_BUCKET_NAME or not de_word:
+        return
+    try:
+        r2_key = _safe_tts_key(de_word, "de")
+        # Check if exists
+        try:
+            r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
+            return  # Already exists
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code not in ("404", "NoSuchKey", "NotFound"):
+                return
+        # Generate and upload
+        buf_mp3 = io.BytesIO()
+        gTTS(text=de_word, lang="de").write_to_fp(buf_mp3)
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=r2_key,
+            Body=buf_mp3.getvalue(),
+            ContentType="audio/mpeg",
+        )
+    except Exception:
+        pass  # Silently fail in background
+
+def _background_audio_generation(words: list):
+    """Generate audio for all words in background with parallel processing."""
+    if not words:
+        return
+    executor = _get_audio_executor()
+    # Submit all words for parallel processing
+    futures = [executor.submit(_generate_audio_for_word, w) for w in words]
+    # Don't wait - let them complete in background
 
 @app.post("/deck/create")
 def create_deck(payload: DeckCreate):
@@ -518,57 +561,20 @@ def create_deck(payload: DeckCreate):
     except Exception as e:
         index_error = str(e)
 
-    # Pre-generate TTS audio for German words
-    r2_uploaded = 0
-    r2_skipped = 0
-    r2_errors = 0
+    # Start background audio generation (non-blocking)
+    de_words = [de for _, de in rows]
+    thread = threading.Thread(target=_background_audio_generation, args=(de_words,), daemon=True)
+    thread.start()
 
-    for _, de in rows:
-        r2_key = _safe_tts_key(de, "de")
-        try:
-            # Check if exists
-            exists = True
-            try:
-                r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=r2_key)
-            except ClientError as e:
-                code = e.response.get("Error", {}).get("Code")
-                exists = code not in ("404", "NoSuchKey", "NotFound")
-
-            if exists:
-                r2_skipped += 1
-                continue
-
-            # Generate and upload
-            buf_mp3 = io.BytesIO()
-            gTTS(text=de, lang="de").write_to_fp(buf_mp3)
-            r2_client.put_object(
-                Bucket=R2_BUCKET_NAME,
-                Key=r2_key,
-                Body=buf_mp3.getvalue(),
-                ContentType="audio/mpeg",
-            )
-            r2_uploaded += 1
-        except Exception:
-            r2_errors += 1
-
-    # Rebuild the deck index at the end so dropdowns stay in sync
-    index_rebuild = None
-    try:
-        index_rebuild = rebuild_deck_index()
-    except Exception as e:
-        index_rebuild = {"ok": False, "error": str(e)}
-
+    # Return immediately - audio will be generated in background
     return {
         "ok": True,
         "r2_bucket": R2_BUCKET_NAME,
         "r2_csv_key": r2_csv_key,
         "rows": len(rows),
-        "r2_uploaded": r2_uploaded,
-        "r2_skipped": r2_skipped,
-        "r2_errors": r2_errors,
+        "audio_status": "generating_in_background",
         "index_updated": index_updated,
         "index_error": index_error,
-        "index_rebuild": index_rebuild,
     }
 
 @app.post("/deck/delete")
