@@ -599,42 +599,34 @@
         .word-list-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
+            justify-content: center;
+            padding: 10px 12px;
             background: var(--card-bg);
-            border-bottom: 1px solid var(--card-border);
             cursor: pointer;
             user-select: none;
+            transition: background 0.15s ease;
+        }
+        
+        .word-list-header:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+        
+        .word-list-header:active {
+            background: rgba(0, 0, 0, 0.06);
         }
         
         .word-list-title {
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--text);
-        }
-        
-        .word-list-toggle {
-            background: none;
-            border: none;
-            box-shadow: none;
-            padding: 4px 8px;
-            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
             color: var(--muted);
-            font-size: 12px;
-            transition: transform 0.2s ease;
-        }
-        
-        .word-list-toggle .toggle-arrow {
-            display: inline-block;
-            transition: transform 0.2s ease;
-        }
-        
-        .word-list-container.is-collapsed .toggle-arrow {
-            transform: rotate(-90deg);
         }
         
         .word-list-container.is-collapsed .word-list-grid {
             display: none;
+        }
+        
+        .word-list-container:not(.is-collapsed) .word-list-header {
+            border-bottom: 1px solid var(--card-border);
         }
         
         .word-list-grid {
@@ -665,9 +657,10 @@
         }
         
         .word-list-table td {
-            padding: 10px 14px;
-            font-size: 14px;
+            padding: 8px 12px;
+            font-size: 13px;
             border-bottom: 1px solid var(--card-border);
+            width: 50%;
         }
         
         .word-list-table td:first-child {
@@ -1810,9 +1803,6 @@
         <div id="wordListContainer" class="word-list-container is-collapsed">
             <div id="wordListHeader" class="word-list-header">
                 <span class="word-list-title">Practiced Words (<span id="practicedCount">0</span>)</span>
-                <button id="wordListToggle" class="word-list-toggle" aria-label="Toggle word list">
-                    <span class="toggle-arrow">▼</span>
-                </button>
             </div>
             <div id="wordListGrid" class="word-list-grid"></div>
         </div>
@@ -1829,7 +1819,6 @@
         const wordListGrid = document.getElementById('wordListGrid');
         const wordListContainer = document.getElementById('wordListContainer');
         const wordListHeader = document.getElementById('wordListHeader');
-        const wordListToggle = document.getElementById('wordListToggle');
         const practicedCountEl = document.getElementById('practicedCount');
         const header = document.querySelector('.site-header');
 
@@ -3026,7 +3015,7 @@
         if (randomTestBtn) randomTestBtn.addEventListener('click', async() => {
             showLoader();
             try {
-                // Fetch all decks
+                // Fetch deck list only (fast)
                 const decksResp = await fetch('/decks');
                 const decksData = decksResp.ok ? await decksResp.json() : [];
                 const allDecks = Array.isArray(decksData) ? decksData : [];
@@ -3037,38 +3026,46 @@
                     return;
                 }
 
-                // Fetch words from all decks in parallel
-                const promises = allDecks.map(d =>
+                // Shuffle decks and pick 2 random decks for quick start
+                const shuffledDecks = allDecks.slice();
+                for (let i = shuffledDecks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledDecks[i], shuffledDecks[j]] = [shuffledDecks[j], shuffledDecks[i]];
+                }
+                const quickDecks = shuffledDecks.slice(0, Math.min(2, shuffledDecks.length));
+                const remainingDecks = shuffledDecks.slice(2);
+
+                // Load only 2 decks immediately (fast)
+                const quickPromises = quickDecks.map(d =>
                     fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
                     .then(r => r.ok ? r.json() : [])
                     .catch(() => [])
                 );
-                const allWordLists = await Promise.all(promises);
-                const allWords = [].concat(...allWordLists);
+                const quickWordLists = await Promise.all(quickPromises);
+                const quickWords = [].concat(...quickWordLists);
 
-                if (!allWords.length) {
+                if (!quickWords.length) {
                     hideLoader();
-                    alert('No words found in any deck');
+                    alert('No words found');
                     return;
                 }
 
-                // Store all words for adding more later
-                allAvailableWords = allWords.slice();
-
-                // Shuffle and pick random words (up to 20 for a quick test)
-                const shuffled = allWords.slice();
-                for (let i = shuffled.length - 1; i > 0; i--) {
+                // Shuffle and pick only 10 words to start
+                const shuffledQuick = quickWords.slice();
+                for (let i = shuffledQuick.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                    [shuffledQuick[i], shuffledQuick[j]] = [shuffledQuick[j], shuffledQuick[i]];
                 }
-                const testWords = shuffled.slice(0, Math.min(20, shuffled.length));
+                const initialWords = shuffledQuick.slice(0, Math.min(10, shuffledQuick.length));
 
-                // Load into flashcard screen
-                originalWords = testWords;
-                words = testWords.slice();
+                // Store ALL quick words as available pool (for adding more later)
+                allAvailableWords = quickWords.slice();
+                // But only use 10 words to start
+                originalWords = initialWords.slice();
+                words = initialWords.slice();
                 shuffle(words);
 
-                // Reset auto-play state and random test tracking
+                // Reset state
                 isAutoPlayEnabled = false;
                 try {
                     localStorage.setItem('autoPlayEnabled', 'false');
@@ -3079,29 +3076,53 @@
                 randomTestWrongWords = [];
                 randomTestCompletedCount = 0;
 
-                // Show flashcard screen
+                // Show flashcard screen immediately
                 if (flashApp) flashApp.style.display = 'block';
                 if (homeDeckList) homeDeckList.style.display = 'none';
                 if (createFolderBtn) createFolderBtn.style.display = 'none';
                 isOnFlashcardScreen = true;
                 updateFlashMultiBtn();
+                updateSelectedDeckName(['Random Test (10 words)']);
 
-                // Update deck name display
-                updateSelectedDeckName(['Random Test (' + testWords.length + ' words)']);
-
-                // Preload audio for random test words
                 clearDeckPreloads();
-                preloadRandomTestAudio(testWords);
+                preloadRandomTestAudio(initialWords);
                 clearPracticedWords();
 
                 getNewCard();
                 hideLoader();
+
+                // Load remaining decks in background (adds to allAvailableWords pool)
+                if (remainingDecks.length > 0) {
+                    loadRemainingDecksInBackground(remainingDecks);
+                }
             } catch (err) {
                 hideLoader();
                 console.error('Random test error:', err);
                 alert('Failed to load random test');
             }
         });
+
+        // Background loader for remaining decks - just adds to pool, doesn't add to active words
+        async function loadRemainingDecksInBackground(decks) {
+            if (!decks || !decks.length) return;
+
+            for (const deck of decks) {
+                try {
+                    const resp = await fetch(`/cards?deck=${encodeURIComponent(deck.name)}`);
+                    if (resp.ok) {
+                        const deckWords = await resp.json();
+                        if (Array.isArray(deckWords) && deckWords.length) {
+                            // Just add to available pool (checkAndAddMoreRandomWords will use these)
+                            allAvailableWords.push(...deckWords);
+                        }
+                    }
+                } catch {
+                    // Continue with next deck
+                }
+                // Small delay to not overwhelm the server
+                await new Promise(r => setTimeout(r, 200));
+            }
+        }
 
         function showCardData(cardData) {
             if (!cardData) return;
