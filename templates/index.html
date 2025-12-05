@@ -585,6 +585,111 @@
         #autoPlayToggle.active .toggle-icon {
             transform: scale(1.1);
         }
+        /* Word list table styles */
+        
+        .word-list-container {
+            margin-top: 24px;
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .word-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .word-list-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text);
+        }
+        
+        .word-list-toggle {
+            background: none;
+            border: none;
+            box-shadow: none;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 12px;
+            transition: transform 0.2s ease;
+        }
+        
+        .word-list-toggle .toggle-arrow {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .word-list-container.is-collapsed .toggle-arrow {
+            transform: rotate(-90deg);
+        }
+        
+        .word-list-container.is-collapsed .word-list-grid {
+            display: none;
+        }
+        
+        .word-list-grid {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .word-list-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .word-list-table tr {
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        
+        .word-list-table tr:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        
+        .word-list-table tr.is-wrong {
+            background: rgba(239, 68, 68, 0.08);
+        }
+        
+        .word-list-table tr.is-right {
+            background: rgba(16, 185, 129, 0.08);
+        }
+        
+        .word-list-table td {
+            padding: 10px 14px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .word-list-table td:first-child {
+            font-weight: 500;
+            color: var(--text);
+            border-right: 1px solid var(--card-border);
+        }
+        
+        .word-list-table td:last-child {
+            color: var(--muted);
+        }
+        
+        .word-list-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .word-list-empty {
+            padding: 20px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
         /* Responsive adjustments */
         
         @media (max-width: 640px) {
@@ -1702,6 +1807,15 @@
                 <button id="reset">↺ Reset</button>
             </div>
         </div>
+        <div id="wordListContainer" class="word-list-container is-collapsed">
+            <div id="wordListHeader" class="word-list-header">
+                <span class="word-list-title">Practiced Words (<span id="practicedCount">0</span>)</span>
+                <button id="wordListToggle" class="word-list-toggle" aria-label="Toggle word list">
+                    <span class="toggle-arrow">▼</span>
+                </button>
+            </div>
+            <div id="wordListGrid" class="word-list-grid"></div>
+        </div>
     </div>
 
     <script>
@@ -1712,7 +1826,15 @@
         const prevBtn = document.getElementById('prev');
         const speakBtn = document.getElementById('speak');
         const autoPlayToggle = document.getElementById('autoPlayToggle');
+        const wordListGrid = document.getElementById('wordListGrid');
+        const wordListContainer = document.getElementById('wordListContainer');
+        const wordListHeader = document.getElementById('wordListHeader');
+        const wordListToggle = document.getElementById('wordListToggle');
+        const practicedCountEl = document.getElementById('practicedCount');
         const header = document.querySelector('.site-header');
+
+        // Track practiced words
+        let practicedWords = [];
         const spellingBtn = document.getElementById('spellingBtn');
         const homeBtn = document.getElementById('homeBtn');
         const deckGrid = document.getElementById('deckGrid');
@@ -2124,7 +2246,7 @@
         let backLang = 'en';
         let isAutoPlayEnabled = false;
         let cardHistory = [];
-        
+
         // Random test tracking
         let isRandomTest = false;
         let randomTestWrongWords = [];
@@ -2311,6 +2433,7 @@
 
             clearDeckPreloads();
             preloadDeckAudio(deckName);
+            clearPracticedWords();
         }
 
         async function preloadDeckAudio(deckName) {
@@ -2900,38 +3023,38 @@
 
         // Random test: load random words from all decks
         const randomTestBtn = document.getElementById('randomTestBtn');
-        if (randomTestBtn) randomTestBtn.addEventListener('click', async () => {
+        if (randomTestBtn) randomTestBtn.addEventListener('click', async() => {
             showLoader();
             try {
                 // Fetch all decks
                 const decksResp = await fetch('/decks');
                 const decksData = decksResp.ok ? await decksResp.json() : [];
                 const allDecks = Array.isArray(decksData) ? decksData : [];
-                
+
                 if (!allDecks.length) {
                     hideLoader();
                     alert('No decks found');
                     return;
                 }
-                
+
                 // Fetch words from all decks in parallel
-                const promises = allDecks.map(d => 
+                const promises = allDecks.map(d =>
                     fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
-                        .then(r => r.ok ? r.json() : [])
-                        .catch(() => [])
+                    .then(r => r.ok ? r.json() : [])
+                    .catch(() => [])
                 );
                 const allWordLists = await Promise.all(promises);
                 const allWords = [].concat(...allWordLists);
-                
+
                 if (!allWords.length) {
                     hideLoader();
                     alert('No words found in any deck');
                     return;
                 }
-                
+
                 // Store all words for adding more later
                 allAvailableWords = allWords.slice();
-                
+
                 // Shuffle and pick random words (up to 20 for a quick test)
                 const shuffled = allWords.slice();
                 for (let i = shuffled.length - 1; i > 0; i--) {
@@ -2939,12 +3062,12 @@
                     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
                 }
                 const testWords = shuffled.slice(0, Math.min(20, shuffled.length));
-                
+
                 // Load into flashcard screen
                 originalWords = testWords;
                 words = testWords.slice();
                 shuffle(words);
-                
+
                 // Reset auto-play state and random test tracking
                 isAutoPlayEnabled = false;
                 try {
@@ -2955,21 +3078,22 @@
                 isRandomTest = true;
                 randomTestWrongWords = [];
                 randomTestCompletedCount = 0;
-                
+
                 // Show flashcard screen
                 if (flashApp) flashApp.style.display = 'block';
                 if (homeDeckList) homeDeckList.style.display = 'none';
                 if (createFolderBtn) createFolderBtn.style.display = 'none';
                 isOnFlashcardScreen = true;
                 updateFlashMultiBtn();
-                
+
                 // Update deck name display
                 updateSelectedDeckName(['Random Test (' + testWords.length + ' words)']);
-                
+
                 // Preload audio for random test words
                 clearDeckPreloads();
                 preloadRandomTestAudio(testWords);
-                
+                clearPracticedWords();
+
                 getNewCard();
                 hideLoader();
             } catch (err) {
@@ -3004,6 +3128,99 @@
             }
             const next = words.shift();
             showCardData(next);
+        }
+
+        function renderWordList() {
+            if (!wordListGrid) return;
+
+            // Update count
+            if (practicedCountEl) {
+                practicedCountEl.textContent = practicedWords.length;
+            }
+
+            if (!practicedWords.length) {
+                wordListGrid.innerHTML = '<div class="word-list-empty">Practice words to see them here</div>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'word-list-table';
+            const tbody = document.createElement('tbody');
+            table.appendChild(tbody);
+
+            // Show practiced words (newest first - they're added to front)
+            practicedWords.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.dataset.text = item.word.de || '';
+                tr.className = item.isWrong ? 'is-wrong' : 'is-right';
+
+                const tdDe = document.createElement('td');
+                tdDe.textContent = item.word.de || '';
+
+                const tdEn = document.createElement('td');
+                tdEn.textContent = item.word.en || '';
+
+                tr.appendChild(tdDe);
+                tr.appendChild(tdEn);
+
+                // Click to speak
+                tr.addEventListener('click', () => {
+                    if (item.word.de) {
+                        speakText(item.word.de);
+                    }
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            wordListGrid.innerHTML = '';
+            wordListGrid.appendChild(table);
+        }
+
+        function addPracticedWord(word, isWrong) {
+            if (!word) return;
+            // Add to front of array (newest first)
+            practicedWords.unshift({
+                word,
+                isWrong
+            });
+            renderWordList();
+        }
+
+        function clearPracticedWords() {
+            practicedWords = [];
+            renderWordList();
+        }
+
+        // Helper function to speak text
+        async function speakText(text) {
+            if (!text) return;
+
+            const cached = audioCache.get(text);
+            if (cached) {
+                try {
+                    const audio = new Audio(cached);
+                    await audio.play();
+                    return;
+                } catch {}
+            }
+
+            try {
+                const resp = await fetch(`/tts?text=${encodeURIComponent(text)}&lang=de`);
+                if (resp.ok) {
+                    const blob = await resp.blob();
+                    const url = URL.createObjectURL(blob);
+                    const audio = new Audio(url);
+                    await audio.play();
+                }
+            } catch {
+                // Fallback to speech synthesis
+                try {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'de-DE';
+                    speechSynthesis.speak(utterance);
+                } catch {}
+            }
         }
 
         let recentlyTouched = false;
@@ -3062,6 +3279,9 @@
 
         wrongBtn.addEventListener('click', () => {
             if (currentCard) {
+                // Add to practiced words list (wrong)
+                addPracticedWord(currentCard, true);
+
                 words.push(currentCard);
                 // Track wrong words for random test
                 if (isRandomTest) {
@@ -3076,17 +3296,21 @@
         });
 
         rightBtn.addEventListener('click', () => {
+            if (currentCard) {
+                // Add to practiced words list (right)
+                addPracticedWord(currentCard, false);
+            }
             if (isRandomTest) {
                 randomTestCompletedCount++;
                 checkAndAddMoreRandomWords();
             }
             getNewCard();
         });
-        
+
         // Check if we need to add more words to random test (when running low)
         function checkAndAddMoreRandomWords() {
             if (!isRandomTest || !allAvailableWords.length) return;
-            
+
             // When only 3 or fewer words left, add more words + wrong words
             if (words.length <= 3) {
                 // Get current word keys to avoid duplicates
@@ -3094,40 +3318,40 @@
                 if (currentCard) {
                     currentWordKeys.add(currentCard.de + '|' + currentCard.en);
                 }
-                
+
                 // Filter available words that aren't already in the queue
                 const availableNew = allAvailableWords.filter(w => !currentWordKeys.has(w.de + '|' + w.en));
-                
+
                 // Shuffle and pick 10 new words
                 for (let i = availableNew.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [availableNew[i], availableNew[j]] = [availableNew[j], availableNew[i]];
                 }
                 const newWords = availableNew.slice(0, 10);
-                
+
                 // Add wrong words (that aren't already in queue)
                 const wrongToAdd = randomTestWrongWords.filter(w => !currentWordKeys.has(w.de + '|' + w.en));
-                
+
                 // Combine new words and wrong words
                 const toAdd = [...newWords, ...wrongToAdd];
-                
+
                 if (toAdd.length > 0) {
                     // Shuffle the new batch
                     for (let i = toAdd.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [toAdd[i], toAdd[j]] = [toAdd[j], toAdd[i]];
                     }
-                    
+
                     // Add to words queue
                     words.push(...toAdd);
                     originalWords.push(...toAdd);
-                    
+
                     // Preload audio for new words
                     preloadRandomTestAudio(toAdd);
-                    
+
                     // Update display
                     updateSelectedDeckName(['Random Test (' + randomTestCompletedCount + ' done, +' + toAdd.length + ' added)']);
-                    
+
                     // Clear wrong words after adding them
                     randomTestWrongWords = [];
                 }
@@ -3150,8 +3374,18 @@
             words = Array.isArray(originalWords) ? originalWords.slice() : [];
             shuffle(words);
             cardHistory = [];
+            clearPracticedWords();
             getNewCard();
         });
+
+        // Toggle word list collapse
+        if (wordListHeader) {
+            wordListHeader.addEventListener('click', () => {
+                if (wordListContainer) {
+                    wordListContainer.classList.toggle('is-collapsed');
+                }
+            });
+        }
 
         let germanVoice = null;
         const audioCache = new Map();
@@ -3483,6 +3717,7 @@
                 getNewCard();
                 clearDeckPreloads();
                 names.forEach((n) => preloadDeckAudio(n));
+                clearPracticedWords();
             } catch {
                 originalWords = [];
                 words = [];
