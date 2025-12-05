@@ -1558,6 +1558,10 @@
                     <span class="link__text link__text--primary">Edit</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Edit</span>
                 </button>
+                <button class="nav__link nav__link--button" id="randomTestBtn" type="button">
+                    <span class="link__text link__text--primary">Random</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Random</span>
+                </button>
             </div>
         </div>
     </header>
@@ -2119,7 +2123,7 @@
         let frontLang = 'de';
         let backLang = 'en';
         let isAutoPlayEnabled = false;
-        let lastCard = null;
+        let cardHistory = [];
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
@@ -2272,7 +2276,7 @@
                 localStorage.setItem('autoPlayEnabled', 'false');
             } catch {}
             updateAutoPlayToggle();
-            lastCard = null;
+            cardHistory = [];
             updateSelectedDeckName(deckName);
             const url = deckName ? `/cards?deck=${encodeURIComponent(deckName)}` : '/cards';
             let data = [];
@@ -2335,6 +2339,35 @@
             } catch (e) {
                 console.error('Error preloading audio:', e);
             }
+        }
+
+        async function preloadRandomTestAudio(words) {
+            if (!words || !words.length) return;
+            const tasks = words.map(w => (async() => {
+                const text = w.de;
+                if (!text || audioCache.has(text)) return;
+                try {
+                    const resp = await fetch(`/tts?text=${encodeURIComponent(text)}&lang=de`);
+                    if (resp.ok) {
+                        const blob = await resp.blob();
+                        const objUrl = URL.createObjectURL(blob);
+                        audioCache.set(text, objUrl);
+                        audioBlobUrls.set(text, objUrl);
+                        try {
+                            const base64 = await new Promise((resolve, reject) => {
+                                const r = new FileReader();
+                                r.onloadend = () => resolve(r.result);
+                                r.onerror = reject;
+                                r.readAsDataURL(blob);
+                            });
+                            localStorage.setItem(`audio:de:${text}`, String(base64));
+                        } catch {}
+                    }
+                } catch (err) {
+                    console.warn('Failed to preload audio for:', text);
+                }
+            })());
+            await Promise.allSettled(tasks);
         }
 
         function clearDeckPreloads() {
@@ -2856,6 +2889,81 @@
             else window.location.href = '/edit';
         });
 
+        // Random test: load random words from all decks
+        const randomTestBtn = document.getElementById('randomTestBtn');
+        if (randomTestBtn) randomTestBtn.addEventListener('click', async () => {
+            showLoader();
+            try {
+                // Fetch all decks
+                const decksResp = await fetch('/decks');
+                const decksData = decksResp.ok ? await decksResp.json() : [];
+                const allDecks = Array.isArray(decksData) ? decksData : [];
+                
+                if (!allDecks.length) {
+                    hideLoader();
+                    alert('No decks found');
+                    return;
+                }
+                
+                // Fetch words from all decks in parallel
+                const promises = allDecks.map(d => 
+                    fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
+                        .then(r => r.ok ? r.json() : [])
+                        .catch(() => [])
+                );
+                const allWordLists = await Promise.all(promises);
+                const allWords = [].concat(...allWordLists);
+                
+                if (!allWords.length) {
+                    hideLoader();
+                    alert('No words found in any deck');
+                    return;
+                }
+                
+                // Shuffle and pick random words (up to 20 for a quick test)
+                const shuffled = allWords.slice();
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                const testWords = shuffled.slice(0, Math.min(20, shuffled.length));
+                
+                // Load into flashcard screen
+                originalWords = testWords;
+                words = testWords.slice();
+                shuffle(words);
+                
+                // Reset auto-play state
+                isAutoPlayEnabled = false;
+                try {
+                    localStorage.setItem('autoPlayEnabled', 'false');
+                } catch {}
+                updateAutoPlayToggle();
+                cardHistory = [];
+                
+                // Show flashcard screen
+                if (flashApp) flashApp.style.display = 'block';
+                if (homeDeckList) homeDeckList.style.display = 'none';
+                if (createFolderBtn) createFolderBtn.style.display = 'none';
+                isOnFlashcardScreen = true;
+                updateFlashMultiBtn();
+                
+                // Update deck name display
+                updateSelectedDeckName(['Random Test (' + testWords.length + ' words)']);
+                
+                // Preload audio for random test words
+                clearDeckPreloads();
+                preloadRandomTestAudio(testWords);
+                
+                getNewCard();
+                hideLoader();
+            } catch (err) {
+                hideLoader();
+                console.error('Random test error:', err);
+                alert('Failed to load random test');
+            }
+        });
+
         function showCardData(cardData) {
             if (!cardData) return;
             currentCard = cardData;
@@ -2873,7 +2981,7 @@
 
         function getNewCard() {
             if (currentCard) {
-                lastCard = currentCard;
+                cardHistory.push(currentCard);
             }
             if (words.length === 0) {
                 card.innerText = 'You have learned all the words!';
@@ -2950,13 +3058,12 @@
 
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
-                if (!lastCard) return;
+                if (!cardHistory.length) return;
                 // Put current card back to the front of the queue so it isn't lost
-                if (currentCard && currentCard !== lastCard) {
+                const previous = cardHistory.pop();
+                if (currentCard && currentCard !== previous) {
                     words.unshift(currentCard);
                 }
-                const previous = lastCard;
-                lastCard = null;
                 showCardData(previous);
             });
         }
@@ -2964,7 +3071,7 @@
         resetBtn.addEventListener('click', () => {
             words = Array.isArray(originalWords) ? originalWords.slice() : [];
             shuffle(words);
-            lastCard = null;
+            cardHistory = [];
             getNewCard();
         });
 
