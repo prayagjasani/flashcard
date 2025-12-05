@@ -1932,6 +1932,7 @@
                     dragTileHeight = Math.round(tile.getBoundingClientRect().height);
                     tile.classList.add('is-dragging-hidden');
                     tile.style.touchAction = 'none';
+                    document.body.style.overflow = 'hidden';
                     const tiles = Array.from(container.querySelectorAll('.deck-tile'));
                     const idx = tiles.indexOf(tile);
                     placePlaceholder(container, idx < 0 ? 0 : idx);
@@ -1947,6 +1948,7 @@
             async function commit() {
                 if (!dragging) return;
                 dragging = false;
+                document.body.style.overflow = '';
                 const ph = container.querySelector('.drop-placeholder');
                 if (ph && dragTileEl) {
                     container.insertBefore(dragTileEl, ph);
@@ -1995,6 +1997,7 @@
             tile.addEventListener('touchcancel', () => {
                 clearPress();
                 dragging = false;
+                document.body.style.overflow = '';
                 tile.classList.remove('is-dragging-hidden');
                 tile.style.touchAction = 'auto';
                 removePlaceholder(container);
