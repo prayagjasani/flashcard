@@ -2124,6 +2124,12 @@
         let backLang = 'en';
         let isAutoPlayEnabled = false;
         let cardHistory = [];
+        
+        // Random test tracking
+        let isRandomTest = false;
+        let randomTestWrongWords = [];
+        let randomTestCompletedCount = 0;
+        let allAvailableWords = [];
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
@@ -2272,6 +2278,9 @@
 
         async function loadWordsForDeck(deckName) {
             isAutoPlayEnabled = false;
+            isRandomTest = false;
+            randomTestWrongWords = [];
+            randomTestCompletedCount = 0;
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
             } catch {}
@@ -2920,6 +2929,9 @@
                     return;
                 }
                 
+                // Store all words for adding more later
+                allAvailableWords = allWords.slice();
+                
                 // Shuffle and pick random words (up to 20 for a quick test)
                 const shuffled = allWords.slice();
                 for (let i = shuffled.length - 1; i > 0; i--) {
@@ -2933,13 +2945,16 @@
                 words = testWords.slice();
                 shuffle(words);
                 
-                // Reset auto-play state
+                // Reset auto-play state and random test tracking
                 isAutoPlayEnabled = false;
                 try {
                     localStorage.setItem('autoPlayEnabled', 'false');
                 } catch {}
                 updateAutoPlayToggle();
                 cardHistory = [];
+                isRandomTest = true;
+                randomTestWrongWords = [];
+                randomTestCompletedCount = 0;
                 
                 // Show flashcard screen
                 if (flashApp) flashApp.style.display = 'block';
@@ -3048,13 +3063,76 @@
         wrongBtn.addEventListener('click', () => {
             if (currentCard) {
                 words.push(currentCard);
+                // Track wrong words for random test
+                if (isRandomTest) {
+                    randomTestWrongWords.push(currentCard);
+                }
+            }
+            if (isRandomTest) {
+                randomTestCompletedCount++;
+                checkAndAddMoreRandomWords();
             }
             getNewCard();
         });
 
         rightBtn.addEventListener('click', () => {
+            if (isRandomTest) {
+                randomTestCompletedCount++;
+                checkAndAddMoreRandomWords();
+            }
             getNewCard();
         });
+        
+        // Check if we need to add more words to random test (when running low)
+        function checkAndAddMoreRandomWords() {
+            if (!isRandomTest || !allAvailableWords.length) return;
+            
+            // When only 3 or fewer words left, add more words + wrong words
+            if (words.length <= 3) {
+                // Get current word keys to avoid duplicates
+                const currentWordKeys = new Set(words.map(w => w.de + '|' + w.en));
+                if (currentCard) {
+                    currentWordKeys.add(currentCard.de + '|' + currentCard.en);
+                }
+                
+                // Filter available words that aren't already in the queue
+                const availableNew = allAvailableWords.filter(w => !currentWordKeys.has(w.de + '|' + w.en));
+                
+                // Shuffle and pick 10 new words
+                for (let i = availableNew.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [availableNew[i], availableNew[j]] = [availableNew[j], availableNew[i]];
+                }
+                const newWords = availableNew.slice(0, 10);
+                
+                // Add wrong words (that aren't already in queue)
+                const wrongToAdd = randomTestWrongWords.filter(w => !currentWordKeys.has(w.de + '|' + w.en));
+                
+                // Combine new words and wrong words
+                const toAdd = [...newWords, ...wrongToAdd];
+                
+                if (toAdd.length > 0) {
+                    // Shuffle the new batch
+                    for (let i = toAdd.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [toAdd[i], toAdd[j]] = [toAdd[j], toAdd[i]];
+                    }
+                    
+                    // Add to words queue
+                    words.push(...toAdd);
+                    originalWords.push(...toAdd);
+                    
+                    // Preload audio for new words
+                    preloadRandomTestAudio(toAdd);
+                    
+                    // Update display
+                    updateSelectedDeckName(['Random Test (' + randomTestCompletedCount + ' done, +' + toAdd.length + ' added)']);
+                    
+                    // Clear wrong words after adding them
+                    randomTestWrongWords = [];
+                }
+            }
+        }
 
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
@@ -3385,6 +3463,9 @@
 
         async function loadWordsForDecks(deckNames) {
             isAutoPlayEnabled = false;
+            isRandomTest = false;
+            randomTestWrongWords = [];
+            randomTestCompletedCount = 0;
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
             } catch {}
