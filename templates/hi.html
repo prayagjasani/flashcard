@@ -168,6 +168,9 @@
                 <div class="mx-auto max-w-4xl px-3 py-2 flex items-center border-b border-slate-200/70">
                     <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
                     <h1 id="deckTitle" class="flex-1 h-8 flex items-center justify-center text-base font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">Deck</h1>
+                    <button id="addWordBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Add word">
+                        <span class="material-symbols-outlined text-xl">add</span>
+                    </button>
                     <button id="homeBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Home">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
                         <path d="M3 10.5L12 3l9 7.5" />
@@ -248,6 +251,8 @@
         const editEn = document.getElementById('editEn');
         const editCancel = document.getElementById('editCancel');
         const editSave = document.getElementById('editSave');
+        const addWordBtn = document.getElementById('addWordBtn');
+        let isAddingNewWord = false;
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
@@ -271,7 +276,7 @@
         const audioPlayer = new Audio();
         const audioCache = new Map();
         const MAX_CACHE_SIZE = 50;
-        const LONG_PRESS_DURATION = 2000;
+        const LONG_PRESS_DURATION = 1000;
         let longPressTimer = null;
         let suppressNextClickFromLongPress = false;
         let editingIndex = -1;
@@ -362,6 +367,18 @@
         addEventListenerWithCleanup(homeBtn, 'click', () => {
             location.href = '/';
         });
+
+        if (addWordBtn) {
+            addEventListenerWithCleanup(addWordBtn, 'click', () => {
+                isAddingNewWord = true;
+                editingIndex = -1;
+                editDe.value = '';
+                editEn.value = '';
+                const modalTitle = editModal.querySelector('h2');
+                if (modalTitle) modalTitle.textContent = 'Add word';
+                editModal.classList.remove('hidden');
+            });
+        }
         async function loadDeck() {
             showLoader();
 
@@ -650,9 +667,12 @@
             addEventListenerWithCleanup(cardActionEdit, 'click', () => {
                 closeCardActionMenu();
                 if (editingIndex < 0 || editingIndex >= cards.length) return;
+                isAddingNewWord = false;
                 const c = cards[editingIndex];
                 editDe.value = c.de || '';
                 editEn.value = c.en || '';
+                const modalTitle = editModal.querySelector('h2');
+                if (modalTitle) modalTitle.textContent = 'Edit word';
                 editModal.classList.remove('hidden');
             });
         }
@@ -675,28 +695,42 @@
         if (editCancel && editModal) {
             addEventListenerWithCleanup(editCancel, 'click', () => {
                 editModal.classList.add('hidden');
+                isAddingNewWord = false;
             });
             addEventListenerWithCleanup(editModal, 'click', (e) => {
                 if (e.target === editModal) {
                     editModal.classList.add('hidden');
+                    isAddingNewWord = false;
                 }
             });
         }
 
         if (editSave) {
             addEventListenerWithCleanup(editSave, 'click', async() => {
-                if (editingIndex < 0 || editingIndex >= cards.length) return;
                 const newDe = (editDe.value || '').trim();
                 const newEn = (editEn.value || '').trim();
                 if (!newDe || !newEn) return;
 
-                const prevDe = (cards[editingIndex] && cards[editingIndex].de) || '';
+                let prevDe = '';
 
-                cards[editingIndex] = {
-                    en: newEn,
-                    de: newDe
-                };
+                if (isAddingNewWord) {
+                    // Adding a new word
+                    cards.unshift({
+                        en: newEn,
+                        de: newDe
+                    });
+                } else {
+                    // Editing existing word
+                    if (editingIndex < 0 || editingIndex >= cards.length) return;
+                    prevDe = (cards[editingIndex] && cards[editingIndex].de) || '';
+                    cards[editingIndex] = {
+                        en: newEn,
+                        de: newDe
+                    };
+                }
+
                 editModal.classList.add('hidden');
+                isAddingNewWord = false;
                 renderGrid();
                 queue = cards.slice();
                 current = queue.length ? queue[0] : null;
