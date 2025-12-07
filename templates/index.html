@@ -2241,6 +2241,7 @@
         let randomTestWrongWords = [];
         let randomTestCompletedCount = 0;
         let allAvailableWords = [];
+        let randomTestPracticedKeys = new Set();
 
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
@@ -2392,6 +2393,7 @@
             isRandomTest = false;
             randomTestWrongWords = [];
             randomTestCompletedCount = 0;
+            randomTestPracticedKeys.clear();
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
             } catch {}
@@ -3075,6 +3077,7 @@
                 isRandomTest = true;
                 randomTestWrongWords = [];
                 randomTestCompletedCount = 0;
+                randomTestPracticedKeys.clear();
 
                 // Show flashcard screen immediately
                 if (flashApp) flashApp.style.display = 'block';
@@ -3303,10 +3306,14 @@
                 // Add to practiced words list (wrong)
                 addPracticedWord(currentCard, true);
 
-                words.push(currentCard);
-                // Track wrong words for random test
+                // In random mode, don't repeat words - just track for adding at end
                 if (isRandomTest) {
                     randomTestWrongWords.push(currentCard);
+                    // Mark as practiced so it won't be added again
+                    randomTestPracticedKeys.add(currentCard.de + '|' + currentCard.en);
+                } else {
+                    // In normal mode, add back to queue
+                    words.push(currentCard);
                 }
             }
             if (isRandomTest) {
@@ -3320,6 +3327,10 @@
             if (currentCard) {
                 // Add to practiced words list (right)
                 addPracticedWord(currentCard, false);
+                // Mark as practiced in random mode
+                if (isRandomTest) {
+                    randomTestPracticedKeys.add(currentCard.de + '|' + currentCard.en);
+                }
             }
             if (isRandomTest) {
                 randomTestCompletedCount++;
@@ -3330,18 +3341,21 @@
 
         // Check if we need to add more words to random test (when running low)
         function checkAndAddMoreRandomWords() {
-            if (!isRandomTest || !allAvailableWords.length) return;
+            if (!isRandomTest) return;
 
             // When only 3 or fewer words left, add more words + wrong words
             if (words.length <= 3) {
-                // Get current word keys to avoid duplicates
+                // Get current word keys in queue
                 const currentWordKeys = new Set(words.map(w => w.de + '|' + w.en));
                 if (currentCard) {
                     currentWordKeys.add(currentCard.de + '|' + currentCard.en);
                 }
 
-                // Filter available words that aren't already in the queue
-                const availableNew = allAvailableWords.filter(w => !currentWordKeys.has(w.de + '|' + w.en));
+                // Filter available words that haven't been practiced yet AND aren't in queue
+                const availableNew = allAvailableWords.filter(w => {
+                    const key = w.de + '|' + w.en;
+                    return !randomTestPracticedKeys.has(key) && !currentWordKeys.has(key);
+                });
 
                 // Shuffle and pick 10 new words
                 for (let i = availableNew.length - 1; i > 0; i--) {
@@ -3350,14 +3364,22 @@
                 }
                 const newWords = availableNew.slice(0, 10);
 
-                // Add wrong words (that aren't already in queue)
+                // Get wrong words that aren't currently in queue
                 const wrongToAdd = randomTestWrongWords.filter(w => !currentWordKeys.has(w.de + '|' + w.en));
+
+                // Clear wrong words from tracking (they'll be added now)
+                randomTestWrongWords = [];
+
+                // Remove wrong words from practiced keys so they can be practiced again
+                wrongToAdd.forEach(w => {
+                    randomTestPracticedKeys.delete(w.de + '|' + w.en);
+                });
 
                 // Combine new words and wrong words
                 const toAdd = [...newWords, ...wrongToAdd];
 
                 if (toAdd.length > 0) {
-                    // Shuffle the new batch
+                    // Shuffle the combined batch
                     for (let i = toAdd.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [toAdd[i], toAdd[j]] = [toAdd[j], toAdd[i]];
@@ -3371,10 +3393,15 @@
                     preloadRandomTestAudio(toAdd);
 
                     // Update display
-                    updateSelectedDeckName(['Random Test (' + randomTestCompletedCount + ' done, +' + toAdd.length + ' added)']);
-
-                    // Clear wrong words after adding them
-                    randomTestWrongWords = [];
+                    const wrongCount = wrongToAdd.length;
+                    const newCount = newWords.length;
+                    let msg = randomTestCompletedCount + ' done';
+                    if (newCount > 0) msg += ', +' + newCount + ' new';
+                    if (wrongCount > 0) msg += ', +' + wrongCount + ' wrong';
+                    updateSelectedDeckName(['Random Test (' + msg + ')']);
+                } else if (words.length === 0) {
+                    // No more words available
+                    updateSelectedDeckName(['Random Test (' + randomTestCompletedCount + ' done - complete!)']);
                 }
             }
         }
@@ -3721,6 +3748,7 @@
             isRandomTest = false;
             randomTestWrongWords = [];
             randomTestCompletedCount = 0;
+            randomTestPracticedKeys.clear();
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
             } catch {}
