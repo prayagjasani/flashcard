@@ -380,6 +380,62 @@
             -ms-user-select: none;
             /* Remove mobile tap/selection highlight overlays */
             -webkit-tap-highlight-color: transparent;
+        }
+        
+        .line-hint {
+            width: 380px;
+            max-width: 92vw;
+            margin: 8px auto;
+            padding: 10px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .line-hint-audio {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        .line-hint-audio:active {
+            transform: scale(0.95);
+        }
+        
+        .line-hint-content {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .line-hint-text {
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.4;
+            transition: filter 0.3s ease;
+        }
+        
+        .line-hint-text.is-blurred {
+            filter: blur(6px);
+            user-select: none;
+        }
+        
+        .line-hint-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 2px;
             -webkit-touch-callout: none;
             touch-action: manipulation;
             outline: none;
@@ -1783,6 +1839,12 @@
             </div>
         </div>
         <div id="card">Welcome! Please select a deck.</div>
+        <div id="lineHint" class="line-hint" style="display:none;">
+            <button id="lineHintAudio" class="line-hint-audio" type="button">🔊</button>
+            <div class="line-hint-content">
+                <div id="lineHintText" class="line-hint-text is-blurred">Click to reveal hint</div>
+            </div>
+        </div>
         <div class="buttons">
             <button id="wrong">✗ Wrong</button>
             <button id="right">✓ Right</button>
@@ -1816,10 +1878,18 @@
         const prevBtn = document.getElementById('prev');
         const speakBtn = document.getElementById('speak');
         const autoPlayToggle = document.getElementById('autoPlayToggle');
+        const lineHint = document.getElementById('lineHint');
+        const lineHintText = document.getElementById('lineHintText');
+        const lineHintAudio = document.getElementById('lineHintAudio');
         const wordListGrid = document.getElementById('wordListGrid');
         const wordListContainer = document.getElementById('wordListContainer');
         const wordListHeader = document.getElementById('wordListHeader');
         const practicedCountEl = document.getElementById('practicedCount');
+
+        // Line data cache (de word -> {line_de, line_en})
+        const lineDataCache = new Map();
+        // Track which words have had their line revealed (stays revealed)
+        const revealedLineWords = new Set();
         const header = document.querySelector('.site-header');
 
         // Track practiced words
@@ -2425,6 +2495,9 @@
             clearDeckPreloads();
             preloadDeckAudio(deckName);
             clearPracticedWords();
+            revealedLineWords.clear();
+            // Load line data in background
+            loadLineDataForDeck(deckName);
         }
 
         async function preloadDeckAudio(deckName) {
@@ -3090,6 +3163,10 @@
                 clearDeckPreloads();
                 preloadRandomTestAudio(initialWords);
                 clearPracticedWords();
+                revealedLineWords.clear();
+
+                // Load line data for the initial decks in background
+                quickDecks.forEach(d => loadLineDataForDeck(d.name));
 
                 getNewCard();
                 hideLoader();
@@ -3119,6 +3196,8 @@
                             allAvailableWords.push(...deckWords);
                         }
                     }
+                    // Load line data for this deck too
+                    loadLineDataForDeck(deck.name);
                 } catch {
                     // Continue with next deck
                 }
@@ -3133,12 +3212,124 @@
             card.innerText = currentCard[frontLang];
             showingFront = true;
 
+            // Show line hint if available
+            updateLineHint();
+
             // Auto-play audio when showing front (German) side
             if (frontLang === 'de') {
                 // Small delay to ensure card text is rendered
                 setTimeout(() => {
                     autoPlayAudio();
                 }, 100);
+            }
+        }
+
+        function updateLineHint() {
+            if (!lineHint || !lineHintText || !currentCard) {
+                if (lineHint) lineHint.style.display = 'none';
+                return;
+            }
+
+            const lineData = lineDataCache.get(currentCard.de);
+            if (lineData && lineData.line_de) {
+                const isRevealed = revealedLineWords.has(currentCard.de);
+
+                if (showingFront) {
+                    // Front: show German line (blurred unless already revealed)
+                    lineHintText.textContent = lineData.line_de;
+                    if (isRevealed) {
+                        lineHintText.classList.remove('is-blurred');
+                    } else {
+                        lineHintText.classList.add('is-blurred');
+                    }
+                } else {
+                    // Back: show English translation (always unblurred)
+                    lineHintText.textContent = lineData.line_en || lineData.line_de;
+                    lineHintText.classList.remove('is-blurred');
+                }
+                lineHint.style.display = 'flex';
+            } else {
+                lineHint.style.display = 'none';
+            }
+        }
+
+        // Click on line hint - unblur if blurred, otherwise flip card
+        if (lineHint) {
+            lineHint.addEventListener('click', (e) => {
+                // Don't do anything if clicking audio button
+                if (e.target === lineHintAudio || e.target.closest('.line-hint-audio')) {
+                    return;
+                }
+
+                // If line is blurred (front side and not revealed), unblur it instead of flipping
+                if (currentCard && showingFront && !revealedLineWords.has(currentCard.de)) {
+                    revealedLineWords.add(currentCard.de);
+                    updateLineHint();
+                    return;
+                }
+
+                // Otherwise flip the card
+                flipCard();
+            });
+        }
+
+        // Audio button to play line audio
+        if (lineHintAudio) {
+            lineHintAudio.addEventListener('click', async(e) => {
+                e.stopPropagation();
+                if (!currentCard) return;
+
+                const lineData = lineDataCache.get(currentCard.de);
+                let textToSpeak = null;
+                if (showingFront) {
+                    textToSpeak = lineData && lineData.line_de;
+                } else {
+                    textToSpeak = (lineData && lineData.line_en) || (lineData && lineData.line_de);
+                }
+                const lang = showingFront ? 'de' : 'en';
+
+                if (textToSpeak) {
+                    try {
+                        const resp = await fetch(`/tts?text=${encodeURIComponent(textToSpeak)}&lang=${lang}`);
+                        if (resp.ok) {
+                            const blob = await resp.blob();
+                            const url = URL.createObjectURL(blob);
+                            const audio = new Audio(url);
+                            await audio.play();
+                        }
+                    } catch {
+                        // Fallback to speech synthesis
+                        try {
+                            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                            utterance.lang = lang === 'de' ? 'de-DE' : 'en-US';
+                            speechSynthesis.speak(utterance);
+                        } catch {}
+                    }
+                }
+            });
+        }
+
+        // Load line data for a deck in background
+        async function loadLineDataForDeck(deckName) {
+            if (!deckName) return;
+            try {
+                const resp = await fetch(`/lines/generate?deck=${encodeURIComponent(deckName)}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const items = data.items || data || [];
+                    items.forEach(item => {
+                        if (item.de && item.line_de) {
+                            lineDataCache.set(item.de, {
+                                line_de: item.line_de,
+                                line_en: item.line_en || ''
+                            });
+                        }
+                    });
+                    // Update current card's line hint if it now has data
+                    updateLineHint();
+                }
+            } catch (err) {
+                console.warn('Failed to load line data:', err);
             }
         }
 
@@ -3253,6 +3444,14 @@
             if (currentCard[backLang]) {
                 card.innerText = showingFront ? currentCard[backLang] : currentCard[frontLang];
                 showingFront = !showingFront;
+
+                // Auto-reveal line when flipping (user saw the meaning)
+                if (currentCard) {
+                    revealedLineWords.add(currentCard.de);
+                }
+
+                // Update line hint for back/front
+                updateLineHint();
             }
         }
         // Touch-first: flip immediately and suppress synthetic click
@@ -3423,6 +3622,7 @@
             shuffle(words);
             cardHistory = [];
             clearPracticedWords();
+            revealedLineWords.clear();
             getNewCard();
         });
 
@@ -3766,7 +3966,10 @@
                 getNewCard();
                 clearDeckPreloads();
                 names.forEach((n) => preloadDeckAudio(n));
+                // Load line data for all decks in background
+                names.forEach((n) => loadLineDataForDeck(n));
                 clearPracticedWords();
+                revealedLineWords.clear();
             } catch {
                 originalWords = [];
                 words = [];
