@@ -1953,6 +1953,7 @@
         const moveFolderSaveBtn = document.getElementById('moveFolderSaveBtn');
         const moveFolderStatus = document.getElementById('moveFolderStatus');
         let cachedFolderList = [];
+        let cachedDeckList = [];
         let selectedFolder = '';
         let folderToManage = '';
         const openLearnBtn = document.getElementById('openLearnBtn');
@@ -2688,104 +2689,226 @@
             } catch {}
         }
 
+        // Cache keys for instant loading
+        const CACHE_KEY_DECKS = 'flashcard_decks_cache';
+        const CACHE_KEY_FOLDERS = 'flashcard_folders_cache';
+        const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+
+        function saveToCache(key, data) {
+            try {
+                sessionStorage.setItem(key, JSON.stringify({
+                    data,
+                    timestamp: Date.now()
+                }));
+            } catch {}
+        }
+
+        function getFromCache(key) {
+            try {
+                const cached = sessionStorage.getItem(key);
+                if (cached) {
+                    const {
+                        data,
+                        timestamp
+                    } = JSON.parse(cached);
+                    // Return cached data (we'll refresh in background anyway)
+                    return data;
+                }
+            } catch {}
+            return null;
+        }
+
+        // Optimized parallel loading function
+        async function loadAllData() {
+            // Try to show cached data instantly first
+            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
+            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
+
+            if (cachedDecks && cachedFolders) {
+                // Show cached data immediately (no loader)
+                cachedDeckList = cachedDecks;
+                cachedFolderList = cachedFolders;
+                updateDeckCounts();
+                renderFolderGrid();
+                renderDeckGrid();
+                populateDeckSelect();
+            } else {
+                showLoader();
+            }
+
+            // Fetch all data in parallel
+            try {
+                const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
+                    fetch('/folders').then(r => r.json()).catch(() => ({
+                        folders: []
+                    })),
+                    fetch('/decks').then(r => r.json()).catch(() => []),
+                    fetch('/order/folders').then(r => r.json()).catch(() => [])
+                ]);
+
+                // Update folders
+                cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
+                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
+                ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+
+                // Update decks
+                cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
+                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                updateDeckCounts();
+            } catch {}
+
+            hideLoader();
+            renderFolderGrid();
+            renderDeckGrid();
+            populateDeckSelect();
+
+            // Handle URL parameters
+            handleUrlParams();
+        }
+
+        function populateDeckSelect() {
+            deckSelect.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select deck';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            deckSelect.appendChild(placeholder);
+            cachedDeckList.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.name;
+                opt.textContent = d.name;
+                deckSelect.appendChild(opt);
+            });
+            card.innerText = 'Welcome!\n Please select a deck.';
+            if (deckSectionHead) deckSectionHead.style.display = 'none';
+            if (deckSectionTitle) deckSectionTitle.textContent = 'Decks';
+            if (deckGrid) deckGrid.style.display = 'none';
+            if (folderGrid) folderGrid.style.display = 'grid';
+        }
+
         async function loadDecks() {
-            showLoader();
+            // Try to show cached data instantly first
+            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
+            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
+
+            if (cachedDecks && cachedFolders) {
+                // Show cached data immediately (no loader)
+                cachedDeckList = cachedDecks;
+                cachedFolderList = cachedFolders;
+                updateDeckCounts();
+                renderFolderGrid();
+                renderDeckGrid();
+            } else {
+                showLoader();
+            }
+
+            // Fetch fresh data in background
             try {
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
-                try {
-                    // Update deck counts without losing parent info
-                    const counts = {};
-                    cachedDeckList.forEach(d => {
-                        const f = d.folder || 'Uncategorized';
-                        counts[f] = (counts[f] || 0) + 1;
-                    });
-                    // Merge counts into existing folder data (preserve parent info)
-                    cachedFolderList.forEach(folder => {
-                        folder.count = counts[folder.name] || 0;
-                    });
-                    // Add any folders that only exist in decks but not in folder list
-                    Object.keys(counts).forEach(name => {
-                        if (!cachedFolderList.find(f => f.name === name)) {
-                            cachedFolderList.push({
-                                name,
-                                count: counts[name]
-                            });
-                        }
-                    });
-                    await refreshFolderOrder();
-                    renderFolderGrid();
-                } catch {}
-                deckSelect.innerHTML = '';
-                // Insert placeholder prompt
-                const placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = 'Select deck';
-                placeholder.disabled = true;
-                placeholder.selected = true;
-                deckSelect.appendChild(placeholder);
+                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                updateDeckCounts();
+            } catch {}
 
-                // Populate available decks
-                cachedDeckList.forEach(d => {
-                    const opt = document.createElement('option');
-                    opt.value = d.name;
-                    opt.textContent = d.name;
-                    deckSelect.appendChild(opt);
-                });
+            hideLoader();
+            renderFolderGrid();
+            renderDeckGrid();
 
-                // Wait for user choice
-                card.innerText = 'Welcome!\n Please select a deck.';
-                renderDeckGrid();
-                if (deckSectionHead) deckSectionHead.style.display = 'none';
-                if (deckSectionTitle) deckSectionTitle.textContent = 'Decks';
-                if (deckGrid) deckGrid.style.display = 'none';
-                if (folderGrid) folderGrid.style.display = 'grid';
-                try {
-                    const params = new URLSearchParams(location.search);
-                    const qsDeck = params.get('deck') || '';
-                    const qsMode = params.get('mode') || '';
-                    if (qsDeck && cachedDeckList.find(d => d.name === qsDeck)) {
-                        if (qsMode === 'flash') {
-                            deckSelect.value = qsDeck;
-                            loadWordsForDeck(qsDeck);
-                            if (flashApp) flashApp.style.display = 'block';
-                            if (homeDeckList) homeDeckList.style.display = 'none';
-                            if (createFolderBtn) createFolderBtn.style.display = 'none';
-                            isOnFlashcardScreen = true;
-                            updateFlashMultiBtn();
-                        } else if (qsMode === 'learn') {
-                            window.location.href = `/learn?deck=${encodeURIComponent(qsDeck)}`;
-                        }
-                    }
-                } catch {}
-                hideLoader();
-            } catch (e) {
-                // If listing fails, keep placeholder and show welcome message
-                cachedDeckList = [];
-                deckSelect.innerHTML = '';
-                const placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = 'Select deck';
-                placeholder.disabled = true;
-                placeholder.selected = true;
-                deckSelect.appendChild(placeholder);
-                card.innerText = 'Welcome!\n Please select a deck.';
-                renderDeckGrid();
-                if (deckSectionHead) deckSectionHead.style.display = 'none';
-                if (deckGrid) deckGrid.style.display = 'none';
-                if (folderGrid) folderGrid.style.display = 'grid';
-                hideLoader();
-            }
+            deckSelect.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select deck';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            deckSelect.appendChild(placeholder);
+            cachedDeckList.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.name;
+                opt.textContent = d.name;
+                deckSelect.appendChild(opt);
+            });
+            card.innerText = 'Welcome!\n Please select a deck.';
+            if (deckSectionHead) deckSectionHead.style.display = 'none';
+            if (deckSectionTitle) deckSectionTitle.textContent = 'Decks';
+            if (deckGrid) deckGrid.style.display = 'none';
+            if (folderGrid) folderGrid.style.display = 'grid';
+
+            // Handle URL parameters
+            handleUrlParams();
         }
 
-        async function renderDeckGrid() {
+        function updateDeckCounts() {
+            try {
+                // Update deck counts without losing parent info
+                const counts = {};
+                cachedDeckList.forEach(d => {
+                    const f = d.folder || 'Uncategorized';
+                    counts[f] = (counts[f] || 0) + 1;
+                });
+                // Merge counts into existing folder data (preserve parent info)
+                cachedFolderList.forEach(folder => {
+                    folder.count = counts[folder.name] || 0;
+                });
+                // Add any folders that only exist in decks but not in folder list
+                Object.keys(counts).forEach(name => {
+                    if (!cachedFolderList.find(f => f.name === name)) {
+                        cachedFolderList.push({
+                            name,
+                            count: counts[name]
+                        });
+                    }
+                });
+            } catch {}
+        }
+
+        // Handle URL parameters for direct deck access
+        function handleUrlParams() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const qsDeck = params.get('deck') || '';
+                const qsMode = params.get('mode') || '';
+                if (qsDeck && cachedDeckList.find(d => d.name === qsDeck)) {
+                    if (qsMode === 'flash') {
+                        deckSelect.value = qsDeck;
+                        loadWordsForDeck(qsDeck);
+                        if (flashApp) flashApp.style.display = 'block';
+                        if (homeDeckList) homeDeckList.style.display = 'none';
+                        if (createFolderBtn) createFolderBtn.style.display = 'none';
+                        isOnFlashcardScreen = true;
+                        updateFlashMultiBtn();
+                    } else if (qsMode === 'learn') {
+                        window.location.href = `/learn?deck=${encodeURIComponent(qsDeck)}`;
+                    }
+                }
+            } catch {}
+        }
+
+        async function loadFolders() {
+            try {
+                const resp = await fetch('/folders');
+                const data = await resp.json().catch(() => ({
+                    folders: []
+                }));
+                cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
+                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
+                await refreshFolderOrder();
+                renderFolderGrid();
+            } catch {}
+        }
+
+        async function renderDeckGrid(skipOrderRefresh = false) {
             if (!deckGrid) return;
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
             const base = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
-            await refreshDeckOrder(selectedFolder || 'root');
-            const ordered = applyOrder(base, 'deck', selectedFolder || 'root');
+            // Only refresh order from server if not already loaded and not skipped
+            const scope = selectedFolder || 'root';
+            if (!skipOrderRefresh && !ordersCache.decks[scope]) {
+                await refreshDeckOrder(scope);
+            }
+            const ordered = applyOrder(base, 'deck', scope);
             ordered.forEach((d, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
@@ -2801,21 +2924,21 @@
                     chooseActionModal.classList.add('is-open');
                     chooseActionModal.setAttribute('aria-hidden', 'false');
                 });
-                attachDeckDnD(wrap, d.name, selectedFolder || 'root');
+                attachDeckDnD(wrap, d.name, scope);
                 deckGrid.appendChild(wrap);
             });
         }
 
-        async function loadFolders() {
-            try {
-                const resp = await fetch('/folders');
-                const data = await resp.json().catch(() => ({
-                    folders: []
-                }));
-                cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
-                await refreshFolderOrder();
-                renderFolderGrid();
-            } catch {}
+        // Recursively count all decks in a folder and its sub-folders
+        function getTotalDeckCount(folderName, allFolders) {
+            const folder = allFolders.find(f => f.name === folderName);
+            let total = folder ? (folder.count || 0) : 0;
+            // Find all child folders and add their counts recursively
+            const children = allFolders.filter(f => f.parent === folderName);
+            children.forEach(child => {
+                total += getTotalDeckCount(child.name, allFolders);
+            });
+            return total;
         }
 
         function renderFolderGrid() {
@@ -2839,10 +2962,12 @@
                 sub.className = 'deck-subtitle';
                 // Count sub-folders
                 const subFolderCount = base.filter(x => x.parent === f.name).length;
+                // Count total decks including all nested sub-folders
+                const totalDecks = getTotalDeckCount(f.name, base);
                 if (subFolderCount > 0) {
-                    sub.textContent = `${subFolderCount} folder${subFolderCount===1?'':'s'} · ${f.count || 0} deck${(f.count||0)===1?'':'s'}`;
+                    sub.textContent = `${subFolderCount} folder${subFolderCount===1?'':'s'} · ${totalDecks} deck${totalDecks===1?'':'s'}`;
                 } else {
-                    sub.textContent = `${f.count || 0} deck${(f.count||0)===1?'':'s'}`;
+                    sub.textContent = `${totalDecks} deck${totalDecks===1?'':'s'}`;
                 }
                 wrap.appendChild(title);
                 wrap.appendChild(sub);
@@ -3990,10 +4115,10 @@
             }
         });
 
-        // Initialize auto-play state and load folders then decks
+        // Initialize auto-play state and load data
         initAutoPlayState();
-        // Load folders first to get parent info, then load decks
-        loadFolders().then(() => loadDecks());
+        // Load folders and decks in parallel for faster startup
+        loadAllData();
 
         // Simple dropdown change handler
         deckSelect.addEventListener('change', (e) => {
@@ -4035,7 +4160,6 @@
         const multiDeckSaveBtn = document.getElementById('multiDeckSaveBtn');
         const multiDeckStatus = document.getElementById('multiDeckStatus');
         const multiDeckBackBtn = document.getElementById('multiDeckBackBtn');
-        let cachedDeckList = [];
 
         let multiDeckSelectedFolder = null;
         const multiDeckModalTitle = document.getElementById('multiDeckModalTitle');

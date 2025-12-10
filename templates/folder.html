@@ -369,24 +369,118 @@
             pointer-events: none !important;
         }
         
-        .breadcrumb-item {
-            color: var(--muted);
-            text-decoration: none;
+        .folder-drop-target {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border: 2px dashed var(--accent) !important;
+            transform: scale(1.02);
+            transition: all 150ms ease;
+        }
+        
+        .folder-drop-target::after {
+            content: 'Drop to move inside';
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: var(--accent);
+            font-weight: 600;
             white-space: nowrap;
         }
         
+        .kebab-btn {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-size: 18px;
+            cursor: pointer;
+        }
+        
+        .kebab-btn:hover {
+            color: var(--text);
+        }
+        
+        .kebab-menu {
+            position: absolute;
+            top: 46px;
+            right: 10px;
+            min-width: 160px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 8px;
+            display: none;
+            z-index: 3000;
+        }
+        
+        .kebab-menu.is-open {
+            display: block;
+        }
+        
+        .kebab-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            text-align: center;
+            background: #f3f4f6;
+            border: 1px solid var(--card-border);
+            border-radius: 9999px;
+            padding: 10px 12px;
+            margin: 6px 0;
+            color: var(--text);
+            box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
+            min-height: 40px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .kebab-item:hover {
+            background: #eef0f4;
+        }
+        
+        .breadcrumb-item {
+            color: #64748b;
+            text-decoration: none;
+            white-space: nowrap;
+            font-size: 14px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
         .breadcrumb-item:hover {
-            color: var(--accent);
+            color: #3b82f6;
         }
         
         .breadcrumb-item.is-current {
-            color: var(--text);
+            color: #1e293b;
             font-weight: 600;
+            pointer-events: none;
         }
         
         .breadcrumb-sep {
-            color: var(--muted);
-            margin: 0 2px;
+            color: #94a3b8;
+            margin: 0 4px;
+            font-size: 12px;
+        }
+        
+        #breadcrumb {
+            background: transparent;
+            padding: 8px 0;
+            margin-bottom: 8px;
         }
         
         .folder-tile {
@@ -484,6 +578,14 @@
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span>
                     <span>Spelling</span>
                 </button>
+                <button id="openLineBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span>
+                    <span>Line</span>
+                </button>
+                <button id="openMatchBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span>
+                    <span>Match</span>
+                </button>
                 <button id="openMoveBtn" class="study-action study-action--secondary" type="button">
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">drive_file_move</span>
                     <span>Move</span>
@@ -512,6 +614,7 @@
         const openLearnBtn = document.getElementById('openLearnBtn');
         const openFlashBtn = document.getElementById('openFlashBtn');
         let openSpellingBtn = document.getElementById('openSpellingBtn');
+        let openLineBtn = document.getElementById('openLineBtn');
         let openMatchBtn = document.getElementById('openMatchBtn');
         const openMoveBtn = document.getElementById('openMoveBtn');
         const studyActionsEl = document.querySelector('#chooseActionModal .study-actions');
@@ -526,16 +629,27 @@
             else studyActionsEl.appendChild(btn);
             openSpellingBtn = btn;
         }
-        if (!openMatchBtn && studyActionsEl) {
+        if (!openLineBtn && studyActionsEl) {
             const btn2 = document.createElement('button');
-            btn2.id = 'openMatchBtn';
+            btn2.id = 'openLineBtn';
             btn2.className = 'study-action study-action--secondary';
             btn2.type = 'button';
-            btn2.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span><span>Match</span>';
+            btn2.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span><span>Line</span>';
             const moveBtnEl2 = document.getElementById('openMoveBtn');
             if (moveBtnEl2) studyActionsEl.insertBefore(btn2, moveBtnEl2);
             else studyActionsEl.appendChild(btn2);
-            openMatchBtn = btn2;
+            openLineBtn = btn2;
+        }
+        if (!openMatchBtn && studyActionsEl) {
+            const btn3 = document.createElement('button');
+            btn3.id = 'openMatchBtn';
+            btn3.className = 'study-action study-action--secondary';
+            btn3.type = 'button';
+            btn3.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span><span>Match</span>';
+            const moveBtnEl3 = document.getElementById('openMoveBtn');
+            if (moveBtnEl3) studyActionsEl.insertBefore(btn3, moveBtnEl3);
+            else studyActionsEl.appendChild(btn3);
+            openMatchBtn = btn3;
         }
         const moveDeckModal = document.getElementById('moveDeckModal');
         const moveDeckList = document.getElementById('moveDeckList');
@@ -747,6 +861,7 @@
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
                 draggingDeck = name;
+                draggingDeckName = name; // For sub-folder drop detection
                 e.dataTransfer.effectAllowed = 'move';
                 dragTileEl = tile;
                 dragTileHeight = Math.round(tile.getBoundingClientRect().height);
@@ -776,12 +891,16 @@
                 await writeOrder('deck', newOrder, scope);
                 dragTileEl = null;
                 dragTileHeight = 0;
+                draggingDeckName = null;
+                clearFolderDropState();
             });
             tile.addEventListener('dragend', () => {
                 tile.classList.remove('is-dragging-hidden');
                 removePlaceholder(deckList);
                 dragTileEl = null;
                 dragTileHeight = 0;
+                draggingDeckName = null;
+                clearFolderDropState();
             });
             attachTouchDnD(tile, name, scope, deckList);
         }
@@ -810,7 +929,7 @@
             if (parentFolder) {
                 location.href = `/folder?name=${encodeURIComponent(parentFolder)}`;
             } else {
-                location.href = '/';
+            location.href = '/';
             }
         });
 
@@ -832,18 +951,15 @@
             // Set parent folder for back navigation
             parentFolder = path.length > 1 ? path[path.length - 2].name : null;
             
-            if (path.length <= 1) {
-                breadcrumb.style.display = 'none';
-                return;
-            }
-            
+            // Always show breadcrumb with full path
             breadcrumb.style.display = 'flex';
             
             // Add home link
             const homeLink = document.createElement('a');
             homeLink.href = '/';
             homeLink.className = 'breadcrumb-item';
-            homeLink.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">home</span>';
+            homeLink.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;vertical-align:middle;">home</span>';
+            homeLink.title = 'Home';
             breadcrumb.appendChild(homeLink);
             
             // Add each folder in path
@@ -861,7 +977,17 @@
                 }
                 breadcrumb.appendChild(link);
             });
+            
+            // Update page title to show full path
+            const fullPath = path.map(p => p.name).join(' › ');
+            folderTitle.textContent = path[path.length - 1]?.name || folder;
         }
+
+        // Drag and drop state for folders
+        let draggingSubFolder = null;
+        let folderDropTimer = null;
+        let folderDropTarget = null;
+        let draggingDeckName = null;
 
         // Render sub-folders
         function renderSubFolders() {
@@ -878,6 +1004,7 @@
                 const tile = document.createElement('div');
                 tile.className = 'folder-tile tile-enter';
                 tile.style.animationDelay = `${i * 40}ms`;
+                tile.style.position = 'relative';
                 
                 const icon = document.createElement('span');
                 icon.className = 'material-symbols-outlined folder-icon';
@@ -889,12 +1016,146 @@
                 
                 tile.appendChild(icon);
                 tile.appendChild(name);
-                tile.addEventListener('click', () => {
+                
+                // Add kebab menu for sub-folder actions
+                const kebab = document.createElement('button');
+                kebab.className = 'kebab-btn';
+                kebab.type = 'button';
+                kebab.textContent = '⋮';
+                
+                const menu = document.createElement('div');
+                menu.className = 'kebab-menu';
+                
+                // Move to parent (one level up)
+                const mMoveUp = document.createElement('button');
+                mMoveUp.className = 'kebab-item';
+                mMoveUp.type = 'button';
+                mMoveUp.textContent = parentFolder ? `Move to ${parentFolder}` : 'Move to Root';
+                mMoveUp.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    menu.classList.remove('is-open');
+                    // Move to grandparent (parent's parent) or root
+                    const currentFolderData = allFolders.find(x => x.name === folder);
+                    const newParent = currentFolderData ? currentFolderData.parent : null;
+                    await moveFolderInto(f.name, newParent);
+                });
+                
+                // Move to root
+                const mMoveRoot = document.createElement('button');
+                mMoveRoot.className = 'kebab-item';
+                mMoveRoot.type = 'button';
+                mMoveRoot.textContent = 'Move to Root';
+                mMoveRoot.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    menu.classList.remove('is-open');
+                    await moveFolderInto(f.name, null);
+                });
+                
+                menu.appendChild(mMoveUp);
+                if (parentFolder) { // Only show "Move to Root" if not already one level from root
+                    menu.appendChild(mMoveRoot);
+                }
+                
+                kebab.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Close other menus
+                    document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
+                    menu.classList.toggle('is-open');
+                });
+                
+                tile.appendChild(kebab);
+                tile.appendChild(menu);
+                
+                tile.addEventListener('click', (e) => {
+                    if (tile.classList.contains('folder-drop-target')) return;
+                    if (e.target === kebab || menu.contains(e.target)) return;
                     location.href = `/folder?name=${encodeURIComponent(f.name)}`;
+                });
+                
+                // Allow dragging sub-folders
+                tile.setAttribute('draggable', 'true');
+                tile.addEventListener('dragstart', (e) => {
+                    draggingSubFolder = f.name;
+                    e.dataTransfer.effectAllowed = 'move';
+                    tile.style.opacity = '0.5';
+                });
+                tile.addEventListener('dragend', () => {
+                    draggingSubFolder = null;
+                    tile.style.opacity = '1';
+                    clearFolderDropState();
+                });
+                
+                // Allow dropping folders/decks into this folder
+                tile.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    const isDraggingFolder = draggingSubFolder && draggingSubFolder !== f.name;
+                    const isDraggingDeck = draggingDeckName;
+                    if (!isDraggingFolder && !isDraggingDeck) return;
+                    
+                    clearFolderDropState();
+                    tile.classList.add('folder-drop-target');
+                    folderDropTarget = f.name;
+                    
+                    folderDropTimer = setTimeout(async () => {
+                        if (folderDropTarget === f.name) {
+                            if (draggingSubFolder && draggingSubFolder !== f.name) {
+                                // Move folder inside
+                                await moveFolderInto(draggingSubFolder, f.name);
+                            } else if (draggingDeckName) {
+                                // Move deck inside
+                                await moveDeckInto(draggingDeckName, f.name);
+                            }
+                        }
+                    }, 800);
+                });
+                tile.addEventListener('dragleave', () => {
+                    if (folderDropTarget === f.name) {
+                        clearFolderDropState();
+                    }
+                });
+                tile.addEventListener('dragover', (e) => e.preventDefault());
+                tile.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    clearFolderDropState();
                 });
                 
                 subFolderGrid.appendChild(tile);
             });
+        }
+        
+        function clearFolderDropState() {
+            if (folderDropTimer) clearTimeout(folderDropTimer);
+            folderDropTimer = null;
+            folderDropTarget = null;
+            document.querySelectorAll('.folder-drop-target').forEach(el => el.classList.remove('folder-drop-target'));
+        }
+        
+        async function moveFolderInto(folderName, targetParent) {
+            try {
+                const resp = await fetch('/folder/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: folderName, parent: targetParent })
+                });
+                if (resp.ok) {
+                    draggingSubFolder = null;
+                    await loadDecks();
+                }
+            } catch {}
+        }
+        
+        async function moveDeckInto(deckName, targetFolder) {
+            try {
+                const resp = await fetch('/deck/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: deckName, folder: targetFolder })
+                });
+                if (resp.ok) {
+                    draggingDeckName = null;
+                    await loadDecks();
+                }
+            } catch {}
         }
 
         async function loadDecks() {
@@ -956,6 +1217,14 @@
         }
 
         loadDecks();
+        
+        // Close kebab menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.kebab-btn') && !e.target.closest('.kebab-menu')) {
+                document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
+            }
+        });
+        
         async function loadFoldersIntoMoveList() {
             moveDeckList.innerHTML = '';
             try {
@@ -1027,6 +1296,11 @@
             if (!selectedDeckForAction) return;
             const fromParam = `&from=${encodeURIComponent(folder)}`;
             window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+        });
+        if (openLineBtn) openLineBtn.addEventListener('click', () => {
+            if (!selectedDeckForAction) return;
+            const fromParam = `&from=${encodeURIComponent(folder)}`;
+            window.location.href = `/line?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
         if (openMatchBtn) openMatchBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
