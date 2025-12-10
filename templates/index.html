@@ -282,6 +282,25 @@
             pointer-events: none !important;
         }
         
+        .folder-drop-target {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border: 2px dashed var(--accent) !important;
+            transform: scale(1.02);
+            transition: all 150ms ease;
+        }
+        
+        .folder-drop-target::after {
+            content: 'Drop to move inside';
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: var(--accent);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
         .hamburger.is-open span:nth-child(1) {
             transform: translateY(4px) rotate(45deg);
         }
@@ -2208,6 +2227,9 @@
             });
         }
 
+        let folderDropTimer = null;
+        let folderDropTarget = null;
+
         function attachFolderDnD(tile, name) {
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
@@ -2220,14 +2242,72 @@
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(folderGrid, idx < 0 ? 0 : idx);
             });
+            tile.addEventListener('dragenter', (e) => {
+                if (!draggingFolder || draggingFolder === name) return;
+                // Clear any existing timer
+                if (folderDropTimer) clearTimeout(folderDropTimer);
+                // Remove highlight from previous target
+                document.querySelectorAll('.folder-drop-target').forEach(el => el.classList.remove('folder-drop-target'));
+                // Highlight this folder as drop target
+                tile.classList.add('folder-drop-target');
+                folderDropTarget = name;
+                // Start timer - if held for 800ms, move folder inside
+                folderDropTimer = setTimeout(async() => {
+                    if (draggingFolder && folderDropTarget === name && draggingFolder !== name) {
+                        // Move folder inside target
+                        try {
+                            const resp = await fetch('/folder/move', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    name: draggingFolder,
+                                    parent: name
+                                })
+                            });
+                            const out = await resp.json().catch(() => ({
+                                ok: false
+                            }));
+                            if (resp.ok && out.ok) {
+                                // Reset drag state
+                                draggingFolder = null;
+                                removePlaceholder(folderGrid);
+                                if (dragTileEl) dragTileEl.classList.remove('is-dragging-hidden');
+                                dragTileEl = null;
+                                dragTileHeight = 0;
+                                // Reload folders
+                                await loadFolders();
+                            }
+                        } catch {}
+                    }
+                    tile.classList.remove('folder-drop-target');
+                    folderDropTarget = null;
+                }, 800);
+            });
+            tile.addEventListener('dragleave', (e) => {
+                tile.classList.remove('folder-drop-target');
+                if (folderDropTarget === name) {
+                    if (folderDropTimer) clearTimeout(folderDropTimer);
+                    folderDropTimer = null;
+                    folderDropTarget = null;
+                }
+            });
             tile.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                if (folderDropTarget === name) return; // Don't show placeholder if about to drop inside
                 const tiles = Array.from(folderGrid.querySelectorAll('.deck-tile'));
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(folderGrid, idx < 0 ? 0 : idx);
             });
             tile.addEventListener('drop', async(e) => {
                 e.preventDefault();
+                // Clear timer and highlight
+                if (folderDropTimer) clearTimeout(folderDropTimer);
+                folderDropTimer = null;
+                tile.classList.remove('folder-drop-target');
+                folderDropTarget = null;
+
                 const target = name;
                 const dragged = draggingFolder;
                 draggingFolder = null;
@@ -2236,14 +2316,20 @@
                     folderGrid.insertBefore(dragTileEl, ph);
                 }
                 removePlaceholder(folderGrid);
-                tile.classList.remove('is-dragging-hidden');
+                if (dragTileEl) dragTileEl.classList.remove('is-dragging-hidden');
                 const newOrder = Array.from(folderGrid.querySelectorAll('.deck-title')).map(el => el.textContent);
                 await writeOrder('folder', newOrder);
                 dragTileEl = null;
                 dragTileHeight = 0;
             });
             tile.addEventListener('dragend', () => {
-                tile.classList.remove('is-dragging-hidden');
+                // Clear timer and highlight
+                if (folderDropTimer) clearTimeout(folderDropTimer);
+                folderDropTimer = null;
+                document.querySelectorAll('.folder-drop-target').forEach(el => el.classList.remove('folder-drop-target'));
+                folderDropTarget = null;
+
+                if (dragTileEl) dragTileEl.classList.remove('is-dragging-hidden');
                 removePlaceholder(folderGrid);
                 dragTileEl = null;
                 dragTileHeight = 0;
