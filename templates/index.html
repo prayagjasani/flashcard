@@ -180,15 +180,31 @@
             flex: 0 0 auto;
         }
         
+        /* Make nav wrap nicely on small screens instead of overflowing */
+        @media (max-width: 640px) {
+            .header__inner {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+            .header__actions {
+                grid-column: 1;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px 14px;
+                overflow-x: visible;
+                white-space: normal;
+            }
+            .nav__link {
+                font-size: 14px;
+            }
+        }
+        
         @media (max-width: 480px) {
             .header__inner {
                 padding: 10px 12px;
             }
             .header__actions {
-                gap: 14px;
-            }
-            .nav__link {
-                font-size: 14px;
+                gap: 10px 12px;
             }
         }
         

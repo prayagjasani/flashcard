@@ -453,6 +453,128 @@ def generate_story(deck: str, refresh: bool = False):
 
     return {"story": story, "cached": False}
 
+class CustomStoryRequest(BaseModel):
+    topic: str
+    story_id: str | None = None
+
+@app.post("/story/generate/custom")
+def generate_custom_story(payload: CustomStoryRequest):
+    """Generate a story based on a custom topic."""
+    topic = (payload.topic or "").strip()
+    if not topic:
+        raise HTTPException(status_code=400, detail="Topic is required")
+    
+    # Generate a unique story ID
+    import time
+    story_id = payload.story_id or f"custom_{int(time.time())}"
+    safe_id = _safe_deck_name(story_id)
+    
+    # Generate story with custom topic
+    story = _gemini_generate_custom_story(topic)
+    if not story:
+        raise HTTPException(status_code=500, detail="Failed to generate story")
+    
+    # Cache the story
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            key = f"{R2_BUCKET_NAME}/stories/{safe_id}/story.json"
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(story).encode("utf-8"),
+                ContentType="application/json"
+            )
+        except Exception:
+            pass
+    
+    # Generate audio in background
+    if story.get("segments"):
+        thread = threading.Thread(
+            target=_generate_story_audio_background,
+            args=(safe_id, story["segments"]),
+            daemon=True
+        )
+        thread.start()
+    
+    return {"story": story, "story_id": safe_id}
+
+def _gemini_generate_custom_story(topic: str):
+    """Generate a story based on a custom topic using Gemini."""
+    if not GEMINI_API_KEY:
+        return None
+    
+    model = "gemini-2.5-flash"
+    endpoint = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={GEMINI_API_KEY}"
+    )
+    
+    prompt = f"""You are a creative German language teacher writing engaging stories for A1-B1 learners.
+
+Create a SHORT STORY about: {topic}
+
+Requirements:
+1. Create a story with 2-3 characters (give them German names like Anna, Max, Lisa, Tom, Ben, Sophie)
+2. Write 8-12 scenes/segments
+3. Each segment should be 1-3 sentences in German
+4. Include dialogue between characters
+5. Use simple German (A1-B1 level)
+6. Make it engaging and fun to read
+7. IMPORTANT: Include a "vocabulary" object with English translations for ALL German words used
+
+Output ONLY a JSON object with this exact structure:
+{{
+  "title_de": "Story title in German",
+  "title_en": "Story title in English",
+  "characters": ["Name1", "Name2"],
+  "vocabulary": {{
+    "german_word": "english meaning",
+    "der": "the",
+    "ist": "is",
+    "und": "and"
+  }},
+  "segments": [
+    {{
+      "type": "narration" or "dialogue",
+      "speaker": "narrator" or character name,
+      "text_de": "German text",
+      "text_en": "English translation",
+      "highlight_words": ["key", "vocabulary", "words"]
+    }}
+  ]
+}}
+
+The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
+Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), prepositions, etc.
+Make the story fun, relatable, and educational!"""
+
+    body = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"response_mime_type": "application/json"},
+    }
+    
+    try:
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+        parsed = json.loads(raw)
+        candidates = parsed.get("candidates") or []
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                p0 = parts[0]
+                if isinstance(p0, dict) and "text" in p0:
+                    return json.loads(p0["text"])
+        return None
+    except Exception as e:
+        print(f"Custom story generation error: {e}")
+        return None
+
 @app.get("/story/audio")
 def get_story_audio(deck: str, text: str):
     """Get or generate audio for a story segment."""

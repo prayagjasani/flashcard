@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
-        :root {
+         :root {
             --bg: #f6f7fb;
             --text: #0f172a;
             --card-bg: #ffffff;
@@ -22,16 +22,16 @@
             --danger: #ef4444;
             --muted: #64748b;
         }
-
+        
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
-
+        
         html {
             color-scheme: light;
         }
-
+        
         body {
             margin: 0;
             min-height: 100vh;
@@ -39,12 +39,12 @@
             color: var(--text);
             font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif;
         }
-
+        
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-
         /* Header */
+        
         .site-header {
             position: fixed;
             top: 0;
@@ -55,7 +55,7 @@
             background: rgba(255, 255, 255, 0.85);
             border-bottom: 1px solid rgba(226, 232, 240, 0.7);
         }
-
+        
         .header__inner {
             max-width: 600px;
             margin: 0 auto;
@@ -64,7 +64,7 @@
             align-items: center;
             gap: 16px;
         }
-
+        
         .back-btn {
             width: 36px;
             height: 36px;
@@ -77,22 +77,22 @@
             justify-content: center;
             border-radius: 50%;
         }
-
+        
         .back-btn:hover {
             background: rgba(0, 0, 0, 0.05);
         }
-
+        
         .header-title {
             flex: 1;
             font-size: 1rem;
             font-weight: 600;
             text-align: center;
         }
-
+        
         .header-spacer {
             width: 36px;
         }
-
+        
         .progress-container {
             flex: 1;
             height: 12px;
@@ -100,7 +100,7 @@
             border-radius: 6px;
             overflow: hidden;
         }
-
+        
         .progress-bar {
             height: 100%;
             background: var(--success);
@@ -108,7 +108,7 @@
             transition: width 0.4s ease;
             width: 0%;
         }
-
+        
         .progress-text {
             font-size: 14px;
             font-weight: 600;
@@ -116,19 +116,19 @@
             min-width: 50px;
             text-align: right;
         }
-
         /* Main */
+        
         .main-content {
             padding: 80px 20px 40px;
             max-width: 600px;
             margin: 0 auto;
         }
-
+        
         .main-content.with-continue {
             padding-bottom: 140px;
         }
-
         /* Loading */
+        
         .loading-container {
             display: flex;
             flex-direction: column;
@@ -137,12 +137,12 @@
             min-height: 60vh;
             gap: 16px;
         }
-
+        
         .loading-dots {
             display: flex;
             gap: 8px;
         }
-
+        
         .loading-dots span {
             width: 10px;
             height: 10px;
@@ -150,29 +150,41 @@
             background: var(--accent);
             animation: dotPulse 1s infinite ease-in-out;
         }
-
-        .loading-dots span:nth-child(2) { animation-delay: 150ms; }
-        .loading-dots span:nth-child(3) { animation-delay: 300ms; }
-
-        @keyframes dotPulse {
-            0%, 100% { transform: scale(1); opacity: 0.4; }
-            50% { transform: scale(1.2); opacity: 1; }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 150ms;
         }
-
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 300ms;
+        }
+        
+        @keyframes dotPulse {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.4;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
         /* Story list */
+        
         .story-list-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 20px;
         }
-
+        
         .story-list-header h2 {
             font-size: 1.25rem;
             font-weight: 600;
             margin: 0;
         }
-
+        
         .create-story-btn {
             display: flex;
             align-items: center;
@@ -188,12 +200,12 @@
             font-family: inherit;
             transition: background 0.15s ease, color 0.15s ease;
         }
-
+        
         .create-story-btn:hover {
             background: var(--accent);
             color: white;
         }
-
+        
         .story-item {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -208,30 +220,30 @@
             text-align: center;
             user-select: none;
         }
-
+        
         .story-item:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow);
         }
-
+        
         .story-item.holding {
             transform: scale(0.98);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-
+        
         .story-item__title {
             font-weight: 600;
             font-size: 1.1rem;
             margin: 0 0 4px 0;
             color: var(--text);
         }
-
+        
         .story-item__subtitle {
             font-size: 0.85rem;
             color: var(--muted);
             margin: 0 0 8px 0;
         }
-
+        
         .story-item__meta {
             font-size: 0.75rem;
             color: var(--muted);
@@ -239,15 +251,15 @@
             align-items: center;
             gap: 8px;
         }
-
+        
         .story-item__deck {
             background: #f1f5f9;
             padding: 2px 8px;
             border-radius: 8px;
             font-size: 0.7rem;
         }
-
         /* Delete popup */
+        
         .action-popup {
             position: fixed;
             inset: 0;
@@ -256,17 +268,17 @@
             align-items: center;
             justify-content: center;
         }
-
+        
         .action-popup.visible {
             display: flex;
         }
-
+        
         .action-popup__backdrop {
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.4);
         }
-
+        
         .action-popup__content {
             position: relative;
             background: var(--card-bg);
@@ -276,35 +288,41 @@
             overflow: hidden;
             animation: popupScale 0.2s ease;
         }
-
+        
         @keyframes popupScale {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
-
+        
         .action-popup__header {
             padding: 20px;
             text-align: center;
             border-bottom: 1px solid var(--card-border);
         }
-
+        
         .action-popup__title {
             font-size: 1rem;
             font-weight: 600;
             margin: 0 0 4px 0;
         }
-
+        
         .action-popup__subtitle {
             font-size: 0.85rem;
             color: var(--muted);
             margin: 0;
         }
-
+        
         .action-popup__actions {
             display: flex;
             flex-direction: column;
         }
-
+        
         .action-popup__btn {
             padding: 16px;
             border: none;
@@ -315,24 +333,24 @@
             border-bottom: 1px solid var(--card-border);
             transition: background 0.15s ease;
         }
-
+        
         .action-popup__btn:last-child {
             border-bottom: none;
         }
-
+        
         .action-popup__btn:hover {
             background: #f8fafc;
         }
-
+        
         .action-popup__btn--danger {
             color: var(--danger);
         }
-
+        
         .action-popup__btn--cancel {
             color: var(--muted);
         }
-
         /* Deck selector modal */
+        
         .deck-modal {
             position: fixed;
             inset: 0;
@@ -341,17 +359,17 @@
             align-items: flex-end;
             justify-content: center;
         }
-
+        
         .deck-modal.visible {
             display: flex;
         }
-
+        
         .deck-modal__backdrop {
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.4);
         }
-
+        
         .deck-modal__content {
             position: relative;
             background: var(--card-bg);
@@ -362,12 +380,16 @@
             overflow: hidden;
             animation: slideUp 0.3s ease;
         }
-
+        
         @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
         }
-
+        
         .deck-modal__header {
             padding: 20px;
             border-bottom: 1px solid var(--card-border);
@@ -375,13 +397,13 @@
             align-items: center;
             justify-content: space-between;
         }
-
+        
         .deck-modal__header h3 {
             margin: 0;
             font-size: 1.1rem;
             font-weight: 600;
         }
-
+        
         .deck-modal__close {
             width: 32px;
             height: 32px;
@@ -394,13 +416,13 @@
             justify-content: center;
             border-radius: 50%;
         }
-
+        
         .deck-modal__list {
             padding: 12px;
             overflow-y: auto;
             max-height: calc(70vh - 70px);
         }
-
+        
         .deck-modal__item {
             padding: 14px 16px;
             border-radius: 12px;
@@ -410,42 +432,42 @@
             justify-content: space-between;
             transition: background 0.15s ease;
         }
-
+        
         .deck-modal__item:hover {
             background: #f1f5f9;
         }
-
+        
         .deck-modal__item-name {
             font-weight: 500;
         }
-
+        
         .deck-modal__item-icon {
             color: var(--accent);
         }
-
         /* Empty state */
+        
         .empty-state {
             text-align: center;
             padding: 60px 20px;
         }
-
+        
         .empty-state__emoji {
             font-size: 64px;
             margin-bottom: 16px;
         }
-
+        
         .empty-state__title {
             font-size: 1.25rem;
             font-weight: 600;
             margin: 0 0 8px 0;
         }
-
+        
         .empty-state__text {
             color: var(--muted);
             margin: 0 0 24px 0;
         }
-
         /* Story card */
+        
         .story-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -454,62 +476,74 @@
             box-shadow: var(--shadow);
             animation: cardSlideUp 0.4s ease forwards;
         }
-
+        
         @keyframes cardSlideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-
+        
         .story-header {
             background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
             padding: 24px;
             text-align: center;
             color: white;
         }
-
+        
         .story-title {
             font-size: 1.5rem;
             font-weight: 700;
             margin: 0 0 4px 0;
         }
-
+        
         .story-subtitle {
             font-size: 0.9rem;
             opacity: 0.9;
             margin: 0;
         }
-
         /* Story segment */
+        
         .story-segment {
             padding: 24px;
             border-bottom: 1px solid var(--card-border);
             animation: segmentFadeIn 0.5s ease forwards;
         }
-
+        
         .story-segment:last-child {
             border-bottom: none;
         }
-
+        
         @keyframes segmentFadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-
+        
         .segment-narration {
             background: var(--card-bg);
         }
-
+        
         .segment-dialogue {
             background: var(--card-bg);
         }
-
+        
         .segment-speaker {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-bottom: 12px;
         }
-
+        
         .speaker-avatar {
             width: 40px;
             height: 40px;
@@ -522,23 +556,34 @@
             color: white;
             font-size: 1rem;
         }
-
-        .speaker-avatar.avatar-1 { background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%); }
-        .speaker-avatar.avatar-2 { background: linear-gradient(145deg, #f472b6 0%, #ec4899 100%); }
-        .speaker-avatar.avatar-3 { background: linear-gradient(145deg, #34d399 0%, #10b981 100%); }
-        .speaker-avatar.avatar-4 { background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%); }
-
+        
+        .speaker-avatar.avatar-1 {
+            background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
+        }
+        
+        .speaker-avatar.avatar-2 {
+            background: linear-gradient(145deg, #f472b6 0%, #ec4899 100%);
+        }
+        
+        .speaker-avatar.avatar-3 {
+            background: linear-gradient(145deg, #34d399 0%, #10b981 100%);
+        }
+        
+        .speaker-avatar.avatar-4 {
+            background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%);
+        }
+        
         .speaker-name {
             font-weight: 600;
             color: var(--text);
         }
-
+        
         .segment-content {
             display: flex;
             align-items: flex-start;
             gap: 12px;
         }
-
+        
         .audio-btn {
             width: 36px;
             height: 36px;
@@ -553,15 +598,15 @@
             flex-shrink: 0;
             transition: background 0.15s ease, transform 0.15s ease;
         }
-
+        
         .audio-btn:hover {
             background: rgba(59, 130, 246, 0.2);
         }
-
+        
         .audio-btn:active {
             transform: scale(0.92);
         }
-
+        
         .segment-text {
             font-size: 1.1rem;
             line-height: 1.7;
@@ -569,7 +614,7 @@
             flex: 1;
             margin: 0;
         }
-
+        
         .word-highlight {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
             border-bottom: 2px solid var(--success);
@@ -578,26 +623,26 @@
             cursor: pointer;
             transition: background 0.15s ease;
         }
-
+        
         .word-highlight:hover {
             background: rgba(16, 185, 129, 0.3);
         }
-
+        
         .tappable-word {
             cursor: pointer;
             padding: 1px 2px;
             border-radius: 4px;
             transition: background 0.15s ease;
         }
-
+        
         .tappable-word:hover {
             background: rgba(59, 130, 246, 0.1);
         }
-
+        
         .tappable-word:active {
             background: rgba(59, 130, 246, 0.2);
         }
-
+        
         .segment-translation {
             margin-top: 10px;
             padding-top: 10px;
@@ -606,15 +651,15 @@
             color: var(--muted);
             font-style: italic;
         }
-
+        
         .tap-hint {
             text-align: center;
             padding: 12px;
             color: var(--muted);
             font-size: 0.875rem;
         }
-
         /* Continue button */
+        
         .continue-container {
             position: fixed;
             bottom: 0;
@@ -623,7 +668,7 @@
             padding: 20px;
             background: linear-gradient(to top, var(--bg) 60%, transparent);
         }
-
+        
         .continue-btn {
             display: block;
             width: 100%;
@@ -643,17 +688,17 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-
+        
         .continue-btn:hover {
             filter: brightness(1.05);
         }
-
+        
         .continue-btn:active {
             transform: translateY(4px);
             box-shadow: 0 0 0 #059669;
         }
-
         /* Completed */
+        
         .completed-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -663,23 +708,23 @@
             text-align: center;
             animation: cardSlideUp 0.4s ease forwards;
         }
-
+        
         .completed-emoji {
             font-size: 72px;
             margin-bottom: 16px;
         }
-
+        
         .completed-title {
             font-size: 1.5rem;
             font-weight: 700;
             margin: 0 0 8px 0;
         }
-
+        
         .completed-subtitle {
             color: var(--muted);
             margin: 0 0 32px 0;
         }
-
+        
         .btn-secondary {
             display: block;
             width: 100%;
@@ -694,12 +739,12 @@
             font-family: inherit;
             margin-top: 12px;
         }
-
+        
         .btn-secondary:hover {
             background: #f1f5f9;
         }
-
         /* Tooltip */
+        
         .tooltip {
             position: fixed;
             background: var(--text);
@@ -708,36 +753,17 @@
             border-radius: 8px;
             font-size: 14px;
             font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             z-index: 1000;
             opacity: 0;
             transform: translateY(5px);
             transition: opacity 0.2s ease, transform 0.2s ease;
             pointer-events: none;
         }
-
+        
         .tooltip.visible {
             opacity: 1;
             transform: translateY(0);
-        }
-
-        /* Refresh button */
-        .refresh-btn {
-            width: 36px;
-            height: 36px;
-            border: none;
-            background: transparent;
-            color: var(--muted);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        .refresh-btn:hover {
-            background: rgba(0, 0, 0, 0.05);
-            color: var(--text);
         }
     </style>
 </head>
@@ -748,19 +774,16 @@
             <button class="back-btn" id="backBtn">
                 <span class="material-symbols-outlined">arrow_back</span>
             </button>
-            
+
             <!-- For story list view -->
             <span class="header-title" id="headerTitle">Stories</span>
             <div class="header-spacer" id="headerSpacer"></div>
-            
+
             <!-- For reading view (hidden by default) -->
             <div class="progress-container" id="progressContainer" style="display: none;">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
             <span class="progress-text" id="progressText" style="display: none;">0/0</span>
-            <button class="refresh-btn" id="refreshBtn" title="Generate new story" style="display: none;">
-                <span class="material-symbols-outlined">refresh</span>
-            </button>
         </div>
     </header>
 
@@ -794,8 +817,7 @@
                 </div>
                 <div id="segmentsContainer"></div>
                 <div class="tap-hint" id="tapHint">
-                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">touch_app</span>
-                    Tap any word for meaning
+                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">touch_app</span> Tap any word for meaning
                 </div>
             </div>
         </div>
@@ -835,17 +857,34 @@
         </div>
     </div>
 
-    <!-- Deck selector modal -->
-    <div class="deck-modal" id="deckModal">
-        <div class="deck-modal__backdrop" id="deckModalBackdrop"></div>
-        <div class="deck-modal__content">
+    <!-- Create story modal -->
+    <div class="deck-modal" id="createModal">
+        <div class="deck-modal__backdrop" id="createModalBackdrop"></div>
+        <div class="deck-modal__content" style="border-radius: 20px; max-height: none;">
             <div class="deck-modal__header">
-                <h3>Select a deck</h3>
-                <button class="deck-modal__close" id="deckModalClose">
+                <h3>Create New Story</h3>
+                <button class="deck-modal__close" id="createModalClose">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div class="deck-modal__list" id="deckModalList"></div>
+            <div style="padding: 20px;">
+                <p style="color: var(--muted); font-size: 0.9rem; margin: 0 0 16px 0;">
+                    What kind of story would you like to read?
+                </p>
+                <input type="text" id="storyTopicInput" placeholder="e.g., a trip to the airport, ordering food at a café..." style="width: 100%; padding: 14px 16px; border: 1px solid var(--card-border); border-radius: 12px; font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;">
+                <div style="margin-top: 16px; display: flex; gap: 12px;">
+                    <button class="continue-btn" id="createStorySubmit" style="flex: 1; padding: 14px;">
+                        Create Story
+                    </button>
+                </div>
+                <button id="randomStoryBtn" style="width: 100%; margin-top: 12px; padding: 14px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text); font-size: 1rem; font-weight: 600; border-radius: 12px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">shuffle</span>
+                    Surprise Me!
+                </button>
+                <p style="color: var(--muted); font-size: 0.8rem; margin: 16px 0 0 0; text-align: center;">
+                    Stories are generated using AI with German vocabulary
+                </p>
+            </div>
         </div>
     </div>
 
@@ -860,7 +899,6 @@
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
-        const refreshBtn = document.getElementById('refreshBtn');
         const mainContent = document.getElementById('mainContent');
         const loadingState = document.getElementById('loadingState');
         const loadingText = document.getElementById('loadingText');
@@ -883,10 +921,12 @@
         const actionPopupSubtitle = document.getElementById('actionPopupSubtitle');
         const deleteStoryBtn = document.getElementById('deleteStoryBtn');
         const cancelActionBtn = document.getElementById('cancelActionBtn');
-        const deckModal = document.getElementById('deckModal');
-        const deckModalBackdrop = document.getElementById('deckModalBackdrop');
-        const deckModalClose = document.getElementById('deckModalClose');
-        const deckModalList = document.getElementById('deckModalList');
+        const createModal = document.getElementById('createModal');
+        const createModalBackdrop = document.getElementById('createModalBackdrop');
+        const createModalClose = document.getElementById('createModalClose');
+        const storyTopicInput = document.getElementById('storyTopicInput');
+        const createStorySubmit = document.getElementById('createStorySubmit');
+        const randomStoryBtn = document.getElementById('randomStoryBtn');
         const tooltip = document.getElementById('tooltip');
 
         // State
@@ -932,13 +972,12 @@
             storyContent.style.display = 'none';
             completedState.style.display = 'none';
             continueContainer.style.display = 'none';
-            
+
             // Show list header
             headerTitle.style.display = 'block';
             headerSpacer.style.display = 'block';
             progressContainer.style.display = 'none';
             progressText.style.display = 'none';
-            refreshBtn.style.display = 'none';
             mainContent.classList.remove('with-continue');
             isReadingMode = false;
 
@@ -991,10 +1030,10 @@
             });
 
             storyList.innerHTML = allStories.map(s => {
-                const timeAgo = s.last_modified ? getTimeAgo(new Date(s.last_modified)) : '';
-                const title = s.title_de || s.deck;
-                const subtitle = s.title_en || '';
-                return `
+                        const timeAgo = s.last_modified ? getTimeAgo(new Date(s.last_modified)) : '';
+                        const title = s.title_de || s.deck;
+                        const subtitle = s.title_en || '';
+                        return `
                     <div class="story-item" data-deck="${s.deck}" data-title="${title}">
                         <h3 class="story-item__title">${title}</h3>
                         ${subtitle ? `<p class="story-item__subtitle">${subtitle}</p>` : ''}
@@ -1124,7 +1163,6 @@
             headerSpacer.style.display = 'none';
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
-            refreshBtn.style.display = 'flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1166,6 +1204,86 @@
                         <h3 class="empty-state__title">Failed to load story</h3>
                         <p class="empty-state__text">${error.message}</p>
                         <button class="continue-btn" onclick="loadStory('${deck}', true)">Try Again</button>
+                        <button class="btn-secondary" onclick="loadStoryList()">Back to Stories</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadStoryWithTopic(topic) {
+            // Generate a unique ID for this story
+            const storyId = 'custom_' + Date.now();
+            currentDeck = storyId;
+            
+            // Clear previous caches
+            audioCache.forEach(url => {
+                if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+            });
+            audioCache.clear();
+            vocabulary = {};
+            
+            loadingState.style.display = 'flex';
+            loadingText.textContent = 'Creating your story with AI...';
+            storyListView.style.display = 'none';
+            storyContent.style.display = 'none';
+            completedState.style.display = 'none';
+            continueContainer.style.display = 'none';
+
+            // Switch to reading mode header
+            headerTitle.style.display = 'none';
+            headerSpacer.style.display = 'none';
+            progressContainer.style.display = 'block';
+            progressText.style.display = 'block';
+            mainContent.classList.add('with-continue');
+            isReadingMode = true;
+
+            try {
+                const resp = await fetch('/story/generate/custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic: topic, story_id: storyId })
+                });
+                const data = await resp.json();
+
+                if (!resp.ok) throw new Error(data.detail || 'Failed to create story');
+
+                story = data.story;
+                currentDeck = data.story_id || storyId;
+                characters = story.characters || [];
+                vocabulary = story.vocabulary || {};
+                
+                // Convert vocabulary keys to lowercase for easier lookup
+                const lowerVocab = {};
+                Object.entries(vocabulary).forEach(([de, en]) => {
+                    lowerVocab[de.toLowerCase()] = en;
+                });
+                vocabulary = lowerVocab;
+
+                if (!story.segments || story.segments.length === 0) {
+                    throw new Error('Story has no content');
+                }
+
+                currentSegmentIndex = 0;
+                
+                // Start story immediately, prefetch audio in background
+                showStory();
+                
+                // Prefetch all audio in background (non-blocking)
+                prefetchAllAudio();
+
+                // Reload story list in background to show the new story
+                fetch('/stories/list').then(r => r.json()).then(data => {
+                    allStories = data.stories || [];
+                }).catch(() => {});
+
+            } catch (error) {
+                console.error('Failed to create story:', error);
+                loadingState.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state__emoji">😕</div>
+                        <h3 class="empty-state__title">Failed to create story</h3>
+                        <p class="empty-state__text">${error.message}</p>
+                        <button class="continue-btn" onclick="openCreateModal()">Try Again</button>
                         <button class="btn-secondary" onclick="loadStoryList()">Back to Stories</button>
                     </div>
                 `;
@@ -1325,33 +1443,43 @@
             }
         }
 
-        // Deck modal
-        function openDeckModal() {
-            if (allDecks.length === 0) {
-                alert('No decks available. Create a deck first!');
-                return;
-            }
-
-            deckModalList.innerHTML = allDecks.map(d => `
-                <div class="deck-modal__item" data-deck="${d.name}">
-                    <span class="deck-modal__item-name">${d.name}</span>
-                    <span class="material-symbols-outlined deck-modal__item-icon">auto_stories</span>
-                </div>
-            `).join('');
-
-            deckModalList.querySelectorAll('.deck-modal__item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const deck = item.dataset.deck;
-                    closeDeckModal();
-                    loadStory(deck, true);
-                });
-            });
-
-            deckModal.classList.add('visible');
+        // Create story modal
+        function openCreateModal() {
+            storyTopicInput.value = '';
+            createModal.classList.add('visible');
+            setTimeout(() => storyTopicInput.focus(), 100);
         }
 
-        function closeDeckModal() {
-            deckModal.classList.remove('visible');
+        function closeCreateModal() {
+            createModal.classList.remove('visible');
+        }
+
+        async function createStoryWithTopic(topic) {
+            closeCreateModal();
+            await loadStoryWithTopic(topic);
+        }
+
+        async function createRandomStory() {
+            const randomTopics = [
+                'a trip to the airport',
+                'ordering food at a restaurant',
+                'shopping at a market',
+                'meeting a new friend',
+                'a day at school',
+                'visiting a doctor',
+                'a birthday party',
+                'traveling by train',
+                'a picnic in the park',
+                'cooking dinner at home',
+                'going to the cinema',
+                'a job interview',
+                'vacation at the beach',
+                'learning to drive',
+                'moving to a new apartment'
+            ];
+            const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+            closeCreateModal();
+            await loadStoryWithTopic(randomTopic);
         }
 
         // Tooltip for any tappable word - show English meaning
@@ -1386,15 +1514,26 @@
             }
         });
 
-        refreshBtn.addEventListener('click', () => {
-            if (confirm('Generate a new story? This will replace the current one.')) {
-                loadStory(currentDeck, true);
+        createStoryBtn.addEventListener('click', openCreateModal);
+        createModalBackdrop.addEventListener('click', closeCreateModal);
+        createModalClose.addEventListener('click', closeCreateModal);
+        createStorySubmit.addEventListener('click', () => {
+            const topic = storyTopicInput.value.trim();
+            if (topic) {
+                createStoryWithTopic(topic);
+            } else {
+                storyTopicInput.focus();
+                storyTopicInput.style.borderColor = 'var(--danger)';
+                setTimeout(() => storyTopicInput.style.borderColor = '', 1500);
             }
         });
-
-        createStoryBtn.addEventListener('click', openDeckModal);
-        deckModalBackdrop.addEventListener('click', closeDeckModal);
-        deckModalClose.addEventListener('click', closeDeckModal);
+        randomStoryBtn.addEventListener('click', createRandomStory);
+        storyTopicInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const topic = storyTopicInput.value.trim();
+                if (topic) createStoryWithTopic(topic);
+            }
+        });
 
         // Action popup events
         actionPopupBackdrop.addEventListener('click', closeActionPopup);
