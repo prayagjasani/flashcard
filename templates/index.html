@@ -1734,6 +1734,10 @@
                     <span class="link__text link__text--primary">Random</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Random</span>
                 </button>
+                <button class="nav__link nav__link--button" id="storyBtn" type="button">
+                    <span class="link__text link__text--primary">Story</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Story</span>
+                </button>
             </div>
         </div>
     </header>
@@ -2580,6 +2584,10 @@
                 const response = await fetch(url);
                 if (response.ok) {
                     data = await response.json().catch(() => []);
+                    // Cache cards for instant navigation to study screens
+                    if (deckName && Array.isArray(data)) {
+                        try { sessionStorage.setItem(`flashcard_cards_${deckName}`, JSON.stringify(data)); } catch {}
+                    }
                 } else {
                     data = [];
                 }
@@ -2791,6 +2799,7 @@
             // Try to show cached data instantly first
             const cachedDecks = getFromCache(CACHE_KEY_DECKS);
             const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
+            let lastRenderedSignature = null;
 
             if (cachedDecks && cachedFolders) {
                 // Show cached data immediately (no loader)
@@ -2799,6 +2808,7 @@
                 updateDeckCounts();
                 renderFolderGrid();
                 renderDeckGrid();
+                lastRenderedSignature = cachedDeckList.map(d => d.name).join(',');
             } else {
                 showLoader();
             }
@@ -2808,13 +2818,24 @@
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
-                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
-                updateDeckCounts();
-            } catch {}
+                const freshSignature = cachedDeckList.map(d => d.name).join(',');
+                
+                // Only re-render if data has changed from what we showed
+                if (lastRenderedSignature === null || freshSignature !== lastRenderedSignature) {
+                    saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                    updateDeckCounts();
+                    renderFolderGrid();
+                    renderDeckGrid();
+                }
+            } catch (err) {
+                console.error('loadDecks error:', err);
+                if (lastRenderedSignature === null) {
+                    renderFolderGrid();
+                    renderDeckGrid();
+                }
+            }
 
             hideLoader();
-            renderFolderGrid();
-            renderDeckGrid();
 
             deckSelect.innerHTML = '';
             const placeholder = document.createElement('option');
@@ -3466,6 +3487,12 @@
             } catch {}
             if (targetDeck) window.location.href = `/edit?deck=${encodeURIComponent(targetDeck)}`;
             else window.location.href = '/edit';
+        });
+
+        // Story mode: navigate to story page
+        const storyBtn = document.getElementById('storyBtn');
+        if (storyBtn) storyBtn.addEventListener('click', () => {
+            window.location.href = '/story';
         });
 
         // Random test: load random words from all decks
@@ -4342,6 +4369,12 @@
             try {
                 const promises = names.map((n) => fetch(`/cards?deck=${encodeURIComponent(n)}`).then(r => r.ok ? r.json() : []).catch(() => []));
                 const lists = await Promise.all(promises);
+                // Cache each deck's cards for instant navigation
+                names.forEach((n, i) => {
+                    if (Array.isArray(lists[i])) {
+                        try { sessionStorage.setItem(`flashcard_cards_${n}`, JSON.stringify(lists[i])); } catch {}
+                    }
+                });
                 const combined = ([]).concat(...lists);
                 originalWords = Array.isArray(combined) ? combined : [];
                 words = originalWords.slice();

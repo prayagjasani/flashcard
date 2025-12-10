@@ -313,36 +313,125 @@
             spellingInput.focus();
             clearAutoNext();
         }
+        // Cross-page cache
+        function getCache(key) {
+            try { const d = sessionStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+        }
+        function saveCache(key, data) {
+            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+        }
+        
+        function initCardsFromCache() {
+            if (!currentDeck) return false;
+            const cached = getCache(`flashcard_cards_${currentDeck}`);
+            if (!cached || !Array.isArray(cached) || !cached.length) return false;
+            cards = cached;
+            index = 0;
+            correctCount = 0;
+            mistakes = [];
+            attempts = 0;
+            doneShown = false;
+            sessionStart = performance.now();
+            completeOverlay.hidden = true;
+            if (practiceCardEl) practiceCardEl.hidden = false;
+            hydrateAudioFromLocalStorage();
+            renderCurrent();
+            return true;
+        }
+
         async function loadDecks() {
-            showLoader();
-            try {
-                const resp = await fetch('/decks');
-                const list = await resp.json();
-                deckSelect.innerHTML = '';
-                const ph = document.createElement('option');
-                ph.value = '';
-                ph.textContent = 'Select a deck';
-                deckSelect.appendChild(ph);
-                list.forEach(d => {
-                    const opt = document.createElement('option');
-                    opt.value = d.name;
-                    opt.textContent = d.name;
-                    deckSelect.appendChild(opt);
-                });
-                if (currentDeck) {
+            // Try instant load from cache
+            const cachedDecks = getCache('flashcard_decks_cache');
+            let showedFromCache = false;
+            
+            if (currentDeck) {
+                // Populate deck select from cache instantly
+                if (cachedDecks && Array.isArray(cachedDecks)) {
+                    deckSelect.innerHTML = '';
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = 'Select a deck';
+                    deckSelect.appendChild(ph);
+                    cachedDecks.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.name;
+                        opt.textContent = d.name;
+                        deckSelect.appendChild(opt);
+                    });
                     deckSelect.value = currentDeck;
+                }
+                // Try to show cards from cache instantly
+                showedFromCache = initCardsFromCache();
+            }
+            
+            if (!showedFromCache) showLoader();
+            
+            try {
+                if (currentDeck) {
+                    const [decksResp, cardsResp] = await Promise.all([
+                        fetch('/decks').then(r => r.json()).catch(() => []),
+                        fetch(`/cards?deck=${encodeURIComponent(currentDeck)}`).then(r => r.json()).catch(() => [])
+                    ]);
+                    
+                    // Save to cache
+                    saveCache('flashcard_decks_cache', decksResp);
+                    saveCache(`flashcard_cards_${currentDeck}`, cardsResp);
+                    
+                    // Update deck select
+                    deckSelect.innerHTML = '';
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = 'Select a deck';
+                    deckSelect.appendChild(ph);
+                    (Array.isArray(decksResp) ? decksResp : []).forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.name;
+                        opt.textContent = d.name;
+                        deckSelect.appendChild(opt);
+                    });
+                    deckSelect.value = currentDeck;
+                    
+                    // Only re-render if data changed or wasn't cached
+                    if (!showedFromCache) {
+                        cards = Array.isArray(cardsResp) ? cardsResp : [];
+                        index = 0;
+                        correctCount = 0;
+                        mistakes = [];
+                        attempts = 0;
+                        doneShown = false;
+                        sessionStart = performance.now();
+                        completeOverlay.hidden = true;
+                        if (practiceCardEl) practiceCardEl.hidden = false;
+                        clearDeckAudio();
+                        hydrateAudioFromLocalStorage();
+                        renderCurrent();
+                    }
+                    preloadDeckAudio(currentDeck);
                 } else {
+                    const resp = await fetch('/decks');
+                    const list = await resp.json();
+                    saveCache('flashcard_decks_cache', list);
+                    deckSelect.innerHTML = '';
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = 'Select a deck';
+                    deckSelect.appendChild(ph);
+                    list.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.name;
+                        opt.textContent = d.name;
+                        deckSelect.appendChild(opt);
+                    });
                     deckSelect.value = '';
                 }
-                if (deckSelect.value) {
-                    await loadCards(deckSelect.value);
-                }
             } catch (e) {
-                deckSelect.innerHTML = '';
-                const ph = document.createElement('option');
-                ph.value = '';
-                ph.textContent = 'No decks';
-                deckSelect.appendChild(ph);
+                if (!showedFromCache) {
+                    deckSelect.innerHTML = '';
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = 'No decks';
+                    deckSelect.appendChild(ph);
+                }
             } finally {
                 hideLoader();
             }

@@ -720,33 +720,67 @@
             renderRound();
             setProgress();
         }
+        // Cross-page cache
+        function getCache(key) {
+            try { const d = sessionStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+        }
+        function saveCache(key, data) {
+            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+        }
+        
+        function initFromCache(name) {
+            const cached = getCache(`flashcard_cards_${name}`);
+            if (!cached || !Array.isArray(cached) || !cached.length) return false;
+            cards = cached;
+            originalCards = cards.slice();
+            used.clear();
+            pickRound();
+            renderRound();
+            setProgress();
+            try { feedback.hidden = true; feedback.textContent = ''; } catch {}
+            sessionStart = performance.now();
+            attempts = 0;
+            correctAttempts = 0;
+            mistakes = [];
+            doneShown = false;
+            matchBody.hidden = false;
+            completeOverlay.hidden = true;
+            return true;
+        }
+
         async function loadCards(name) {
-            showLoader();
+            // Try instant load from cache
+            const showedFromCache = initFromCache(name);
+            if (!showedFromCache) showLoader();
+            
             try {
                 const resp = await fetch(`/cards?deck=${encodeURIComponent(name)}`);
                 const data = await resp.json();
-                cards = Array.isArray(data) ? data : [];
-                originalCards = cards.slice();
-                used.clear();
-                pickRound();
-                renderRound();
-                setProgress();
-                try {
-                    feedback.hidden = true;
-                    feedback.textContent = '';
-                } catch {}
-                sessionStart = performance.now();
-                attempts = 0;
-                correctAttempts = 0;
-                mistakes = [];
-                doneShown = false;
-                matchBody.hidden = false;
-                completeOverlay.hidden = true;
+                saveCache(`flashcard_cards_${name}`, data);
+                
+                if (!showedFromCache) {
+                    cards = Array.isArray(data) ? data : [];
+                    originalCards = cards.slice();
+                    used.clear();
+                    pickRound();
+                    renderRound();
+                    setProgress();
+                    try { feedback.hidden = true; feedback.textContent = ''; } catch {}
+                    sessionStart = performance.now();
+                    attempts = 0;
+                    correctAttempts = 0;
+                    mistakes = [];
+                    doneShown = false;
+                    matchBody.hidden = false;
+                    completeOverlay.hidden = true;
+                }
             } catch {
-                cards = [];
-                used.clear();
-                leftCol.innerHTML = '';
-                rightCol.innerHTML = '';
+                if (!showedFromCache) {
+                    cards = [];
+                    used.clear();
+                    leftCol.innerHTML = '';
+                    rightCol.innerHTML = '';
+                }
             } finally {
                 hideLoader();
             }

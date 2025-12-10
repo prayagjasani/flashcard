@@ -215,6 +215,410 @@ def spelling_screen():
 def line_screen():
     return FileResponse('templates/line.html')
 
+@app.get("/story")
+def story_screen():
+    return FileResponse('templates/story.html')
+
+def _story_key(deck: str) -> str:
+    safe = _safe_deck_name(deck)
+    return f"{R2_BUCKET_NAME}/stories/{safe}/story.json"
+
+def _story_audio_key(deck: str, text: str) -> str:
+    """Generate R2 key for story-specific audio file."""
+    safe_deck = _safe_deck_name(deck)
+    safe_text = re.sub(r"[^A-Za-z0-9_\-]", "_", text).strip("_")
+    if not safe_text:
+        safe_text = "audio"
+    return f"{R2_BUCKET_NAME}/stories/{safe_deck}/audio/{safe_text}.mp3"
+
+def _story_audio_prefix(deck: str) -> str:
+    """Get the prefix for all audio files of a story."""
+    safe_deck = _safe_deck_name(deck)
+    return f"{R2_BUCKET_NAME}/stories/{safe_deck}/audio/"
+
+def _gemini_generate_story(cards, deck_name: str):
+    """Generate an actual narrative story using vocabulary from the deck."""
+    if not GEMINI_API_KEY:
+        return None
+
+    model = "gemini-2.5-flash"
+    endpoint = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={GEMINI_API_KEY}"
+    )
+
+    # Pick 8-12 words for a short story
+    import random
+    selected = cards[:12] if len(cards) <= 12 else random.sample(cards, 12)
+    vocab_list = "\n".join([f'- {c["de"]} ({c["en"]})' for c in selected])
+
+    prompt = f"""You are a creative German language teacher writing engaging stories for A1-B1 learners.
+
+Create a SHORT STORY (like Duolingo stories) using these vocabulary words:
+{vocab_list}
+
+Requirements:
+1. Create a story with 2-3 characters (give them names like Anna, Max, Lisa, Tom)
+2. Write 8-12 scenes/segments
+3. Each segment should be 1-3 sentences in German
+4. Include dialogue between characters
+5. Use simple German (A1-B1 level)
+6. Make it engaging with a mini plot (meeting someone, ordering food, travel adventure, etc.)
+7. IMPORTANT: Include a "vocabulary" object with English translations for ALL German words used in the story
+
+Output ONLY a JSON object with this exact structure:
+{{
+  "title_de": "Story title in German",
+  "title_en": "Story title in English",
+  "characters": ["Name1", "Name2"],
+  "vocabulary": {{
+    "german_word": "english meaning",
+    "Flughafen": "airport",
+    "sind": "are",
+    "am": "at the",
+    "angekommen": "arrived"
+  }},
+  "segments": [
+    {{
+      "type": "narration" or "dialogue",
+      "speaker": "narrator" or character name,
+      "text_de": "German text",
+      "text_en": "English translation",
+      "highlight_words": ["word1", "word2"]
+    }}
+  ]
+}}
+
+The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
+Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), etc.
+The highlight_words should contain vocabulary words from the input list that appear in that segment.
+Make the story fun and relatable!"""
+
+    body = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"response_mime_type": "application/json"},
+    }
+    
+    try:
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+        parsed = json.loads(raw)
+        candidates = parsed.get("candidates") or []
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                p0 = parts[0]
+                if isinstance(p0, dict) and "text" in p0:
+                    return json.loads(p0["text"])
+        return None
+    except Exception as e:
+        print(f"Story generation error: {e}")
+        return None
+
+def _generate_story_audio_background(deck: str, segments: list):
+    """Generate all audio files for a story in background."""
+    if not r2_client or not R2_BUCKET_NAME:
+        return
+    
+    texts_to_generate = set()
+    for seg in segments:
+        text = (seg.get("text_de") or "").strip()
+        if text:
+            texts_to_generate.add(text)
+    
+    for text in texts_to_generate:
+        try:
+            key = _story_audio_key(deck, text)
+            # Check if already exists
+            try:
+                r2_client.head_object(Bucket=R2_BUCKET_NAME, Key=key)
+                continue  # Already exists
+            except ClientError:
+                pass
+            
+            # Generate and upload
+            buf = io.BytesIO()
+            gTTS(text=text, lang="de").write_to_fp(buf)
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=buf.getvalue(),
+                ContentType="audio/mpeg"
+            )
+        except Exception:
+            pass
+
+@app.get("/story/generate")
+def generate_story(deck: str, refresh: bool = False):
+    """Generate or retrieve a narrative story for a deck."""
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+
+    # Check cache first (unless refresh requested)
+    if not refresh and r2_client and R2_BUCKET_NAME:
+        # Try new structure first: stories/{deck}/story.json
+        try:
+            key = _story_key(deck)
+            obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+            data = obj["Body"].read().decode("utf-8")
+            cached = json.loads(data)
+            if cached and cached.get("segments"):
+                return {"story": cached, "cached": True}
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code not in ("404", "NoSuchKey", "NotFound"):
+                raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            pass
+        
+        # Try old structure for backwards compatibility: stories/{deck}.json
+        try:
+            old_key = f"{R2_BUCKET_NAME}/stories/{safe}.json"
+            obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=old_key)
+            data = obj["Body"].read().decode("utf-8")
+            cached = json.loads(data)
+            if cached and cached.get("segments"):
+                return {"story": cached, "cached": True}
+        except ClientError:
+            pass
+        except Exception:
+            pass
+
+    # Get deck cards
+    try:
+        cards = get_cards(deck)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not cards:
+        raise HTTPException(status_code=400, detail="Deck is empty")
+
+    # If refreshing, delete old audio files first
+    if refresh and r2_client and R2_BUCKET_NAME:
+        try:
+            prefix = _story_audio_prefix(deck)
+            continuation = None
+            while True:
+                kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": prefix}
+                if continuation:
+                    kwargs["ContinuationToken"] = continuation
+                resp = r2_client.list_objects_v2(**kwargs)
+                for obj in resp.get("Contents", []):
+                    try:
+                        r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=obj["Key"])
+                    except Exception:
+                        pass
+                if resp.get("IsTruncated"):
+                    continuation = resp.get("NextContinuationToken")
+                else:
+                    break
+        except Exception:
+            pass
+
+    # Generate story
+    story = _gemini_generate_story(cards, deck)
+    if not story:
+        raise HTTPException(status_code=500, detail="Failed to generate story")
+
+    # Cache the story
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            key = _story_key(deck)
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(story).encode("utf-8"),
+                ContentType="application/json"
+            )
+        except Exception:
+            pass
+
+    # Generate audio in background
+    if story.get("segments"):
+        thread = threading.Thread(
+            target=_generate_story_audio_background,
+            args=(deck, story["segments"]),
+            daemon=True
+        )
+        thread.start()
+
+    return {"story": story, "cached": False}
+
+@app.get("/story/audio")
+def get_story_audio(deck: str, text: str):
+    """Get or generate audio for a story segment."""
+    if not r2_client or not R2_BUCKET_NAME:
+        # Fallback to regular TTS
+        try:
+            buf = io.BytesIO()
+            gTTS(text=text, lang="de").write_to_fp(buf)
+            return StreamingResponse(io.BytesIO(buf.getvalue()), media_type="audio/mpeg")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+    
+    key = _story_audio_key(deck, text)
+    
+    # Try to get from cache
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        return StreamingResponse(obj["Body"], media_type="audio/mpeg")
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    # Generate and cache
+    try:
+        buf = io.BytesIO()
+        gTTS(text=text, lang="de").write_to_fp(buf)
+        audio_data = buf.getvalue()
+        
+        # Save to R2
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=audio_data,
+            ContentType="audio/mpeg"
+        )
+        
+        return StreamingResponse(io.BytesIO(audio_data), media_type="audio/mpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stories/list")
+def list_stories():
+    """List all available generated stories with their titles."""
+    if not r2_client or not R2_BUCKET_NAME:
+        return {"stories": []}
+    
+    try:
+        stories = []
+        prefix = f"{R2_BUCKET_NAME}/stories/"
+        continuation = None
+        
+        while True:
+            kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": prefix}
+            if continuation:
+                kwargs["ContinuationToken"] = continuation
+            resp = r2_client.list_objects_v2(**kwargs)
+            
+            for obj in resp.get("Contents", []):
+                key = obj.get("Key", "")
+                # New structure: stories/{deck}/story.json
+                if key.endswith("/story.json"):
+                    # Extract deck name from key: stories/{deck}/story.json
+                    parts = key.split("/")
+                    if len(parts) >= 3:
+                        name = parts[-2]  # The deck folder name
+                        story_info = {
+                            "deck": name,
+                            "last_modified": obj.get("LastModified").isoformat() if obj.get("LastModified") else None,
+                            "title_de": None,
+                            "title_en": None
+                        }
+                        # Try to read the story title
+                        try:
+                            story_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+                            story_data = json.loads(story_obj["Body"].read().decode("utf-8"))
+                            story_info["title_de"] = story_data.get("title_de")
+                            story_info["title_en"] = story_data.get("title_en")
+                        except Exception:
+                            pass
+                        stories.append(story_info)
+                # Also support old structure for backwards compatibility: stories/{deck}.json
+                elif key.endswith(".json") and "/audio/" not in key:
+                    parts = key.split("/")
+                    if len(parts) == 3:  # bucket/stories/name.json
+                        name = parts[-1].replace(".json", "")
+                        story_info = {
+                            "deck": name,
+                            "last_modified": obj.get("LastModified").isoformat() if obj.get("LastModified") else None,
+                            "title_de": None,
+                            "title_en": None
+                        }
+                        try:
+                            story_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+                            story_data = json.loads(story_obj["Body"].read().decode("utf-8"))
+                            story_info["title_de"] = story_data.get("title_de")
+                            story_info["title_en"] = story_data.get("title_en")
+                        except Exception:
+                            pass
+                        stories.append(story_info)
+            
+            if resp.get("IsTruncated"):
+                continuation = resp.get("NextContinuationToken")
+            else:
+                break
+        
+        return {"stories": stories}
+    except Exception as e:
+        return {"stories": [], "error": str(e)}
+
+@app.delete("/story/delete")
+def delete_story(deck: str):
+    """Delete a generated story and all its audio files."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    
+    safe = _safe_deck_name(deck)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid deck name")
+    
+    deleted_files = 0
+    errors = 0
+    
+    # Delete NEW structure: all files in the story folder (stories/{deck}/)
+    story_prefix = f"{R2_BUCKET_NAME}/stories/{safe}/"
+    try:
+        continuation = None
+        while True:
+            kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": story_prefix}
+            if continuation:
+                kwargs["ContinuationToken"] = continuation
+            resp = r2_client.list_objects_v2(**kwargs)
+            
+            for obj in resp.get("Contents", []):
+                try:
+                    r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=obj["Key"])
+                    deleted_files += 1
+                except Exception:
+                    errors += 1
+            
+            if resp.get("IsTruncated"):
+                continuation = resp.get("NextContinuationToken")
+            else:
+                break
+    except Exception:
+        pass
+    
+    # Also delete OLD structure: stories/{deck}.json (for backwards compatibility)
+    old_key = f"{R2_BUCKET_NAME}/stories/{safe}.json"
+    try:
+        r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=old_key)
+        deleted_files += 1
+    except Exception:
+        pass
+    
+    return {
+        "ok": True,
+        "deleted": deck,
+        "files_deleted": deleted_files,
+        "errors": errors
+    }
+
 @app.get("/folder")
 def folder_screen():
     return FileResponse('templates/folder.html')

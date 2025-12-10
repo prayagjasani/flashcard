@@ -1158,26 +1158,47 @@
             } catch {}
         }
 
+        // Cross-page cache keys
+        const CACHE_FOLDERS = 'flashcard_folders_cache';
+        const CACHE_DECKS = 'flashcard_decks_cache';
+        
+        function saveCache(key, data) {
+            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+        }
+        function getCache(key) {
+            try { 
+                const d = sessionStorage.getItem(key);
+                return d ? JSON.parse(d) : null;
+            } catch { return null; }
+        }
+
         async function loadDecks() {
+            // For folder view, prefer a single, final render:
+            // show loader, fetch everything (including saved order), then render once.
             showLoader();
             try {
-                // Load folders first to get parent relationships
-                const foldersResp = await fetch('/folders');
-                const foldersData = await foldersResp.json().catch(() => ({ folders: [] }));
+                const [foldersData, decksData, deckOrderData] = await Promise.all([
+                    fetch('/folders').then(r => r.json()).catch(() => ({ folders: [] })),
+                    fetch('/decks').then(r => r.json()).catch(() => []),
+                    fetch(`/order/decks?scope=${encodeURIComponent(folder)}`).then(r => r.json()).catch(() => [])
+                ]);
+
+                // Save to cache so the home page can reuse this data
                 allFolders = Array.isArray(foldersData.folders) ? foldersData.folders : [];
-                
-                // Build breadcrumb and render sub-folders
+                saveCache(CACHE_FOLDERS, allFolders);
+                const all = Array.isArray(decksData) ? decksData : [];
+                saveCache(CACHE_DECKS, all);
+
+                // Build breadcrumb, sub‑folders and ordered deck list
                 buildBreadcrumb();
                 renderSubFolders();
-                
-                const resp = await fetch('/decks');
-                const data = resp.ok ? await resp.json() : [];
-                const all = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+
                 const list = all.filter(d => ((d.folder || 'Uncategorized') === folder));
-                await refreshDeckOrder(folder);
+                ordersCache.decks[folder] = Array.isArray(deckOrderData) ? deckOrderData : [];
                 const ordered = applyOrder(list, 'deck', folder);
                 renderList(ordered);
-            } catch {
+            } catch (err) {
+                console.error('loadDecks error:', err);
                 renderList([]);
             } finally {
                 hideLoader();
@@ -1188,11 +1209,6 @@
             deckList.innerHTML = '';
             if (!items.length) {
                 decksHeader.style.display = 'none';
-                const empty = document.createElement('div');
-                empty.className = 'mt-10 text-center';
-                empty.style.color = 'var(--text-secondary)';
-                empty.textContent = 'No decks in this folder';
-                deckList.appendChild(empty);
                 return;
             }
             decksHeader.style.display = 'flex';

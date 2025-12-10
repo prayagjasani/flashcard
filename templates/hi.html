@@ -382,13 +382,29 @@
                 editModal.classList.remove('hidden');
             });
         }
-        async function loadDeck() {
-            showLoader();
+        // Cross-page cache
+        function getCache(key) {
+            try { const d = sessionStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+        }
+        function saveCache(key, data) {
+            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+        }
 
+        async function loadDeck() {
             if (!deck) {
                 cardGrid.innerHTML = '<div class="col-span-1 sm:col-span-2 lg:col-span-3 mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">No deck selected</div>';
-                hideLoader();
                 return;
+            }
+
+            // Try instant load from cache
+            let showedFromCache = false;
+            const cached = getCache(`flashcard_cards_${deck}`);
+            if (cached && Array.isArray(cached) && cached.length) {
+                cards = cached;
+                renderGrid();
+                showedFromCache = true;
+            } else {
+                showLoader();
             }
 
             const controller = new AbortController();
@@ -410,17 +426,23 @@
                 }
 
                 const data = await response.json();
-                cards = Array.isArray(data) ? data : [];
-                renderGrid();
+                saveCache(`flashcard_cards_${deck}`, data);
+                
+                if (!showedFromCache) {
+                    cards = Array.isArray(data) ? data : [];
+                    renderGrid();
+                }
 
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    console.warn('Deck loading timed out');
-                    cardGrid.innerHTML = '<div class="mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">Loading timed out. Please try again.</div>';
-                } else {
-                    console.error('Failed to load deck:', error);
-                    cards = [];
-                    cardGrid.innerHTML = '<div class="mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">Failed to load deck</div>';
+                if (!showedFromCache) {
+                    if (error.name === 'AbortError') {
+                        console.warn('Deck loading timed out');
+                        cardGrid.innerHTML = '<div class="mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">Loading timed out. Please try again.</div>';
+                    } else {
+                        console.error('Failed to load deck:', error);
+                        cards = [];
+                        cardGrid.innerHTML = '<div class="mt-10 text-center text-text-secondary-light dark:text-text-secondary-dark">Failed to load deck</div>';
+                    }
                 }
             } finally {
                 hideLoader();
