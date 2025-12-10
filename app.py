@@ -155,6 +155,9 @@ class FolderRename(BaseModel):
     new_name: str
 class FolderDelete(BaseModel):
     name: str
+class FolderMove(BaseModel):
+    name: str
+    parent: str | None = None
 class DeckMove(BaseModel):
     name: str
     folder: str | None = None
@@ -712,6 +715,7 @@ def get_folders():
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
     index_key = f"{R2_BUCKET_NAME}/csv/index.json"
     folders_key = f"{R2_BUCKET_NAME}/folders/index.json"
+    parents_key = f"{R2_BUCKET_NAME}/folders/parents.json"
     names = set()
     counts = {}
     try:
@@ -738,7 +742,17 @@ def get_folders():
     for f in extra:
         names.add(f)
         counts.setdefault(f, 0)
-    base = [{"name": n, "count": counts.get(n, 0)} for n in names]
+    # Load parent relationships
+    parents_data = {}
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=parents_key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, dict):
+            parents_data = parsed
+    except Exception:
+        pass
+    base = [{"name": n, "count": counts.get(n, 0), "parent": parents_data.get(n)} for n in names]
     ordered = base
     try:
         obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key())
@@ -830,6 +844,32 @@ def folder_rename(payload: FolderRename):
             r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
     except Exception:
         pass
+    # Update folder parents when renaming
+    parents_key = f"{R2_BUCKET_NAME}/folders/parents.json"
+    try:
+        parents_data = {}
+        try:
+            pobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=parents_key)
+            pdata = pobj["Body"].read().decode("utf-8")
+            parsed_p = json.loads(pdata)
+            if isinstance(parsed_p, dict):
+                parents_data = parsed_p
+        except Exception:
+            pass
+        updated = False
+        # If the renamed folder had a parent, update its key
+        if old in parents_data:
+            parents_data[new] = parents_data.pop(old)
+            updated = True
+        # If any folder had old as parent, update to new
+        for k, v in list(parents_data.items()):
+            if v == old:
+                parents_data[k] = new
+                updated = True
+        if updated:
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=parents_key, Body=json.dumps(parents_data).encode("utf-8"), ContentType="application/json")
+    except Exception:
+        pass
     return {"ok": True, "old_name": old, "new_name": new}
 
 @app.post("/folder/delete")
@@ -879,7 +919,86 @@ def folder_delete(payload: FolderDelete):
             r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
     except Exception:
         pass
+    # Clean up folder parents when deleting
+    parents_key = f"{R2_BUCKET_NAME}/folders/parents.json"
+    try:
+        parents_data = {}
+        try:
+            pobj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=parents_key)
+            pdata = pobj["Body"].read().decode("utf-8")
+            parsed_p = json.loads(pdata)
+            if isinstance(parsed_p, dict):
+                parents_data = parsed_p
+        except Exception:
+            pass
+        updated = False
+        # Remove the deleted folder's parent entry
+        if name in parents_data:
+            del parents_data[name]
+            updated = True
+        # Remove parent reference for any child folders (move them to root)
+        for k, v in list(parents_data.items()):
+            if v == name:
+                del parents_data[k]
+                updated = True
+        if updated:
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=parents_key, Body=json.dumps(parents_data).encode("utf-8"), ContentType="application/json")
+    except Exception:
+        pass
     return {"ok": True, "deleted": name}
+
+@app.post("/folder/move")
+def folder_move(payload: FolderMove):
+    """Move a folder to be a child of another folder (nested folders)."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_deck_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    parent = _safe_deck_name(payload.parent) if payload.parent else None
+    
+    # Prevent moving folder into itself or its descendants
+    if parent and parent == name:
+        raise HTTPException(status_code=400, detail="Cannot move folder into itself")
+    
+    # Read folder parents data
+    parents_key = f"{R2_BUCKET_NAME}/folders/parents.json"
+    parents_data = {}
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=parents_key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, dict):
+            parents_data = parsed
+    except Exception:
+        pass
+    
+    # Check for circular reference: walk up from parent to ensure name is not an ancestor
+    if parent:
+        current = parent
+        visited = set()
+        while current:
+            if current == name:
+                raise HTTPException(status_code=400, detail="Cannot move folder into its own descendant")
+            if current in visited:
+                break
+            visited.add(current)
+            current = parents_data.get(current)
+    
+    # Update parent
+    if parent:
+        parents_data[name] = parent
+    else:
+        parents_data.pop(name, None)
+    
+    r2_client.put_object(
+        Bucket=R2_BUCKET_NAME,
+        Key=parents_key,
+        Body=json.dumps(parents_data).encode("utf-8"),
+        ContentType="application/json"
+    )
+    
+    return {"ok": True, "name": name, "parent": parent}
 
 @app.post("/deck/move")
 def deck_move(payload: DeckMove):

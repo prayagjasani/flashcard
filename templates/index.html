@@ -1821,9 +1821,22 @@
             <div class="modal__actions">
                 <button class="btn" id="renameFolderCancelBtn" type="button">Cancel</button>
                 <button class="btn btn--signup" id="renameFolderSaveBtn" type="button">Rename</button>
+                <button class="btn btn--pill" id="moveFolderBtn" type="button">Move</button>
                 <button class="btn btn--danger" id="deleteFolderBtn" type="button">Delete</button>
             </div>
             <p class="modal__status" id="renameFolderStatus"></p>
+        </div>
+    </div>
+    <div class="modal modal--multi" id="moveFolderModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-move-folder="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="moveFolderTitle">
+            <h2 id="moveFolderTitle" class="modal__title">Move Folder To</h2>
+            <div class="multi-deck-list" id="moveFolderList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="moveFolderCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--pill" id="moveFolderSaveBtn" type="button">Move</button>
+            </div>
+            <p class="modal__status" id="moveFolderStatus"></p>
         </div>
     </div>
 
@@ -1914,6 +1927,12 @@
         const renameFolderSaveBtn = document.getElementById('renameFolderSaveBtn');
         const deleteFolderBtn = document.getElementById('deleteFolderBtn');
         const renameFolderStatus = document.getElementById('renameFolderStatus');
+        const moveFolderBtn = document.getElementById('moveFolderBtn');
+        const moveFolderModal = document.getElementById('moveFolderModal');
+        const moveFolderList = document.getElementById('moveFolderList');
+        const moveFolderCancelBtn = document.getElementById('moveFolderCancelBtn');
+        const moveFolderSaveBtn = document.getElementById('moveFolderSaveBtn');
+        const moveFolderStatus = document.getElementById('moveFolderStatus');
         let cachedFolderList = [];
         let selectedFolder = '';
         let folderToManage = '';
@@ -2590,18 +2609,25 @@
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
                 try {
+                    // Update deck counts without losing parent info
                     const counts = {};
                     cachedDeckList.forEach(d => {
                         const f = d.folder || 'Uncategorized';
                         counts[f] = (counts[f] || 0) + 1;
                     });
-                    const names = Object.keys(counts).sort((a, b) => a.localeCompare(b, undefined, {
-                        sensitivity: 'base'
-                    }));
-                    cachedFolderList = names.map(n => ({
-                        name: n,
-                        count: counts[n]
-                    }));
+                    // Merge counts into existing folder data (preserve parent info)
+                    cachedFolderList.forEach(folder => {
+                        folder.count = counts[folder.name] || 0;
+                    });
+                    // Add any folders that only exist in decks but not in folder list
+                    Object.keys(counts).forEach(name => {
+                        if (!cachedFolderList.find(f => f.name === name)) {
+                            cachedFolderList.push({
+                                name,
+                                count: counts[name]
+                            });
+                        }
+                    });
                     await refreshFolderOrder();
                     renderFolderGrid();
                 } catch {}
@@ -2713,7 +2739,9 @@
                 name: 'Uncategorized',
                 count: 0
             }];
-            const ordered = applyOrder(base, 'folder');
+            // Only show root folders (no parent) on home screen
+            const rootFolders = base.filter(f => !f.parent);
+            const ordered = applyOrder(rootFolders, 'folder');
             ordered.forEach((f, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
@@ -2723,7 +2751,13 @@
                 title.textContent = f.name;
                 const sub = document.createElement('div');
                 sub.className = 'deck-subtitle';
-                sub.textContent = `${f.count || 0} deck${(f.count||0)===1?'':'s'}`;
+                // Count sub-folders
+                const subFolderCount = base.filter(x => x.parent === f.name).length;
+                if (subFolderCount > 0) {
+                    sub.textContent = `${subFolderCount} folder${subFolderCount===1?'':'s'} · ${f.count || 0} deck${(f.count||0)===1?'':'s'}`;
+                } else {
+                    sub.textContent = `${f.count || 0} deck${(f.count||0)===1?'':'s'}`;
+                }
                 wrap.appendChild(title);
                 wrap.appendChild(sub);
                 wrap.addEventListener('click', () => {
@@ -2745,6 +2779,16 @@
                         closeKebabMenus();
                         openRenameFolderModal(f.name);
                     });
+                    const mMove = document.createElement('button');
+                    mMove.className = 'kebab-item';
+                    mMove.type = 'button';
+                    mMove.textContent = 'Move';
+                    mMove.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        closeKebabMenus();
+                        folderToManage = f.name;
+                        openMoveFolderModal();
+                    });
                     const mDelete = document.createElement('button');
                     mDelete.className = 'kebab-item';
                     mDelete.type = 'button';
@@ -2755,6 +2799,7 @@
                         await deleteFolder(f.name);
                     });
                     menu.appendChild(mRename);
+                    menu.appendChild(mMove);
                     menu.appendChild(mDelete);
                     kebab.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -2905,7 +2950,136 @@
             }
         });
 
+        // Move Folder functionality
+        function openMoveFolderModal() {
+            if (!folderToManage) return;
+            moveFolderStatus.textContent = '';
+            closeRenameFolderModal();
+            loadFoldersIntoMoveFolderList();
+            moveFolderModal.classList.add('is-open');
+            moveFolderModal.setAttribute('aria-hidden', 'false');
+        }
 
+        function closeMoveFolderModal() {
+            moveFolderModal.classList.remove('is-open');
+            moveFolderModal.setAttribute('aria-hidden', 'true');
+        }
+        async function loadFoldersIntoMoveFolderList() {
+            moveFolderList.innerHTML = '';
+            try {
+                const resp = await fetch('/folders');
+                const data = await resp.json().catch(() => ({
+                    folders: []
+                }));
+                const raw = Array.isArray(data.folders) ? data.folders : [];
+
+                // Find current parent of the folder being moved
+                const currentFolder = raw.find(f => (f.name || f) === folderToManage);
+                const currentParent = currentFolder ? currentFolder.parent : null;
+
+                // Filter out the folder being moved and any of its descendants
+                function getDescendants(name) {
+                    const result = new Set([name]);
+                    let added = true;
+                    while (added) {
+                        added = false;
+                        raw.forEach(f => {
+                            const fname = f.name || f;
+                            const fparent = f.parent;
+                            if (fparent && result.has(fparent) && !result.has(fname)) {
+                                result.add(fname);
+                                added = true;
+                            }
+                        });
+                    }
+                    return result;
+                }
+                const excluded = getDescendants(folderToManage);
+
+                // Add "Root (No parent)" option first
+                const rootRow = document.createElement('div');
+                rootRow.className = 'multi-deck-item';
+                const rootLabel = document.createElement('label');
+                rootLabel.style.display = 'flex';
+                rootLabel.style.alignItems = 'center';
+                rootLabel.style.gap = '12px';
+                const rootRadio = document.createElement('input');
+                rootRadio.type = 'radio';
+                rootRadio.name = 'moveFolderTarget';
+                rootRadio.value = '';
+                rootRadio.className = 'multi-deck-checkbox';
+                if (!currentParent) rootRadio.checked = true;
+                const rootSpan = document.createElement('span');
+                rootSpan.textContent = '(Root - No parent)';
+                rootSpan.style.fontStyle = 'italic';
+                rootLabel.appendChild(rootRadio);
+                rootLabel.appendChild(rootSpan);
+                rootRow.appendChild(rootLabel);
+                moveFolderList.appendChild(rootRow);
+
+                // Add other folders
+                raw.forEach(f => {
+                    const fname = f.name || f;
+                    if (excluded.has(fname)) return;
+                    if (fname === 'Uncategorized') return;
+
+                    const row = document.createElement('div');
+                    row.className = 'multi-deck-item';
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '12px';
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = 'moveFolderTarget';
+                    radio.value = fname;
+                    radio.className = 'multi-deck-checkbox';
+                    if (currentParent === fname) radio.checked = true;
+                    const span = document.createElement('span');
+                    span.textContent = fname;
+                    label.appendChild(radio);
+                    label.appendChild(span);
+                    row.appendChild(label);
+                    moveFolderList.appendChild(row);
+                });
+            } catch {}
+        }
+        if (moveFolderBtn) moveFolderBtn.addEventListener('click', openMoveFolderModal);
+        if (moveFolderCancelBtn) moveFolderCancelBtn.addEventListener('click', closeMoveFolderModal);
+        if (moveFolderModal) moveFolderModal.addEventListener('click', (e) => {
+            if (e.target.dataset.closeMoveFolder === 'true') closeMoveFolderModal();
+        });
+        if (moveFolderSaveBtn) moveFolderSaveBtn.addEventListener('click', async() => {
+            if (!folderToManage) return;
+            const picked = document.querySelector('input[name="moveFolderTarget"]:checked');
+            const targetParent = picked ? picked.value : '';
+            moveFolderSaveBtn.disabled = true;
+            moveFolderSaveBtn.textContent = 'Moving...';
+            try {
+                const resp = await fetch('/folder/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: folderToManage,
+                        parent: targetParent || null
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
+                moveFolderStatus.textContent = 'Moved!';
+                await loadFolders();
+                closeMoveFolderModal();
+            } catch (err) {
+                moveFolderStatus.textContent = String(err.message || err);
+            } finally {
+                moveFolderSaveBtn.disabled = false;
+                moveFolderSaveBtn.textContent = 'Move';
+            }
+        });
 
         if (homeBtn) homeBtn.addEventListener('click', () => {
             window.location.href = '/';
@@ -3730,9 +3904,10 @@
             }
         });
 
-        // Initialize auto-play state and load decks
+        // Initialize auto-play state and load folders then decks
         initAutoPlayState();
-        loadDecks();
+        // Load folders first to get parent info, then load decks
+        loadFolders().then(() => loadDecks());
 
         // Simple dropdown change handler
         deckSelect.addEventListener('change', (e) => {

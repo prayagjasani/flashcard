@@ -368,6 +368,54 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
+        
+        .breadcrumb-item {
+            color: var(--muted);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        
+        .breadcrumb-item:hover {
+            color: var(--accent);
+        }
+        
+        .breadcrumb-item.is-current {
+            color: var(--text);
+            font-weight: 600;
+        }
+        
+        .breadcrumb-sep {
+            color: var(--muted);
+            margin: 0 2px;
+        }
+        
+        .folder-tile {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 20px;
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .folder-tile:hover {
+            box-shadow: var(--card-shadow-hover);
+        }
+        
+        .folder-tile .folder-icon {
+            font-size: 24px;
+            color: var(--accent);
+        }
+        
+        .folder-tile .folder-name {
+            font-weight: 400;
+            color: var(--text-primary);
+        }
     </style>
     <style>
         html {
@@ -402,7 +450,18 @@
             <div class="loading-dots"><span></span><span></span><span></span></div>
         </div>
         <main class="w-full px-4">
+            <nav id="breadcrumb" class="flex items-center gap-1 text-sm py-2 overflow-x-auto" style="display:none;">
+            </nav>
+            <section id="subFoldersSection" class="deck-list" style="display:none;">
+                <div style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
+                    <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Sub-folders</h2>
+                </div>
+                <div class="deck-grid" id="subFolderGrid"></div>
+            </section>
             <section class="deck-list">
+                <div id="decksHeader" style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
+                    <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Decks</h2>
+                </div>
                 <div class="deck-grid" id="deckList"></div>
             </section>
         </main>
@@ -424,10 +483,6 @@
                 <button id="openSpellingBtn" class="study-action study-action--secondary" type="button">
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span>
                     <span>Spelling</span>
-                </button>
-                <button id="openLineBtn" class="study-action study-action--secondary" type="button">
-                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span>
-                    <span>Line</span>
                 </button>
                 <button id="openMoveBtn" class="study-action study-action--secondary" type="button">
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">drive_file_move</span>
@@ -458,7 +513,6 @@
         const openFlashBtn = document.getElementById('openFlashBtn');
         let openSpellingBtn = document.getElementById('openSpellingBtn');
         let openMatchBtn = document.getElementById('openMatchBtn');
-        let openLineBtn = document.getElementById('openLineBtn');
         const openMoveBtn = document.getElementById('openMoveBtn');
         const studyActionsEl = document.querySelector('#chooseActionModal .study-actions');
         if (!openSpellingBtn && studyActionsEl) {
@@ -482,17 +536,6 @@
             if (moveBtnEl2) studyActionsEl.insertBefore(btn2, moveBtnEl2);
             else studyActionsEl.appendChild(btn2);
             openMatchBtn = btn2;
-        }
-        if (!openLineBtn && studyActionsEl) {
-            const btn3 = document.createElement('button');
-            btn3.id = 'openLineBtn';
-            btn3.className = 'study-action study-action--secondary';
-            btn3.type = 'button';
-            btn3.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span><span>Line</span>';
-            const moveBtnEl3 = document.getElementById('openMoveBtn');
-            if (moveBtnEl3) studyActionsEl.insertBefore(btn3, moveBtnEl3);
-            else studyActionsEl.appendChild(btn3);
-            openLineBtn = btn3;
         }
         const moveDeckModal = document.getElementById('moveDeckModal');
         const moveDeckList = document.getElementById('moveDeckList');
@@ -751,17 +794,121 @@
             if (globalLoader) globalLoader.classList.remove('is-active');
         }
 
+        const breadcrumb = document.getElementById('breadcrumb');
+        const subFoldersSection = document.getElementById('subFoldersSection');
+        const subFolderGrid = document.getElementById('subFolderGrid');
+        const decksHeader = document.getElementById('decksHeader');
+
         const params = new URLSearchParams(location.search);
         const folder = params.get('name') || 'Uncategorized';
         folderTitle.textContent = folder;
 
+        let allFolders = [];
+        let parentFolder = null;
+
         backBtn.addEventListener('click', () => {
-            location.href = '/';
+            if (parentFolder) {
+                location.href = `/folder?name=${encodeURIComponent(parentFolder)}`;
+            } else {
+                location.href = '/';
+            }
         });
+
+        // Build breadcrumb path from root to current folder
+        function buildBreadcrumb() {
+            breadcrumb.innerHTML = '';
+            
+            // Find the path from root to current folder
+            const path = [];
+            let current = folder;
+            const visited = new Set();
+            while (current && !visited.has(current)) {
+                visited.add(current);
+                const folderData = allFolders.find(f => (f.name || f) === current);
+                path.unshift({ name: current, parent: folderData ? folderData.parent : null });
+                current = folderData ? folderData.parent : null;
+            }
+            
+            // Set parent folder for back navigation
+            parentFolder = path.length > 1 ? path[path.length - 2].name : null;
+            
+            if (path.length <= 1) {
+                breadcrumb.style.display = 'none';
+                return;
+            }
+            
+            breadcrumb.style.display = 'flex';
+            
+            // Add home link
+            const homeLink = document.createElement('a');
+            homeLink.href = '/';
+            homeLink.className = 'breadcrumb-item';
+            homeLink.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">home</span>';
+            breadcrumb.appendChild(homeLink);
+            
+            // Add each folder in path
+            path.forEach((f, i) => {
+                const sep = document.createElement('span');
+                sep.className = 'breadcrumb-sep';
+                sep.textContent = '›';
+                breadcrumb.appendChild(sep);
+                
+                const link = document.createElement('a');
+                link.className = 'breadcrumb-item' + (i === path.length - 1 ? ' is-current' : '');
+                link.textContent = f.name;
+                if (i < path.length - 1) {
+                    link.href = `/folder?name=${encodeURIComponent(f.name)}`;
+                }
+                breadcrumb.appendChild(link);
+            });
+        }
+
+        // Render sub-folders
+        function renderSubFolders() {
+            subFolderGrid.innerHTML = '';
+            const subFolders = allFolders.filter(f => f.parent === folder);
+            
+            if (subFolders.length === 0) {
+                subFoldersSection.style.display = 'none';
+                return;
+            }
+            
+            subFoldersSection.style.display = 'block';
+            subFolders.forEach((f, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'folder-tile tile-enter';
+                tile.style.animationDelay = `${i * 40}ms`;
+                
+                const icon = document.createElement('span');
+                icon.className = 'material-symbols-outlined folder-icon';
+                icon.textContent = 'folder';
+                
+                const name = document.createElement('span');
+                name.className = 'folder-name';
+                name.textContent = f.name;
+                
+                tile.appendChild(icon);
+                tile.appendChild(name);
+                tile.addEventListener('click', () => {
+                    location.href = `/folder?name=${encodeURIComponent(f.name)}`;
+                });
+                
+                subFolderGrid.appendChild(tile);
+            });
+        }
 
         async function loadDecks() {
             showLoader();
             try {
+                // Load folders first to get parent relationships
+                const foldersResp = await fetch('/folders');
+                const foldersData = await foldersResp.json().catch(() => ({ folders: [] }));
+                allFolders = Array.isArray(foldersData.folders) ? foldersData.folders : [];
+                
+                // Build breadcrumb and render sub-folders
+                buildBreadcrumb();
+                renderSubFolders();
+                
                 const resp = await fetch('/decks');
                 const data = resp.ok ? await resp.json() : [];
                 const all = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
@@ -779,6 +926,7 @@
         function renderList(items) {
             deckList.innerHTML = '';
             if (!items.length) {
+                decksHeader.style.display = 'none';
                 const empty = document.createElement('div');
                 empty.className = 'mt-10 text-center';
                 empty.style.color = 'var(--text-secondary)';
@@ -786,6 +934,7 @@
                 deckList.appendChild(empty);
                 return;
             }
+            decksHeader.style.display = 'flex';
             items.forEach((d, i) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'deck-tile tile-enter';
@@ -878,11 +1027,6 @@
             if (!selectedDeckForAction) return;
             const fromParam = `&from=${encodeURIComponent(folder)}`;
             window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
-        });
-        if (openLineBtn) openLineBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
-            const fromParam = `&from=${encodeURIComponent(folder)}`;
-            window.location.href = `/line?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
         if (openMatchBtn) openMatchBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
