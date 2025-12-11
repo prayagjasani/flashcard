@@ -12,16 +12,16 @@ import threading
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import FileResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from gtts import gTTS
-from dotenv import load_dotenv
-import boto3
-from botocore.exceptions import ClientError
-from botocore.config import Config
-import uvicorn
+from fastapi import FastAPI, HTTPException, Response  # pyright: ignore[reportMissingImports]
+from fastapi.responses import FileResponse, StreamingResponse  # pyright: ignore[reportMissingImports]
+from fastapi.staticfiles import StaticFiles  # pyright: ignore[reportMissingImports]
+from pydantic import BaseModel  # pyright: ignore[reportMissingImports]
+from gtts import gTTS  # pyright: ignore[reportMissingImports]
+from dotenv import load_dotenv  # pyright: ignore[reportMissingImports]
+import boto3  # pyright: ignore[reportMissingImports]
+from botocore.exceptions import ClientError  # pyright: ignore[reportMissingImports]
+from botocore.config import Config  # pyright: ignore[reportMissingImports]
+import uvicorn  # pyright: ignore[reportMissingImports]
 
 app = FastAPI()
 

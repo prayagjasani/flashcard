@@ -266,7 +266,7 @@
             right: 4px;
             color: #acacac;
             border-radius: 6px;
-            padding: 2px 6px;
+            padding: 2px 3px;
             font-size: 0.6rem;
             font-weight: 600;
             letter-spacing: 0.02em;
@@ -788,14 +788,14 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             z-index: 1000;
             opacity: 0;
-            transform: translateY(5px);
+            transform: translate(-50%, -100%) translateY(-5px);
             transition: opacity 0.2s ease, transform 0.2s ease;
             pointer-events: none;
         }
         
         .tooltip.visible {
             opacity: 1;
-            transform: translateY(0);
+            transform: translate(-50%, -100%) translateY(0);
         }
     </style>
 </head>
@@ -1536,6 +1536,7 @@
         segmentsContainer.addEventListener('click', (e) => {
             const tappable = e.target.closest('.tappable-word');
             if (tappable) {
+                e.stopPropagation(); // Prevent hiding when clicking on word
                 const word = tappable.dataset.word;
                 const cleanWord = word.toLowerCase().replace(/[.,!?;:'"„"»«()]/g, '');
                 // Look up English meaning from vocabulary
@@ -1544,14 +1545,26 @@
             }
         });
 
+        // Hide tooltip when clicking anywhere else
+        document.addEventListener('click', (e) => {
+            // Don't hide if clicking on a tappable word (handled above)
+            if (!e.target.closest('.tappable-word') && !e.target.closest('.tooltip')) {
+                hideTooltip();
+            }
+        });
+
         function showTooltip(element, text) {
             const rect = element.getBoundingClientRect();
             tooltip.textContent = text;
             tooltip.style.left = `${rect.left + rect.width / 2}px`;
-            tooltip.style.top = `${rect.bottom + 8}px`;
-            tooltip.style.transform = 'translateX(-50%)';
+            tooltip.style.top = `${rect.top - 8}px`;
+            tooltip.style.transform = 'translate(-50%, -100%)';
             tooltip.classList.add('visible');
-            setTimeout(() => tooltip.classList.remove('visible'), 1500);
+            // No timeout - stays visible until user clicks elsewhere
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
         }
 
         // Events
