@@ -6,6 +6,11 @@ import json
 import base64
 import urllib.request
 import urllib.error
+import random
+import time
+import threading
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -248,7 +253,6 @@ def _gemini_generate_story(cards, deck_name: str):
     )
 
     # Pick 8-12 words for a short story
-    import random
     selected = cards[:12] if len(cards) <= 12 else random.sample(cards, 12)
     vocab_list = "\n".join([f'- {c["de"]} ({c["en"]})' for c in selected])
 
@@ -358,8 +362,7 @@ Remember: The best language learning happens when students are entertained and w
                 if isinstance(p0, dict) and "text" in p0:
                     return json.loads(p0["text"])
         return None
-    except Exception as e:
-        print(f"Story generation error: {e}")
+    except Exception:
         return None
 
 def _generate_story_audio_background(deck: str, segments: list):
@@ -471,11 +474,8 @@ def generate_story(deck: str, refresh: bool = False):
         raise HTTPException(status_code=500, detail="Failed to generate story")
 
     # For deck-based stories, mark an approximate level so UI can label it
-    try:
-        if isinstance(story, dict):
-            story.setdefault("level", "A1-B1")
-    except Exception:
-        pass
+    if isinstance(story, dict):
+        story.setdefault("level", "A1-B1")
 
     # Cache the story
     if r2_client and R2_BUCKET_NAME:
@@ -491,7 +491,7 @@ def generate_story(deck: str, refresh: bool = False):
             pass
 
     # Generate audio in background
-    if story.get("segments"):
+    if story and story.get("segments"):
         thread = threading.Thread(
             target=_generate_story_audio_background,
             args=(deck, story["segments"]),
@@ -520,7 +520,6 @@ def generate_custom_story(payload: CustomStoryRequest):
         level = "A2"
     
     # Generate a unique story ID
-    import time
     story_id = payload.story_id or f"custom_{int(time.time())}"
     safe_id = _safe_deck_name(story_id)
     
@@ -530,11 +529,8 @@ def generate_custom_story(payload: CustomStoryRequest):
         raise HTTPException(status_code=500, detail="Failed to generate story")
 
     # Attach level metadata so it can be shown in the UI
-    try:
-        if isinstance(story, dict):
-            story.setdefault("level", level)
-    except Exception:
-        pass
+    if isinstance(story, dict):
+        story.setdefault("level", level)
     
     # Cache the story
     if r2_client and R2_BUCKET_NAME:
@@ -550,7 +546,7 @@ def generate_custom_story(payload: CustomStoryRequest):
             pass
     
     # Generate audio in background
-    if story.get("segments"):
+    if story and story.get("segments"):
         thread = threading.Thread(
             target=_generate_story_audio_background,
             args=(safe_id, story["segments"]),
@@ -658,8 +654,7 @@ Remember: The best language learning happens when students are entertained and w
                 if isinstance(p0, dict) and "text" in p0:
                     return json.loads(p0["text"])
         return None
-    except Exception as e:
-        print(f"Custom story generation error: {e}")
+    except Exception:
         return None
 
 @app.get("/story/audio")
@@ -748,8 +743,6 @@ def list_stories():
                 break
         
         # Second pass: fetch story metadata in parallel
-        import concurrent.futures
-        
         def fetch_story_metadata(item):
             story_info = {
                 "deck": item["deck"],
@@ -769,7 +762,7 @@ def list_stories():
             return story_info
         
         stories = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             stories = list(executor.map(fetch_story_metadata, story_keys))
         
         return {"stories": stories}
@@ -1053,15 +1046,12 @@ def update_deck(payload: DeckUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update deck CSV: {e}")
 
-import threading
-
 # Background task queue for audio generation
 _audio_generation_executor = None
 
 def _get_audio_executor():
     global _audio_generation_executor
     if _audio_generation_executor is None:
-        from concurrent.futures import ThreadPoolExecutor
         _audio_generation_executor = ThreadPoolExecutor(max_workers=4)
     return _audio_generation_executor
 
@@ -1839,8 +1829,6 @@ def generate_lines(deck: str, limit: int | None = None, refresh: bool = False):
 
         if r2_client and R2_BUCKET_NAME:
             try:
-                import asyncio
-                from concurrent.futures import ThreadPoolExecutor
                 async def process_one(it):
                     text = (it.get("line_de") or "").strip()
                     if not text:
@@ -1942,9 +1930,6 @@ async def preload_deck_audio(deck: str, lang: str = "de"):
         cards = get_cards(deck)
         
         # Process all audio files concurrently
-        import asyncio
-        from concurrent.futures import ThreadPoolExecutor
-        
         async def process_audio_file(card):
             """Process a single audio file asynchronously."""
             text = card["de"]
@@ -2016,8 +2001,6 @@ async def preload_lines_audio(deck: str, lang: str = "de"):
         parsed = json.loads(data)
         items = parsed.get("items") if isinstance(parsed, dict) else parsed
         items = items or []
-        import asyncio
-        from concurrent.futures import ThreadPoolExecutor
         async def process_one(it):
             text = (it.get("line_de") or "").strip()
             if not text:
@@ -2316,7 +2299,6 @@ def order_decks_set(payload: DeckOrderUpdate):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    import os
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host=host, port=port)
