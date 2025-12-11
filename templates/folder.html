@@ -989,15 +989,216 @@
         let folderDropTarget = null;
         let draggingDeckName = null;
 
+        // Sub-folder drag reorder state
+        let dragFolderTileEl = null;
+        let dragFolderTileHeight = 0;
+
+        function ensureFolderPlaceholder(container) {
+            if (!container) return null;
+            let ph = container.querySelector('.folder-drop-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'folder-drop-placeholder';
+                ph.style.height = '60px';
+                ph.style.margin = '5px 0';
+                ph.style.border = '2px dashed var(--accent)';
+                ph.style.borderRadius = '14px';
+                ph.style.background = 'rgba(59, 130, 246, 0.1)';
+            }
+            let __h = dragFolderTileHeight || 60;
+            if (!__h) {
+                const __src = container.querySelector('.folder-tile');
+                if (__src) {
+                    const __r = __src.getBoundingClientRect();
+                    __h = Math.max(40, Math.round(__r.height));
+                }
+            }
+            ph.style.height = __h + 'px';
+            if (!ph.parentElement) container.appendChild(ph);
+            return ph;
+        }
+
+        function removeFolderPlaceholder(container) {
+            const ph = container ? container.querySelector('.folder-drop-placeholder') : null;
+            if (ph && ph.parentElement) ph.parentElement.removeChild(ph);
+        }
+
+        function placeFolderPlaceholder(container, index) {
+            if (!container) return;
+            const tiles = Array.from(container.querySelectorAll('.folder-tile'));
+            const ph = ensureFolderPlaceholder(container);
+            if (!tiles.length) return;
+            const clamped = Math.max(0, Math.min(index, tiles.length));
+            if (clamped >= tiles.length) container.appendChild(ph);
+            else container.insertBefore(ph, tiles[clamped]);
+        }
+
+        function folderIndexFromY(container, y) {
+            const tiles = Array.from(container.querySelectorAll('.folder-tile'));
+            for (let i = 0; i < tiles.length; i++) {
+                const r = tiles[i].getBoundingClientRect();
+                const mid = r.top + r.height / 2;
+                if (y < mid) return i;
+            }
+            return tiles.length;
+        }
+
+        function attachFolderDnD(tile, folderName, container) {
+            tile.setAttribute('draggable', 'true');
+            
+            tile.addEventListener('dragstart', (e) => {
+                draggingSubFolder = folderName;
+                e.dataTransfer.effectAllowed = 'move';
+                dragFolderTileEl = tile;
+                dragFolderTileHeight = Math.round(tile.getBoundingClientRect().height);
+                setTimeout(() => tile.classList.add('is-dragging-hidden'), 0);
+                const tiles = Array.from(container.querySelectorAll('.folder-tile'));
+                const idx = tiles.indexOf(tile);
+                placeFolderPlaceholder(container, idx < 0 ? 0 : idx);
+            });
+            
+            tile.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                // Only reorder if dragging a folder (not a deck)
+                if (!draggingSubFolder) return;
+                // Don't show reorder placeholder if hovering over a different folder (that's for nesting)
+                if (draggingSubFolder !== folderName) return;
+                const tiles = Array.from(container.querySelectorAll('.folder-tile'));
+                const idx = tiles.indexOf(tile);
+                placeFolderPlaceholder(container, idx < 0 ? 0 : idx);
+            });
+            
+            tile.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                clearFolderDropState();
+                
+                const ph = container.querySelector('.folder-drop-placeholder');
+                if (ph && dragFolderTileEl) {
+                    container.insertBefore(dragFolderTileEl, ph);
+                }
+                removeFolderPlaceholder(container);
+                if (dragFolderTileEl) dragFolderTileEl.classList.remove('is-dragging-hidden');
+                
+                // Save new order
+                const newOrder = Array.from(container.querySelectorAll('.folder-name')).map(el => el.textContent);
+                await writeOrder('folder', newOrder, null);
+                
+                dragFolderTileEl = null;
+                dragFolderTileHeight = 0;
+                draggingSubFolder = null;
+            });
+            
+            tile.addEventListener('dragend', () => {
+                tile.classList.remove('is-dragging-hidden');
+                removeFolderPlaceholder(container);
+                dragFolderTileEl = null;
+                dragFolderTileHeight = 0;
+                draggingSubFolder = null;
+                clearFolderDropState();
+            });
+            
+            // Touch drag for mobile
+            if (isCoarsePointer) {
+                let dragging = false;
+                let pressTimer = null;
+                let fingerY = 0;
+                let startY = 0;
+                const LONG_PRESS_MS = 400;
+                const MOVE_CANCEL_PX = 10;
+
+                function startPress(y) {
+                    startY = y;
+                    pressTimer = setTimeout(() => {
+                        dragging = true;
+                        dragFolderTileEl = tile;
+                        dragFolderTileHeight = Math.round(tile.getBoundingClientRect().height);
+                        tile.classList.add('is-dragging-hidden');
+                        tile.style.touchAction = 'none';
+                        document.body.style.overflow = 'hidden';
+                        const tiles = Array.from(container.querySelectorAll('.folder-tile'));
+                        const idx = tiles.indexOf(tile);
+                        placeFolderPlaceholder(container, idx < 0 ? 0 : idx);
+                    }, LONG_PRESS_MS);
+                }
+
+                function clearPress() {
+                    if (pressTimer) {
+                        clearTimeout(pressTimer);
+                        pressTimer = null;
+                    }
+                }
+
+                async function commitDrag() {
+                    if (!dragging) return;
+                    dragging = false;
+                    document.body.style.overflow = '';
+                    const ph = container.querySelector('.folder-drop-placeholder');
+                    if (ph && dragFolderTileEl) {
+                        container.insertBefore(dragFolderTileEl, ph);
+                    }
+                    removeFolderPlaceholder(container);
+                    tile.classList.remove('is-dragging-hidden');
+                    tile.style.touchAction = 'auto';
+                    const newOrder = Array.from(container.querySelectorAll('.folder-name')).map(el => el.textContent);
+                    await writeOrder('folder', newOrder, null);
+                    dragFolderTileEl = null;
+                    dragFolderTileHeight = 0;
+                }
+
+                tile.style.touchAction = 'auto';
+                tile.style.userSelect = 'none';
+                
+                tile.addEventListener('touchstart', (e) => {
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    startPress(t.clientY);
+                }, { passive: true });
+                
+                tile.addEventListener('touchmove', (e) => {
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    fingerY = t.clientY;
+                    if (!dragging) {
+                        if (Math.abs(t.clientY - startY) > MOVE_CANCEL_PX) {
+                            clearPress();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    const idx = folderIndexFromY(container, fingerY);
+                    placeFolderPlaceholder(container, idx);
+                }, { passive: false });
+                
+                tile.addEventListener('touchend', () => {
+                    clearPress();
+                    commitDrag();
+                });
+                
+                tile.addEventListener('touchcancel', () => {
+                    clearPress();
+                    dragging = false;
+                    document.body.style.overflow = '';
+                    tile.classList.remove('is-dragging-hidden');
+                    tile.style.touchAction = 'auto';
+                    removeFolderPlaceholder(container);
+                    dragFolderTileEl = null;
+                    dragFolderTileHeight = 0;
+                });
+            }
+        }
+
         // Render sub-folders
         function renderSubFolders() {
             subFolderGrid.innerHTML = '';
-            const subFolders = allFolders.filter(f => f.parent === folder);
+            let subFolders = allFolders.filter(f => f.parent === folder);
             
             if (subFolders.length === 0) {
                 subFoldersSection.style.display = 'none';
                 return;
             }
+            
+            // Apply saved order
+            subFolders = applyOrder(subFolders, 'folder', null);
             
             subFoldersSection.style.display = 'block';
             subFolders.forEach((f, i) => {
@@ -1072,25 +1273,15 @@
                     location.href = `/folder?name=${encodeURIComponent(f.name)}`;
                 });
                 
-                // Allow dragging sub-folders
-                tile.setAttribute('draggable', 'true');
-                tile.addEventListener('dragstart', (e) => {
-                    draggingSubFolder = f.name;
-                    e.dataTransfer.effectAllowed = 'move';
-                    tile.style.opacity = '0.5';
-                });
-                tile.addEventListener('dragend', () => {
-                    draggingSubFolder = null;
-                    tile.style.opacity = '1';
-                    clearFolderDropState();
-                });
+                // Attach drag-and-drop for reordering
+                attachFolderDnD(tile, f.name, subFolderGrid);
                 
-                // Allow dropping folders/decks into this folder
+                // Allow dropping folders/decks INTO this folder (nesting) - only on hover+hold
                 tile.addEventListener('dragenter', (e) => {
                     e.preventDefault();
-                    const isDraggingFolder = draggingSubFolder && draggingSubFolder !== f.name;
+                    const isDraggingOtherFolder = draggingSubFolder && draggingSubFolder !== f.name;
                     const isDraggingDeck = draggingDeckName;
-                    if (!isDraggingFolder && !isDraggingDeck) return;
+                    if (!isDraggingOtherFolder && !isDraggingDeck) return;
                     
                     clearFolderDropState();
                     tile.classList.add('folder-drop-target');
@@ -1112,11 +1303,6 @@
                     if (folderDropTarget === f.name) {
                         clearFolderDropState();
                     }
-                });
-                tile.addEventListener('dragover', (e) => e.preventDefault());
-                tile.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    clearFolderDropState();
                 });
                 
                 subFolderGrid.appendChild(tile);
@@ -1177,10 +1363,11 @@
             // show loader, fetch everything (including saved order), then render once.
             showLoader();
             try {
-                const [foldersData, decksData, deckOrderData] = await Promise.all([
+                const [foldersData, decksData, deckOrderData, folderOrderData] = await Promise.all([
                     fetch('/folders').then(r => r.json()).catch(() => ({ folders: [] })),
                     fetch('/decks').then(r => r.json()).catch(() => []),
-                    fetch(`/order/decks?scope=${encodeURIComponent(folder)}`).then(r => r.json()).catch(() => [])
+                    fetch(`/order/decks?scope=${encodeURIComponent(folder)}`).then(r => r.json()).catch(() => []),
+                    fetch('/order/folders').then(r => r.json()).catch(() => [])
                 ]);
 
                 // Save to cache so the home page can reuse this data
@@ -1188,6 +1375,9 @@
                 saveCache(CACHE_FOLDERS, allFolders);
                 const all = Array.isArray(decksData) ? decksData : [];
                 saveCache(CACHE_DECKS, all);
+
+                // Store folder order
+                ordersCache.folders = Array.isArray(folderOrderData) ? folderOrderData : [];
 
                 // Build breadcrumb, sub‑folders and ordered deck list
                 buildBreadcrumb();
