@@ -2744,21 +2744,7 @@
 
         // Optimized parallel loading function
         async function loadAllData() {
-            // Try to show cached data instantly first
-            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
-            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
-
-            if (cachedDecks && cachedFolders) {
-                // Show cached data immediately (no loader)
-                cachedDeckList = cachedDecks;
-                cachedFolderList = cachedFolders;
-                updateDeckCounts();
-                renderFolderGrid();
-                renderDeckGrid();
-                populateDeckSelect();
-            } else {
-                showLoader();
-            }
+            showLoader();
 
             // Fetch all data in parallel
             try {
@@ -2812,43 +2798,19 @@
         }
 
         async function loadDecks() {
-            // Try to show cached data instantly first
-            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
-            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
-            let lastRenderedSignature = null;
-
-            if (cachedDecks && cachedFolders) {
-                // Show cached data immediately (no loader)
-                cachedDeckList = cachedDecks;
-                cachedFolderList = cachedFolders;
-                updateDeckCounts();
-                renderFolderGrid();
-                renderDeckGrid();
-                lastRenderedSignature = cachedDeckList.map(d => d.name).join(',');
-            } else {
-                showLoader();
-            }
+            showLoader();
 
             // Fetch fresh data in background
             try {
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
-                const freshSignature = cachedDeckList.map(d => d.name).join(',');
-                
-                // Only re-render if data has changed from what we showed
-                if (lastRenderedSignature === null || freshSignature !== lastRenderedSignature) {
-                    saveToCache(CACHE_KEY_DECKS, cachedDeckList);
-                    updateDeckCounts();
-                    renderFolderGrid();
-                    renderDeckGrid();
-                }
+                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                updateDeckCounts();
+                renderFolderGrid();
+                renderDeckGrid();
             } catch (err) {
                 console.error('loadDecks error:', err);
-                if (lastRenderedSignature === null) {
-                    renderFolderGrid();
-                    renderDeckGrid();
-                }
             }
 
             hideLoader();
