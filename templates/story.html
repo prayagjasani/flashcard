@@ -219,6 +219,7 @@
             align-items: center;
             text-align: center;
             user-select: none;
+            position: relative;
         }
         
         .story-item:hover {
@@ -233,15 +234,15 @@
         
         .story-item__title {
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             margin: 0 0 4px 0;
             color: var(--text);
         }
         
         .story-item__subtitle {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--muted);
-            margin: 0 0 8px 0;
+            margin: 0 0 0px 0;
         }
         
         .story-item__meta {
@@ -257,6 +258,19 @@
             padding: 2px 8px;
             border-radius: 8px;
             font-size: 0.7rem;
+        }
+
+        .story-item__level {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            color: #acacac;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 0.5rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
         }
         /* Delete popup */
         
@@ -491,20 +505,38 @@
         .story-header {
             background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
             padding: 24px;
-            text-align: center;
             color: white;
         }
-        
+
+        .story-header-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
         .story-title {
             font-size: 1.5rem;
             font-weight: 700;
-            margin: 0 0 4px 0;
+            margin: 0;
         }
         
         .story-subtitle {
             font-size: 0.9rem;
             opacity: 0.9;
             margin: 0;
+        }
+
+        .story-level-badge {
+            background: rgba(15, 23, 42, 0.22);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
         }
         /* Story segment */
         
@@ -812,7 +844,10 @@
         <div id="storyContent" style="display: none;">
             <div class="story-card" id="storyCard">
                 <div class="story-header">
-                    <h1 class="story-title" id="storyTitle"></h1>
+                    <div class="story-header-top">
+                        <h1 class="story-title" id="storyTitle"></h1>
+                        <span class="story-level-badge" id="storyLevelBadge" style="display: none;"></span>
+                    </div>
                     <p class="story-subtitle" id="storySubtitle"></p>
                 </div>
                 <div id="segmentsContainer"></div>
@@ -872,6 +907,19 @@
                     What kind of story would you like to read?
                 </p>
                 <input type="text" id="storyTopicInput" placeholder="e.g., a trip to the airport, ordering food at a café..." style="width: 100%; padding: 14px 16px; border: 1px solid var(--card-border); border-radius: 12px; font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;">
+                <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                    <label for="storyLevelSelect" style="font-size: 0.85rem; color: var(--muted);">
+                        German level
+                    </label>
+                    <select id="storyLevelSelect" style="width: -webkit-fill-available; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--card-border); font-size: 0.85rem; font-family: inherit; background: var(--card-bg);">
+                        <option value="A1">A1 – Beginner</option>
+                        <option value="A2" selected>A2 – Elementary</option>
+                        <option value="B1">B1 – Intermediate</option>
+                        <option value="B2">B2 – Upper-Intermediate</option>
+                        <option value="C1">C1 – Advanced</option>
+                        <option value="C2">C2 – Proficient</option>
+                    </select>
+                </div>
                 <div style="margin-top: 16px; display: flex; gap: 12px;">
                     <button class="continue-btn" id="createStorySubmit" style="flex: 1; padding: 14px;">
                         Create Story
@@ -925,9 +973,11 @@
         const createModalBackdrop = document.getElementById('createModalBackdrop');
         const createModalClose = document.getElementById('createModalClose');
         const storyTopicInput = document.getElementById('storyTopicInput');
+        const storyLevelSelect = document.getElementById('storyLevelSelect');
         const createStorySubmit = document.getElementById('createStorySubmit');
         const randomStoryBtn = document.getElementById('randomStoryBtn');
         const tooltip = document.getElementById('tooltip');
+        const storyLevelBadge = document.getElementById('storyLevelBadge');
 
         // State
         const params = new URLSearchParams(location.search);
@@ -1030,17 +1080,14 @@
             });
 
             storyList.innerHTML = allStories.map(s => {
-                        const timeAgo = s.last_modified ? getTimeAgo(new Date(s.last_modified)) : '';
                         const title = s.title_de || s.deck;
                         const subtitle = s.title_en || '';
+                        const level = s.level || '';
                         return `
                     <div class="story-item" data-deck="${s.deck}" data-title="${title}">
+                        ${level ? `<span class="story-item__level">${level}</span>` : ''}
                         <h3 class="story-item__title">${title}</h3>
                         ${subtitle ? `<p class="story-item__subtitle">${subtitle}</p>` : ''}
-                        <div class="story-item__meta">
-                            <span class="story-item__deck">${s.deck}</span>
-                            ${timeAgo ? `<span>• ${timeAgo}</span>` : ''}
-                        </div>
                     </div>
                 `;
             }).join('');
@@ -1117,28 +1164,20 @@
             selectedStoryForAction = null;
         }
 
-        async function deleteSelectedStory() {
+        function deleteSelectedStory() {
             if (!selectedStoryForAction) return;
 
             const deck = selectedStoryForAction;
             closeActionPopup();
 
-            try {
-                const resp = await fetch(`/story/delete?deck=${encodeURIComponent(deck)}`, {
-                    method: 'DELETE'
-                });
+            // Remove from UI immediately
+            allStories = allStories.filter(s => s.deck !== deck);
+            renderStoryList();
 
-                if (resp.ok) {
-                    // Remove from local list and re-render
-                    allStories = allStories.filter(s => s.deck !== deck);
-                    renderStoryList();
-                } else {
-                    alert('Failed to delete story');
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                alert('Failed to delete story');
-            }
+            // Delete in background (fire-and-forget)
+            fetch(`/story/delete?deck=${encodeURIComponent(deck)}`, {
+                method: 'DELETE'
+            }).catch(err => console.warn('Background delete failed:', err));
         }
 
         async function loadStory(deck, refresh = false) {
@@ -1210,7 +1249,7 @@
             }
         }
 
-        async function loadStoryWithTopic(topic) {
+        async function loadStoryWithTopic(topic, level) {
             // Generate a unique ID for this story
             const storyId = 'custom_' + Date.now();
             currentDeck = storyId;
@@ -1241,7 +1280,7 @@
                 const resp = await fetch('/story/generate/custom', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic: topic, story_id: storyId })
+                    body: JSON.stringify({ topic: topic, story_id: storyId, level: level || 'A2' })
                 });
                 const data = await resp.json();
 
@@ -1326,6 +1365,14 @@
 
             storyTitle.textContent = story.title_de || 'Geschichte';
             storySubtitle.textContent = story.title_en || 'Story';
+
+            const level = story.level || story.Level || story.cefr_level || null;
+            if (level) {
+                storyLevelBadge.textContent = level;
+                storyLevelBadge.style.display = 'inline-flex';
+            } else {
+                storyLevelBadge.style.display = 'none';
+            }
 
             segmentsContainer.innerHTML = '';
             continueBtn.textContent = 'Continue';
@@ -1446,6 +1493,7 @@
         // Create story modal
         function openCreateModal() {
             storyTopicInput.value = '';
+            storyLevelSelect.value = 'A2';
             createModal.classList.add('visible');
             setTimeout(() => storyTopicInput.focus(), 100);
         }
@@ -1456,7 +1504,8 @@
 
         async function createStoryWithTopic(topic) {
             closeCreateModal();
-            await loadStoryWithTopic(topic);
+            const level = storyLevelSelect.value || 'A2';
+            await loadStoryWithTopic(topic, level);
         }
 
         async function createRandomStory() {
@@ -1478,8 +1527,9 @@
                 'moving to a new apartment'
             ];
             const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+            const level = storyLevelSelect.value || 'A2';
             closeCreateModal();
-            await loadStoryWithTopic(randomTopic);
+            await loadStoryWithTopic(randomTopic, level);
         }
 
         // Tooltip for any tappable word - show English meaning

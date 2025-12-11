@@ -252,24 +252,64 @@ def _gemini_generate_story(cards, deck_name: str):
     selected = cards[:12] if len(cards) <= 12 else random.sample(cards, 12)
     vocab_list = "\n".join([f'- {c["de"]} ({c["en"]})' for c in selected])
 
-    prompt = f"""You are a creative German language teacher writing engaging stories for A1-B1 learners.
+    # Pick a random story theme for variety
+    story_themes = [
+        "a hilarious misunderstanding at a café where someone orders completely the wrong thing",
+        "a mini mystery where something goes missing and friends must find it",
+        "an awkward first date with unexpected surprises",
+        "a chaotic day where everything goes wrong but ends well",
+        "a funny competition between friends or neighbors",
+        "a surprise party with last-minute disasters",
+        "a mix-up that leads to an unexpected adventure",
+        "a bet between friends with silly consequences",
+        "someone trying to impress someone else but failing hilariously",
+        "a day trip that doesn't go as planned at all",
+    ]
+    theme = random.choice(story_themes)
 
-Create a SHORT STORY (like Duolingo stories) using these vocabulary words:
+    prompt = f"""You are a comedy writer creating SHORT, PUNCHY stories for German learners. Think sitcom vibes!
+
+Create a funny, memorable story using these vocabulary words:
 {vocab_list}
 
-Requirements:
-1. Create a story with 2-3 characters (give them names like Anna, Max, Lisa, Tom)
-2. Write 8-12 scenes/segments
-3. Each segment should be 1-3 sentences in German
-4. Include dialogue between characters
-5. Use simple German (A1-B1 level)
-6. Make it engaging with a mini plot (meeting someone, ordering food, travel adventure, etc.)
-7. IMPORTANT: Include a "vocabulary" object with English translations for ALL German words used in the story
+STORY THEME: {theme}
+
+CRITICAL RULES FOR ENGAGING STORIES:
+1. START with action or dialogue - NO boring intros like "Anna is a student" or "It is a sunny day"
+2. Create 2-3 characters with DISTINCT personalities (one nervous, one confident, one sarcastic, etc.)
+3. By segment 2 or 3, introduce a CLEAR PROBLEM or goal (e.g. something is lost, a plan goes wrong, someone makes a mistake, someone wants to impress another person)
+4. Make the problem WORSE or more complicated before it gets better
+5. Include at least ONE unexpected twist or surprise
+6. Show how the characters FEEL (embarrassed, excited, stressed, relieved, etc.) and let this affect what they say
+7. End with a punchline, callback, or satisfying resolution where something has CHANGED (a decision, a relationship, a plan, etc.)
+8. Keep dialogue snappy - like how real people talk!
+
+STRUCTURE (8-12 segments):
+- Hook: Start in the middle of action or with intriguing dialogue
+- Problem: The situation becomes difficult, awkward, or risky
+- Escalation: Complications and misunderstandings
+- Twist: Something unexpected happens
+- Resolution: Funny or heartwarming ending
+
+STYLE:
+- At least half of the segments should be DIALOGUE
+- The remaining segments should be NARRATION that adds tension, emotion, or humor (not just describing the weather)
+- Use the given theme directly in the plot
+
+AVOID:
+- Generic openings ("Today is a nice day", "Anna wakes up")
+- Simple "perfect day" stories where nothing really goes wrong or changes
+- Characters just listing what they are doing
+- Stories that only describe the location (beach, park, home) without a real problem
+- Predictable storylines
+- Flat, emotionless dialogue
+
+Use simple German (A1-B1), but make it DRAMATIC, FUNNY, and MEMORABLE!
 
 Output ONLY a JSON object with this exact structure:
 {{
-  "title_de": "Story title in German",
-  "title_en": "Story title in English",
+  "title_de": "Catchy German title",
+  "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
   "vocabulary": {{
     "german_word": "english meaning",
@@ -292,7 +332,8 @@ Output ONLY a JSON object with this exact structure:
 The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
 Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), etc.
 The highlight_words should contain vocabulary words from the input list that appear in that segment.
-Make the story fun and relatable!"""
+
+Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
     body = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -429,6 +470,13 @@ def generate_story(deck: str, refresh: bool = False):
     if not story:
         raise HTTPException(status_code=500, detail="Failed to generate story")
 
+    # For deck-based stories, mark an approximate level so UI can label it
+    try:
+        if isinstance(story, dict):
+            story.setdefault("level", "A1-B1")
+    except Exception:
+        pass
+
     # Cache the story
     if r2_client and R2_BUCKET_NAME:
         try:
@@ -456,6 +504,7 @@ def generate_story(deck: str, refresh: bool = False):
 class CustomStoryRequest(BaseModel):
     topic: str
     story_id: str | None = None
+    level: str | None = "A2"
 
 @app.post("/story/generate/custom")
 def generate_custom_story(payload: CustomStoryRequest):
@@ -463,6 +512,12 @@ def generate_custom_story(payload: CustomStoryRequest):
     topic = (payload.topic or "").strip()
     if not topic:
         raise HTTPException(status_code=400, detail="Topic is required")
+
+    # Normalise and validate level (CEFR A1–C2)
+    level = (payload.level or "A2").upper()
+    valid_levels = {"A1", "A2", "B1", "B2", "C1", "C2"}
+    if level not in valid_levels:
+        level = "A2"
     
     # Generate a unique story ID
     import time
@@ -470,9 +525,16 @@ def generate_custom_story(payload: CustomStoryRequest):
     safe_id = _safe_deck_name(story_id)
     
     # Generate story with custom topic
-    story = _gemini_generate_custom_story(topic)
+    story = _gemini_generate_custom_story(topic, level=level)
     if not story:
         raise HTTPException(status_code=500, detail="Failed to generate story")
+
+    # Attach level metadata so it can be shown in the UI
+    try:
+        if isinstance(story, dict):
+            story.setdefault("level", level)
+    except Exception:
+        pass
     
     # Cache the story
     if r2_client and R2_BUCKET_NAME:
@@ -498,7 +560,7 @@ def generate_custom_story(payload: CustomStoryRequest):
     
     return {"story": story, "story_id": safe_id}
 
-def _gemini_generate_custom_story(topic: str):
+def _gemini_generate_custom_story(topic: str, level: str = "A2"):
     """Generate a story based on a custom topic using Gemini."""
     if not GEMINI_API_KEY:
         return None
@@ -509,23 +571,47 @@ def _gemini_generate_custom_story(topic: str):
         f"{model}:generateContent?key={GEMINI_API_KEY}"
     )
     
-    prompt = f"""You are a creative German language teacher writing engaging stories for A1-B1 learners.
+    prompt = f"""You are a comedy writer creating SHORT, PUNCHY stories for German learners.
+The target CEFR level is {level}. Adjust the vocabulary and grammar to match this level
+(A1 = very simple everyday language, C2 = very advanced, natural native-like language).
 
-Create a SHORT STORY about: {topic}
+Create a funny, memorable story about: {topic}
 
-Requirements:
-1. Create a story with 2-3 characters (give them German names like Anna, Max, Lisa, Tom, Ben, Sophie)
-2. Write 8-12 scenes/segments
-3. Each segment should be 1-3 sentences in German
-4. Include dialogue between characters
-5. Use simple German (A1-B1 level)
-6. Make it engaging and fun to read
-7. IMPORTANT: Include a "vocabulary" object with English translations for ALL German words used
+CRITICAL RULES FOR ENGAGING STORIES:
+1. START with action or dialogue - NO boring intros like "Anna is a student" or "It is a sunny day"
+2. Create 2-3 characters with DISTINCT personalities (one nervous, one confident, one sarcastic, etc.)
+3. By segment 2 or 3, introduce a CLEAR PROBLEM or goal (e.g. something is lost, a plan goes wrong, someone makes a mistake, someone wants to impress another person)
+4. Make the problem WORSE or more complicated before it gets better
+5. Include at least ONE unexpected twist or surprise
+6. Show how the characters FEEL (embarrassed, excited, stressed, relieved, etc.) and let this affect what they say
+7. End with a punchline, callback, or satisfying resolution where something has CHANGED (a decision, a relationship, a plan, etc.)
+8. Keep dialogue snappy - like how real people talk!
+
+STRUCTURE (8-12 segments):
+- Hook: Start in the middle of action or with intriguing dialogue
+- Problem: The situation becomes difficult, awkward, or risky
+- Escalation: Complications and misunderstandings
+- Twist: Something unexpected happens
+- Resolution: Funny or heartwarming ending
+
+STYLE:
+- At least half of the segments should be DIALOGUE
+- The remaining segments should be NARRATION that adds tension, emotion, or humor (not just describing the weather)
+
+AVOID:
+- Generic openings ("Today is a nice day", "Anna wakes up")
+- Simple "perfect day" stories where nothing really goes wrong or changes
+- Characters just listing what they are doing
+- Stories that only describe the location (beach, park, home) without a real problem
+- Predictable storylines
+- Flat, emotionless dialogue
+
+Use German that is mostly at level {level}, but make it DRAMATIC, FUNNY, and MEMORABLE!
 
 Output ONLY a JSON object with this exact structure:
 {{
-  "title_de": "Story title in German",
-  "title_en": "Story title in English",
+  "title_de": "Catchy German title",
+  "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
   "vocabulary": {{
     "german_word": "english meaning",
@@ -546,7 +632,8 @@ Output ONLY a JSON object with this exact structure:
 
 The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
 Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), prepositions, etc.
-Make the story fun, relatable, and educational!"""
+
+Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
     body = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -627,7 +714,8 @@ def list_stories():
         return {"stories": []}
     
     try:
-        stories = []
+        # First pass: collect all story keys
+        story_keys = []
         prefix = f"{R2_BUCKET_NAME}/stories/"
         continuation = None
         
@@ -639,51 +727,50 @@ def list_stories():
             
             for obj in resp.get("Contents", []):
                 key = obj.get("Key", "")
+                last_modified = obj.get("LastModified").isoformat() if obj.get("LastModified") else None
+                
                 # New structure: stories/{deck}/story.json
                 if key.endswith("/story.json"):
-                    # Extract deck name from key: stories/{deck}/story.json
                     parts = key.split("/")
                     if len(parts) >= 3:
-                        name = parts[-2]  # The deck folder name
-                        story_info = {
-                            "deck": name,
-                            "last_modified": obj.get("LastModified").isoformat() if obj.get("LastModified") else None,
-                            "title_de": None,
-                            "title_en": None
-                        }
-                        # Try to read the story title
-                        try:
-                            story_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
-                            story_data = json.loads(story_obj["Body"].read().decode("utf-8"))
-                            story_info["title_de"] = story_data.get("title_de")
-                            story_info["title_en"] = story_data.get("title_en")
-                        except Exception:
-                            pass
-                        stories.append(story_info)
-                # Also support old structure for backwards compatibility: stories/{deck}.json
+                        name = parts[-2]
+                        story_keys.append({"key": key, "deck": name, "last_modified": last_modified})
+                # Old structure: stories/{deck}.json
                 elif key.endswith(".json") and "/audio/" not in key:
                     parts = key.split("/")
-                    if len(parts) == 3:  # bucket/stories/name.json
+                    if len(parts) == 3:
                         name = parts[-1].replace(".json", "")
-                        story_info = {
-                            "deck": name,
-                            "last_modified": obj.get("LastModified").isoformat() if obj.get("LastModified") else None,
-                            "title_de": None,
-                            "title_en": None
-                        }
-                        try:
-                            story_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
-                            story_data = json.loads(story_obj["Body"].read().decode("utf-8"))
-                            story_info["title_de"] = story_data.get("title_de")
-                            story_info["title_en"] = story_data.get("title_en")
-                        except Exception:
-                            pass
-                        stories.append(story_info)
+                        story_keys.append({"key": key, "deck": name, "last_modified": last_modified})
             
             if resp.get("IsTruncated"):
                 continuation = resp.get("NextContinuationToken")
             else:
                 break
+        
+        # Second pass: fetch story metadata in parallel
+        import concurrent.futures
+        
+        def fetch_story_metadata(item):
+            story_info = {
+                "deck": item["deck"],
+                "last_modified": item["last_modified"],
+                "title_de": None,
+                "title_en": None,
+                "level": None,
+            }
+            try:
+                story_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=item["key"])
+                story_data = json.loads(story_obj["Body"].read().decode("utf-8"))
+                story_info["title_de"] = story_data.get("title_de")
+                story_info["title_en"] = story_data.get("title_en")
+                story_info["level"] = story_data.get("level")
+            except Exception:
+                pass
+            return story_info
+        
+        stories = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            stories = list(executor.map(fetch_story_metadata, story_keys))
         
         return {"stories": stories}
     except Exception as e:
