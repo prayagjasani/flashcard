@@ -1595,7 +1595,8 @@
         }
         
         .deck-tile.menu-open {
-            z-index: 2500;
+            z-index: 4000 !important;
+            transform: translateZ(10px); /* Force it to be "closer" if 3D transform is involved */
         }
         
         .kebab-menu.is-open {

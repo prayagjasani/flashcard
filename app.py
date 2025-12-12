@@ -18,10 +18,28 @@ from fastapi.staticfiles import StaticFiles  # pyright: ignore[reportMissingImpo
 from pydantic import BaseModel  # pyright: ignore[reportMissingImports]
 from gtts import gTTS  # pyright: ignore[reportMissingImports]
 from dotenv import load_dotenv  # pyright: ignore[reportMissingImports]
-import boto3  # pyright: ignore[reportMissingImports]
 from botocore.exceptions import ClientError  # pyright: ignore[reportMissingImports]
-from botocore.config import Config  # pyright: ignore[reportMissingImports]
+from datetime import datetime
 import uvicorn  # pyright: ignore[reportMissingImports]
+from utils import safe_deck_name as _safe_deck_name, safe_tts_key
+from services.storage import (
+    r2_client, R2_BUCKET_NAME, 
+    order_folders_key as _order_folders_key, 
+    order_decks_key as _order_decks_key, 
+    lines_key as _lines_key,
+    story_key as _story_key, 
+    story_audio_key as _story_audio_key, 
+    story_audio_prefix as _story_audio_prefix,
+    get_stories_index,
+    update_stories_index,
+    remove_from_stories_index
+)
+from services.ai import (
+    generate_lines as _gemini_generate_lines, 
+    generate_story as _gemini_generate_story, 
+    generate_custom_story as _gemini_generate_custom_story,
+    GEMINI_API_KEY
+)
 
 app = FastAPI()
 
@@ -31,106 +49,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Load environment variables from a local .env file if present
 load_dotenv()
 
-# Cloudflare R2 (S3 API) configuration via environment variables
-R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID") or os.getenv("R2_ACCESS_KEY_ID")
-R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY") or os.getenv("R2_SECRET_ACCESS_KEY")
-R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
-R2_BUCKET_NAME = os.getenv("CLOUDFLARE_R2_BUCKET") or os.getenv("R2_BUCKET")
-R2_PUBLIC_URL_BASE = os.getenv("R2_PUBLIC_URL_BASE")
+def _safe_tts_key(text: str, lang: str = "de") -> str:
+    return safe_tts_key(text, R2_BUCKET_NAME, lang)
 
-# Endpoint can be provided directly or derived from account id
-R2_ENDPOINT = (
-    os.getenv("CLOUDFLARE_R2_ENDPOINT")
-    or os.getenv("R2_ENDPOINT_URL")
-    or (f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else None)
-)
 
-r2_client = None
-if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT:
-    try:
-        r2_client = boto3.client(
-            "s3",
-            aws_access_key_id=R2_ACCESS_KEY_ID,
-            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-            endpoint_url=R2_ENDPOINT,
-            region_name="auto",
-            config=Config(s3={"addressing_style": "path"}),
-        )
-    except Exception:
-        r2_client = None
 
-# Gemini API - Force load from .env file to override system env vars
-load_dotenv(override=True)  # Force override system environment variables
-GEMINI_API_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
-
-def _gemini_generate_lines(cards):
-    if not GEMINI_API_KEY:
-        return []
-
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
-
-    def run_chunk(chunk):
-        vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in chunk])
-        prompt = f"""
-You are an expert German language teacher.
-
-Generate PRACTICAL, REAL-LIFE example sentences for A1–B1 learners.
-
-Output ONLY a JSON array with objects of fields: de,en,line_de,line_en.
-
-Echo the input values for fields de and en exactly as provided.
-
-Sentences 8–14 words; daily-life contexts; not literal translations; correct German grammar.
-
-Vocabulary:
-{vocab_list}
-"""
-        body = {
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"response_mime_type": "application/json"},
-        }
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])  
-                if isinstance(p0, dict) and "inlineData" in p0:
-                    data_b64 = p0["inlineData"].get("data", "")
-                    if data_b64:
-                        raw_json = base64.b64decode(data_b64).decode("utf-8")
-                        return json.loads(raw_json)
-        if isinstance(parsed, list):
-            return parsed
-        return []
-
-    all_items = []
-    CHUNK_SIZE = 30
-    i = 0
-    while i < len(cards):
-        chunk = cards[i:i+CHUNK_SIZE]
-        try:
-            res = run_chunk(chunk) or []
-            if isinstance(res, list):
-                all_items.extend(res)
-        except Exception:
-            pass  # Skip failed chunks silently
-        i += CHUNK_SIZE
-    return all_items
 
 # -------------------------------
 # MODELS
@@ -173,29 +96,27 @@ class DeckOrderUpdate(BaseModel):
     order: list[str]
 
 # -------------------------------
+# CACHE HELPERS
+# -------------------------------
+_cache_store = {}
+def get_cached(key, ttl):
+    entry = _cache_store.get(key)
+    if entry and time.time() - entry["ts"] < ttl:
+        return entry["val"]
+    return None
+
+def set_cached(key, val):
+    _cache_store[key] = {"val": val, "ts": time.time()}
+
+def invalidate_cache(key_prefix):
+    for k in list(_cache_store.keys()):
+        if k.startswith(key_prefix):
+            del _cache_store[k]
+
+# -------------------------------
 # HELPER FUNCTIONS
 # -------------------------------
-def _safe_deck_name(name: str) -> str:
-    """Sanitize deck name for file/key usage."""
-    return re.sub(r"[^a-zA-Z0-9_-]+", "_", name.strip())[:50]
 
-def _safe_tts_key(text: str, lang: str = "de") -> str:
-    """Generate safe R2 key for TTS audio."""
-    safe = re.sub(r"[^A-Za-z0-9_\-]", "_", text).strip("_")
-    if not safe:
-        safe = "tts"
-    return f"{R2_BUCKET_NAME}/tts/{lang}/{safe}.mp3"
-
-def _order_folders_key() -> str:
-    return f"{R2_BUCKET_NAME}/order/folders.json"
-
-def _order_decks_key(scope: str | None) -> str:
-    s = _safe_deck_name(scope or "root") or "root"
-    return f"{R2_BUCKET_NAME}/order/decks/{s}.json"
-
-def _lines_key(deck: str) -> str:
-    safe = _safe_deck_name(deck)
-    return f"{R2_BUCKET_NAME}/lines/{safe}.json"
 
 # -------------------------------
 # BASIC ROUTES
@@ -224,146 +145,9 @@ def line_screen():
 def story_screen():
     return FileResponse('templates/story.html')
 
-def _story_key(deck: str) -> str:
-    safe = _safe_deck_name(deck)
-    return f"{R2_BUCKET_NAME}/stories/{safe}/story.json"
 
-def _story_audio_key(deck: str, text: str) -> str:
-    """Generate R2 key for story-specific audio file."""
-    safe_deck = _safe_deck_name(deck)
-    safe_text = re.sub(r"[^A-Za-z0-9_\-]", "_", text).strip("_")
-    if not safe_text:
-        safe_text = "audio"
-    return f"{R2_BUCKET_NAME}/stories/{safe_deck}/audio/{safe_text}.mp3"
 
-def _story_audio_prefix(deck: str) -> str:
-    """Get the prefix for all audio files of a story."""
-    safe_deck = _safe_deck_name(deck)
-    return f"{R2_BUCKET_NAME}/stories/{safe_deck}/audio/"
 
-def _gemini_generate_story(cards, deck_name: str):
-    """Generate an actual narrative story using vocabulary from the deck."""
-    if not GEMINI_API_KEY:
-        return None
-
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
-
-    # Pick 8-12 words for a short story
-    selected = cards[:12] if len(cards) <= 12 else random.sample(cards, 12)
-    vocab_list = "\n".join([f'- {c["de"]} ({c["en"]})' for c in selected])
-
-    # Pick a random story theme for variety
-    story_themes = [
-        "a hilarious misunderstanding at a café where someone orders completely the wrong thing",
-        "a mini mystery where something goes missing and friends must find it",
-        "an awkward first date with unexpected surprises",
-        "a chaotic day where everything goes wrong but ends well",
-        "a funny competition between friends or neighbors",
-        "a surprise party with last-minute disasters",
-        "a mix-up that leads to an unexpected adventure",
-        "a bet between friends with silly consequences",
-        "someone trying to impress someone else but failing hilariously",
-        "a day trip that doesn't go as planned at all",
-    ]
-    theme = random.choice(story_themes)
-
-    prompt = f"""You are a comedy writer creating SHORT, PUNCHY stories for German learners. Think sitcom vibes!
-
-Create a funny, memorable story using these vocabulary words:
-{vocab_list}
-
-STORY THEME: {theme}
-
-CRITICAL RULES FOR ENGAGING STORIES:
-1. START with action or dialogue - NO boring intros like "Anna is a student" or "It is a sunny day"
-2. Create 2-3 characters with DISTINCT personalities (one nervous, one confident, one sarcastic, etc.)
-3. By segment 2 or 3, introduce a CLEAR PROBLEM or goal (e.g. something is lost, a plan goes wrong, someone makes a mistake, someone wants to impress another person)
-4. Make the problem WORSE or more complicated before it gets better
-5. Include at least ONE unexpected twist or surprise
-6. Show how the characters FEEL (embarrassed, excited, stressed, relieved, etc.) and let this affect what they say
-7. End with a punchline, callback, or satisfying resolution where something has CHANGED (a decision, a relationship, a plan, etc.)
-8. Keep dialogue snappy - like how real people talk!
-
-STRUCTURE (8-12 segments):
-- Hook: Start in the middle of action or with intriguing dialogue
-- Problem: The situation becomes difficult, awkward, or risky
-- Escalation: Complications and misunderstandings
-- Twist: Something unexpected happens
-- Resolution: Funny or heartwarming ending
-
-STYLE:
-- At least half of the segments should be DIALOGUE
-- The remaining segments should be NARRATION that adds tension, emotion, or humor (not just describing the weather)
-- Use the given theme directly in the plot
-
-AVOID:
-- Generic openings ("Today is a nice day", "Anna wakes up")
-- Simple "perfect day" stories where nothing really goes wrong or changes
-- Characters just listing what they are doing
-- Stories that only describe the location (beach, park, home) without a real problem
-- Predictable storylines
-- Flat, emotionless dialogue
-
-Use simple German (A1-B1), but make it DRAMATIC, FUNNY, and MEMORABLE!
-
-Output ONLY a JSON object with this exact structure:
-{{
-  "title_de": "Catchy German title",
-  "title_en": "Catchy English title",
-  "characters": ["Name1", "Name2"],
-  "vocabulary": {{
-    "german_word": "english meaning",
-    "Flughafen": "airport",
-    "sind": "are",
-    "am": "at the",
-    "angekommen": "arrived"
-  }},
-  "segments": [
-    {{
-      "type": "narration" or "dialogue",
-      "speaker": "narrator" or character name,
-      "text_de": "German text",
-      "text_en": "English translation",
-      "highlight_words": ["word1", "word2"]
-    }}
-  ]
-}}
-
-The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
-Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), etc.
-The highlight_words should contain vocabulary words from the input list that appear in that segment.
-
-Remember: The best language learning happens when students are entertained and want to know what happens next!"""
-
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-    
-    try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])
-        return None
-    except Exception:
-        return None
 
 def _generate_story_audio_background(deck: str, segments: list):
     """Generate all audio files for a story in background."""
@@ -489,6 +273,18 @@ def generate_story(deck: str, refresh: bool = False):
             )
         except Exception:
             pass
+            
+        # Update stories index
+        if story and isinstance(story, dict):
+             meta = {
+                 "key": key,
+                 "deck": _safe_deck_name(deck),
+                 "last_modified": datetime.now().isoformat(),
+                 "title_de": story.get("title_de"),
+                 "title_en": story.get("title_en"),
+                 "level": story.get("level")
+             }
+             update_stories_index(meta)
 
     # Generate audio in background
     if story and story.get("segments"):
@@ -544,7 +340,19 @@ def generate_custom_story(payload: CustomStoryRequest):
             )
         except Exception:
             pass
-    
+            
+        # Update stories index
+        if story and isinstance(story, dict):
+             meta = {
+                 "key": f"{R2_BUCKET_NAME}/stories/{safe_id}/story.json",
+                 "deck": safe_id,
+                 "last_modified": datetime.now().isoformat(),
+                 "title_de": story.get("title_de"),
+                 "title_en": story.get("title_en"),
+                 "level": story.get("level")
+             }
+             update_stories_index(meta)
+
     # Generate audio in background
     if story and story.get("segments"):
         thread = threading.Thread(
@@ -556,106 +364,7 @@ def generate_custom_story(payload: CustomStoryRequest):
     
     return {"story": story, "story_id": safe_id}
 
-def _gemini_generate_custom_story(topic: str, level: str = "A2"):
-    """Generate a story based on a custom topic using Gemini."""
-    if not GEMINI_API_KEY:
-        return None
-    
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
-    
-    prompt = f"""You are a comedy writer creating SHORT, PUNCHY stories for German learners.
-The target CEFR level is {level}. Adjust the vocabulary and grammar to match this level
-(A1 = very simple everyday language, C2 = very advanced, natural native-like language).
 
-Create a funny, memorable story about: {topic}
-
-CRITICAL RULES FOR ENGAGING STORIES:
-1. START with action or dialogue - NO boring intros like "Anna is a student" or "It is a sunny day"
-2. Create 2-3 characters with DISTINCT personalities (one nervous, one confident, one sarcastic, etc.)
-3. By segment 2 or 3, introduce a CLEAR PROBLEM or goal (e.g. something is lost, a plan goes wrong, someone makes a mistake, someone wants to impress another person)
-4. Make the problem WORSE or more complicated before it gets better
-5. Include at least ONE unexpected twist or surprise
-6. Show how the characters FEEL (embarrassed, excited, stressed, relieved, etc.) and let this affect what they say
-7. End with a punchline, callback, or satisfying resolution where something has CHANGED (a decision, a relationship, a plan, etc.)
-8. Keep dialogue snappy - like how real people talk!
-
-STRUCTURE (8-12 segments):
-- Hook: Start in the middle of action or with intriguing dialogue
-- Problem: The situation becomes difficult, awkward, or risky
-- Escalation: Complications and misunderstandings
-- Twist: Something unexpected happens
-- Resolution: Funny or heartwarming ending
-
-STYLE:
-- At least half of the segments should be DIALOGUE
-- The remaining segments should be NARRATION that adds tension, emotion, or humor (not just describing the weather)
-
-AVOID:
-- Generic openings ("Today is a nice day", "Anna wakes up")
-- Simple "perfect day" stories where nothing really goes wrong or changes
-- Characters just listing what they are doing
-- Stories that only describe the location (beach, park, home) without a real problem
-- Predictable storylines
-- Flat, emotionless dialogue
-
-Use German that is mostly at level {level}, but make it DRAMATIC, FUNNY, and MEMORABLE!
-
-Output ONLY a JSON object with this exact structure:
-{{
-  "title_de": "Catchy German title",
-  "title_en": "Catchy English title",
-  "characters": ["Name1", "Name2"],
-  "vocabulary": {{
-    "german_word": "english meaning",
-    "der": "the",
-    "ist": "is",
-    "und": "and"
-  }},
-  "segments": [
-    {{
-      "type": "narration" or "dialogue",
-      "speaker": "narrator" or character name,
-      "text_de": "German text",
-      "text_en": "English translation",
-      "highlight_words": ["key", "vocabulary", "words"]
-    }}
-  ]
-}}
-
-The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
-Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), prepositions, etc.
-
-Remember: The best language learning happens when students are entertained and want to know what happens next!"""
-
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-    
-    try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])
-        return None
-    except Exception:
-        return None
 
 @app.get("/story/audio")
 def get_story_audio(deck: str, text: str):
@@ -702,14 +411,11 @@ def get_story_audio(deck: str, text: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/stories/list")
-def list_stories():
-    """List all available generated stories with their titles."""
+def _rebuild_stories_index_internal():
     if not r2_client or not R2_BUCKET_NAME:
-        return {"stories": []}
+        return []
     
     try:
-        # First pass: collect all story keys
         story_keys = []
         prefix = f"{R2_BUCKET_NAME}/stories/"
         continuation = None
@@ -742,7 +448,6 @@ def list_stories():
             else:
                 break
         
-        # Second pass: fetch story metadata in parallel
         def fetch_story_metadata(item):
             story_info = {
                 "deck": item["deck"],
@@ -765,9 +470,47 @@ def list_stories():
         with ThreadPoolExecutor(max_workers=10) as executor:
             stories = list(executor.map(fetch_story_metadata, story_keys))
         
-        return {"stories": stories}
-    except Exception as e:
-        return {"stories": [], "error": str(e)}
+        # Sort by last_modified desc
+        stories.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
+        
+        # Update index
+        try:
+             # Importing stories_index_key helper...
+             from services.storage import stories_index_key
+             key = stories_index_key()
+             
+             r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(stories).encode("utf-8"),
+                ContentType="application/json"
+             )
+        except Exception:
+             pass
+             
+        return stories
+    except Exception:
+        return []
+
+@app.post("/stories/rebuild-index")
+def rebuild_stories_index():
+    stories = _rebuild_stories_index_internal()
+    invalidate_cache("stories_list")
+    return {"ok": True, "count": len(stories)}
+
+@app.get("/stories/list")
+def list_stories():
+    """List all available generated stories using index."""
+    cached = get_cached("stories_list", 60)
+    if cached:
+        return {"stories": cached}
+    
+    stories = get_stories_index()
+    if not stories:
+        stories = _rebuild_stories_index_internal()
+    
+    set_cached("stories_list", stories)
+    return {"stories": stories}
 
 @app.delete("/story/delete")
 def delete_story(deck: str):
@@ -813,6 +556,9 @@ def delete_story(deck: str):
         deleted_files += 1
     except Exception:
         pass
+    
+    remove_from_stories_index(deck)
+    invalidate_cache("stories_list")
     
     return {
         "ok": True,
