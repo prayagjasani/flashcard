@@ -68,7 +68,7 @@ def list_decks():
                 pass
 
             # Sort newest-first by last_modified when available
-            items.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
+            items.sort(key=lambda x: x.get("last_modified") or "", reverse=True)
             return items
         return []
     except ClientError as e:
@@ -516,7 +516,7 @@ def rebuild_deck_index():
             else:
                 break
         # Sort newest-first
-        items.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
+        items.sort(key=lambda x: x.get("last_modified") or "", reverse=True)
         r2_client.put_object(
             Bucket=R2_BUCKET_NAME,
             Key=f"{R2_BUCKET_NAME}/csv/index.json",

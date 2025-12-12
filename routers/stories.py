@@ -123,8 +123,8 @@ def _rebuild_stories_index_internal():
         with ThreadPoolExecutor(max_workers=10) as executor:
             stories = list(executor.map(fetch_story_metadata, story_keys))
         
-        # Sort by last_modified desc
-        stories.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
+        # Sort by last_modified content
+        stories.sort(key=lambda x: x.get("last_modified") or "", reverse=True)
         
         # Update index
         try:
