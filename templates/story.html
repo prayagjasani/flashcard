@@ -41,7 +41,8 @@
         }
         
         .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+            font-size: 20px;
         }
         /* Header */
         
@@ -66,8 +67,8 @@
         }
         
         .back-btn {
-            width: 36px;
-            height: 36px;
+            width: 28px;
+            height: 28px;
             border: none;
             background: transparent;
             color: var(--text);
@@ -75,9 +76,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%;
         }
-        
         .back-btn:hover {
             background: rgba(0, 0, 0, 0.05);
         }
@@ -176,7 +175,6 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
         }
         
         .story-list-header h2 {
@@ -188,22 +186,16 @@
         .create-story-btn {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            padding: 8px 16px;
-            border: 1px solid var(--accent);
+            padding: 0;
+            border: none;
+            outline: none;
             background: transparent;
-            color: var(--accent);
-            font-size: 0.875rem;
-            font-weight: 600;
-            border-radius: 20px;
+            font-size: 1.5rem;
             cursor: pointer;
             font-family: inherit;
-            transition: background 0.15s ease, color 0.15s ease;
-        }
-        
-        .create-story-btn:hover {
-            background: var(--accent);
-            color: white;
+            color: var(--text);
         }
         
         .story-item {
@@ -809,7 +801,9 @@
 
             <!-- For story list view -->
             <span class="header-title" id="headerTitle">Stories</span>
-            <div class="header-spacer" id="headerSpacer"></div>
+            <div class="story-list-header">
+                <button class="create-story-btn" id="createStoryBtn">+</button>
+            </div>
 
             <!-- For reading view (hidden by default) -->
             <div class="progress-container" id="progressContainer" style="display: none;">
@@ -830,13 +824,7 @@
 
         <!-- Story list -->
         <div id="storyListView" style="display: none;">
-            <div class="story-list-header">
-                <h2>📚 Your Stories</h2>
-                <button class="create-story-btn" id="createStoryBtn">
-                    <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-                    New Story
-                </button>
-            </div>
+            
             <div id="storyList"></div>
         </div>
 
