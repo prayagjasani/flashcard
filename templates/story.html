@@ -1122,7 +1122,7 @@
                 } catch (e) { }
 
                 loadingState.style.display = 'none';
-                renderStoryList(true); // false indicates this might be an update
+                renderStoryList();
 
             } catch (error) {
                 console.error('Failed to load stories:', error);
