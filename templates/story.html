@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
-         :root {
+        :root {
             --bg: #f6f7fb;
             --text: #0f172a;
             --card-bg: #ffffff;
@@ -22,16 +22,16 @@
             --danger: #ef4444;
             --muted: #64748b;
         }
-        
+
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         html {
             color-scheme: light;
         }
-        
+
         body {
             margin: 0;
             min-height: 100vh;
@@ -39,13 +39,14 @@
             color: var(--text);
             font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif;
         }
-        
+
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
             font-size: 20px;
         }
+
         /* Header */
-        
+
         .site-header {
             position: fixed;
             top: 0;
@@ -56,7 +57,7 @@
             background: rgba(255, 255, 255, 0.85);
             border-bottom: 1px solid rgba(226, 232, 240, 0.7);
         }
-        
+
         .header__inner {
             max-width: 600px;
             margin: 0 auto;
@@ -65,7 +66,7 @@
             align-items: center;
             gap: 16px;
         }
-        
+
         .back-btn {
             width: 28px;
             height: 28px;
@@ -77,21 +78,22 @@
             align-items: center;
             justify-content: center;
         }
+
         .back-btn:hover {
             background: rgba(0, 0, 0, 0.05);
         }
-        
+
         .header-title {
             flex: 1;
             font-size: 1rem;
             font-weight: 600;
             text-align: center;
         }
-        
+
         .header-spacer {
             width: 36px;
         }
-        
+
         .progress-container {
             flex: 1;
             height: 12px;
@@ -99,7 +101,7 @@
             border-radius: 6px;
             overflow: hidden;
         }
-        
+
         .progress-bar {
             height: 100%;
             background: var(--success);
@@ -107,7 +109,7 @@
             transition: width 0.4s ease;
             width: 0%;
         }
-        
+
         .progress-text {
             font-size: 14px;
             font-weight: 600;
@@ -115,19 +117,39 @@
             min-width: 50px;
             text-align: right;
         }
+
         /* Main */
-        
+
         .main-content {
             padding: 80px 20px 40px;
             max-width: 600px;
             margin: 0 auto;
         }
-        
+
         .main-content.with-continue {
             padding-bottom: 140px;
         }
+
+        /* Animation */
+        .tile-enter {
+            animation: slideDown 380ms ease-out both;
+            will-change: transform, opacity;
+        }
+
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-6px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
         /* Loading */
-        
+
         .loading-container {
             display: flex;
             flex-direction: column;
@@ -136,12 +158,12 @@
             min-height: 60vh;
             gap: 16px;
         }
-        
+
         .loading-dots {
             display: flex;
             gap: 8px;
         }
-        
+
         .loading-dots span {
             width: 10px;
             height: 10px;
@@ -149,40 +171,43 @@
             background: var(--accent);
             animation: dotPulse 1s infinite ease-in-out;
         }
-        
+
         .loading-dots span:nth-child(2) {
             animation-delay: 150ms;
         }
-        
+
         .loading-dots span:nth-child(3) {
             animation-delay: 300ms;
         }
-        
+
         @keyframes dotPulse {
+
             0%,
             100% {
                 transform: scale(1);
                 opacity: 0.4;
             }
+
             50% {
                 transform: scale(1.2);
                 opacity: 1;
             }
         }
+
         /* Story list */
-        
+
         .story-list-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        
+
         .story-list-header h2 {
             font-size: 1.25rem;
             font-weight: 600;
             margin: 0;
         }
-        
+
         .create-story-btn {
             display: flex;
             align-items: center;
@@ -197,7 +222,7 @@
             font-family: inherit;
             color: var(--text);
         }
-        
+
         .story-item {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -213,30 +238,30 @@
             user-select: none;
             position: relative;
         }
-        
+
         .story-item:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow);
         }
-        
+
         .story-item.holding {
             transform: scale(0.98);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        
+
         /* .story-item__title {
             font-weight: 600;
             font-size: 10rem;
             margin: 0 0 4px 0;
             color: var(--text);
         } */
-        
+
         .story-item__subtitle {
             font-size: 0.9rem;
             color: var(--muted);
             margin: 0 0 0px 0;
         }
-        
+
         .story-item__meta {
             font-size: 0.75rem;
             color: var(--muted);
@@ -244,7 +269,7 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .story-item__deck {
             background: #f1f5f9;
             padding: 2px 8px;
@@ -264,8 +289,9 @@
             letter-spacing: 0.02em;
             white-space: nowrap;
         }
+
         /* Delete popup */
-        
+
         .action-popup {
             position: fixed;
             inset: 0;
@@ -274,17 +300,17 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         .action-popup.visible {
             display: flex;
         }
-        
+
         .action-popup__backdrop {
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.4);
         }
-        
+
         .action-popup__content {
             position: relative;
             background: var(--card-bg);
@@ -294,41 +320,42 @@
             overflow: hidden;
             animation: popupScale 0.2s ease;
         }
-        
+
         @keyframes popupScale {
             from {
                 transform: scale(0.9);
                 opacity: 0;
             }
+
             to {
                 transform: scale(1);
                 opacity: 1;
             }
         }
-        
+
         .action-popup__header {
             padding: 20px;
             text-align: center;
             border-bottom: 1px solid var(--card-border);
         }
-        
+
         .action-popup__title {
             font-size: 1rem;
             font-weight: 600;
             margin: 0 0 4px 0;
         }
-        
+
         .action-popup__subtitle {
             font-size: 0.85rem;
             color: var(--muted);
             margin: 0;
         }
-        
+
         .action-popup__actions {
             display: flex;
             flex-direction: column;
         }
-        
+
         .action-popup__btn {
             padding: 16px;
             border: none;
@@ -339,24 +366,25 @@
             border-bottom: 1px solid var(--card-border);
             transition: background 0.15s ease;
         }
-        
+
         .action-popup__btn:last-child {
             border-bottom: none;
         }
-        
+
         .action-popup__btn:hover {
             background: #f8fafc;
         }
-        
+
         .action-popup__btn--danger {
             color: var(--danger);
         }
-        
+
         .action-popup__btn--cancel {
             color: var(--muted);
         }
+
         /* Deck selector modal */
-        
+
         .deck-modal {
             position: fixed;
             inset: 0;
@@ -365,17 +393,17 @@
             align-items: flex-end;
             justify-content: center;
         }
-        
+
         .deck-modal.visible {
             display: flex;
         }
-        
+
         .deck-modal__backdrop {
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.4);
         }
-        
+
         .deck-modal__content {
             position: relative;
             background: var(--card-bg);
@@ -386,16 +414,17 @@
             overflow: hidden;
             animation: slideUp 0.3s ease;
         }
-        
+
         @keyframes slideUp {
             from {
                 transform: translateY(100%);
             }
+
             to {
                 transform: translateY(0);
             }
         }
-        
+
         .deck-modal__header {
             padding: 20px;
             border-bottom: 1px solid var(--card-border);
@@ -403,13 +432,13 @@
             align-items: center;
             justify-content: space-between;
         }
-        
+
         .deck-modal__header h3 {
             margin: 0;
             font-size: 1.1rem;
             font-weight: 600;
         }
-        
+
         .deck-modal__close {
             width: 32px;
             height: 32px;
@@ -422,13 +451,13 @@
             justify-content: center;
             border-radius: 50%;
         }
-        
+
         .deck-modal__list {
             padding: 12px;
             overflow-y: auto;
             max-height: calc(70vh - 70px);
         }
-        
+
         .deck-modal__item {
             padding: 14px 16px;
             border-radius: 12px;
@@ -438,42 +467,44 @@
             justify-content: space-between;
             transition: background 0.15s ease;
         }
-        
+
         .deck-modal__item:hover {
             background: #f1f5f9;
         }
-        
+
         .deck-modal__item-name {
             font-weight: 500;
         }
-        
+
         .deck-modal__item-icon {
             color: var(--accent);
         }
+
         /* Empty state */
-        
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
         }
-        
+
         .empty-state__emoji {
             font-size: 64px;
             margin-bottom: 16px;
         }
-        
+
         .empty-state__title {
             font-size: 1.25rem;
             font-weight: 600;
             margin: 0 0 8px 0;
         }
-        
+
         .empty-state__text {
             color: var(--muted);
             margin: 0 0 24px 0;
         }
+
         /* Story card */
-        
+
         .story-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -482,18 +513,19 @@
             box-shadow: var(--shadow);
             animation: cardSlideUp 0.4s ease forwards;
         }
-        
+
         @keyframes cardSlideUp {
             from {
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-        
+
         .story-header {
             background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
             padding: 24px;
@@ -513,7 +545,7 @@
             font-weight: 700;
             margin: 0;
         }
-        
+
         .story-subtitle {
             font-size: 0.9rem;
             opacity: 0.9;
@@ -530,44 +562,46 @@
             text-transform: uppercase;
             white-space: nowrap;
         }
+
         /* Story segment */
-        
+
         .story-segment {
             padding: 24px;
             border-bottom: 1px solid var(--card-border);
             animation: segmentFadeIn 0.5s ease forwards;
         }
-        
+
         .story-segment:last-child {
             border-bottom: none;
         }
-        
+
         @keyframes segmentFadeIn {
             from {
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-        
+
         .segment-narration {
             background: #f3f3f3;
         }
-        
+
         .segment-dialogue {
             background: var(--card-bg);
         }
-        
+
         .segment-speaker {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-bottom: 12px;
         }
-        
+
         .speaker-avatar {
             width: 40px;
             height: 40px;
@@ -580,34 +614,34 @@
             color: white;
             font-size: 1rem;
         }
-        
+
         .speaker-avatar.avatar-1 {
             background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
         }
-        
+
         .speaker-avatar.avatar-2 {
             background: linear-gradient(145deg, #f472b6 0%, #ec4899 100%);
         }
-        
+
         .speaker-avatar.avatar-3 {
             background: linear-gradient(145deg, #34d399 0%, #10b981 100%);
         }
-        
+
         .speaker-avatar.avatar-4 {
             background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%);
         }
-        
+
         .speaker-name {
             font-weight: 600;
             color: var(--text);
         }
-        
+
         .segment-content {
             display: flex;
             align-items: flex-start;
             gap: 12px;
         }
-        
+
         .audio-btn {
             width: 36px;
             height: 36px;
@@ -622,15 +656,15 @@
             flex-shrink: 0;
             transition: background 0.15s ease, transform 0.15s ease;
         }
-        
+
         .audio-btn:hover {
             background: rgba(59, 130, 246, 0.2);
         }
-        
+
         .audio-btn:active {
             transform: scale(0.92);
         }
-        
+
         .segment-text {
             font-size: 1.1rem;
             line-height: 1.7;
@@ -638,7 +672,7 @@
             flex: 1;
             margin: 0;
         }
-        
+
         .word-highlight {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
             border-bottom: 2px solid var(--success);
@@ -647,26 +681,26 @@
             cursor: pointer;
             transition: background 0.15s ease;
         }
-        
+
         .word-highlight:hover {
             background: rgba(16, 185, 129, 0.3);
         }
-        
+
         .tappable-word {
             cursor: pointer;
             padding: 1px 2px;
             border-radius: 4px;
             transition: background 0.15s ease;
         }
-        
+
         .tappable-word:hover {
             background: rgba(59, 130, 246, 0.1);
         }
-        
+
         .tappable-word:active {
             background: rgba(59, 130, 246, 0.2);
         }
-        
+
         .segment-translation {
             margin-top: 10px;
             padding-top: 10px;
@@ -675,15 +709,16 @@
             color: var(--muted);
             font-style: italic;
         }
-        
+
         .tap-hint {
             text-align: center;
             padding: 12px;
             color: var(--muted);
             font-size: 0.875rem;
         }
+
         /* Continue button */
-        
+
         .continue-container {
             position: fixed;
             bottom: 0;
@@ -692,7 +727,7 @@
             padding: 20px;
             background: linear-gradient(to top, var(--bg) 60%, transparent);
         }
-        
+
         .continue-btn {
             display: block;
             width: 100%;
@@ -712,17 +747,18 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        
+
         .continue-btn:hover {
             filter: brightness(1.05);
         }
-        
+
         .continue-btn:active {
             transform: translateY(4px);
             box-shadow: 0 0 0 #059669;
         }
+
         /* Completed */
-        
+
         .completed-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -732,23 +768,23 @@
             text-align: center;
             animation: cardSlideUp 0.4s ease forwards;
         }
-        
+
         .completed-emoji {
             font-size: 72px;
             margin-bottom: 16px;
         }
-        
+
         .completed-title {
             font-size: 1.5rem;
             font-weight: 700;
             margin: 0 0 8px 0;
         }
-        
+
         .completed-subtitle {
             color: var(--muted);
             margin: 0 0 32px 0;
         }
-        
+
         .btn-secondary {
             display: block;
             width: 100%;
@@ -763,12 +799,13 @@
             font-family: inherit;
             margin-top: 12px;
         }
-        
+
         .btn-secondary:hover {
             background: #f1f5f9;
         }
+
         /* Tooltip */
-        
+
         .tooltip {
             position: fixed;
             background: var(--text);
@@ -784,7 +821,7 @@
             transition: opacity 0.2s ease, transform 0.2s ease;
             pointer-events: none;
         }
-        
+
         .tooltip.visible {
             opacity: 1;
             transform: translate(-50%, -100%) translateY(0);
@@ -824,7 +861,7 @@
 
         <!-- Story list -->
         <div id="storyListView" style="display: none;">
-            
+
             <div id="storyList"></div>
         </div>
 
@@ -840,7 +877,8 @@
                 </div>
                 <div id="segmentsContainer"></div>
                 <div class="tap-hint" id="tapHint">
-                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">touch_app</span> Tap any word for meaning
+                    <span class="material-symbols-outlined"
+                        style="font-size: 16px; vertical-align: middle;">touch_app</span> Tap any word for meaning
                 </div>
             </div>
         </div>
@@ -872,7 +910,8 @@
             </div>
             <div class="action-popup__actions">
                 <button class="action-popup__btn action-popup__btn--danger" id="deleteStoryBtn">
-                    <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 8px;">delete</span>
+                    <span class="material-symbols-outlined"
+                        style="font-size: 18px; vertical-align: middle; margin-right: 8px;">delete</span>
                     Delete Story
                 </button>
                 <button class="action-popup__btn action-popup__btn--cancel" id="cancelActionBtn">Cancel</button>
@@ -894,12 +933,16 @@
                 <p style="color: var(--muted); font-size: 0.9rem; margin: 0 0 16px 0;">
                     What kind of story would you like to read?
                 </p>
-                <input type="text" id="storyTopicInput" placeholder="e.g., a trip to the airport, ordering food at a café..." style="width: 100%; padding: 14px 16px; border: 1px solid var(--card-border); border-radius: 12px; font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;">
-                <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                <input type="text" id="storyTopicInput"
+                    placeholder="e.g., a trip to the airport, ordering food at a café..."
+                    style="width: 100%; padding: 14px 16px; border: 1px solid var(--card-border); border-radius: 12px; font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;">
+                <div
+                    style="margin-top: 12px; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
                     <label for="storyLevelSelect" style="font-size: 0.85rem; color: var(--muted);">
                         German level
                     </label>
-                    <select id="storyLevelSelect" style="width: -webkit-fill-available; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--card-border); font-size: 0.85rem; font-family: inherit; background: var(--card-bg);">
+                    <select id="storyLevelSelect"
+                        style="width: -webkit-fill-available; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--card-border); font-size: 0.85rem; font-family: inherit; background: var(--card-bg);">
                         <option value="A1">A1 – Beginner</option>
                         <option value="A2" selected>A2 – Elementary</option>
                         <option value="B1">B1 – Intermediate</option>
@@ -913,7 +956,8 @@
                         Create Story
                     </button>
                 </div>
-                <button id="randomStoryBtn" style="width: 100%; margin-top: 12px; padding: 14px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text); font-size: 1rem; font-weight: 600; border-radius: 12px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <button id="randomStoryBtn"
+                    style="width: 100%; margin-top: 12px; padding: 14px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text); font-size: 1rem; font-weight: 600; border-radius: 12px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <span class="material-symbols-outlined" style="font-size: 20px;">shuffle</span>
                     Surprise Me!
                 </button>
@@ -1003,20 +1047,49 @@
         }
 
         async function loadStoryList() {
-            loadingState.style.display = 'flex';
-            loadingText.textContent = 'Loading stories...';
-            storyListView.style.display = 'none';
-            storyContent.style.display = 'none';
-            completedState.style.display = 'none';
-            continueContainer.style.display = 'none';
+            // Check cache first for instant rendering
+            try {
+                const cachedStories = sessionStorage.getItem('cached_stories');
+                const cachedDecks = sessionStorage.getItem('cached_decks_for_stories');
 
-            // Show list header
-            headerTitle.style.display = 'block';
-            createStoryBtn.style.display = 'flex';
-            progressContainer.style.display = 'none';
-            progressText.style.display = 'none';
-            mainContent.classList.remove('with-continue');
-            isReadingMode = false;
+                if (cachedStories && cachedDecks) {
+                    allStories = JSON.parse(cachedStories);
+                    allDecks = JSON.parse(cachedDecks);
+
+                    // Show cached text immediately
+                    loadingState.style.display = 'none';
+                    storyListView.style.display = 'block';
+                    storyContent.style.display = 'none';
+                    completedState.style.display = 'none';
+                    continueContainer.style.display = 'none';
+
+                    headerTitle.style.display = 'block';
+                    createStoryBtn.style.display = 'flex';
+                    progressContainer.style.display = 'none';
+                    progressText.style.display = 'none';
+                    mainContent.classList.remove('with-continue');
+                    isReadingMode = false;
+
+                    renderStoryList();
+                } else {
+                    // Only show loader if no cache
+                    loadingState.style.display = 'flex';
+                    loadingText.textContent = 'Loading stories...';
+                    storyListView.style.display = 'none';
+                    storyContent.style.display = 'none';
+                    completedState.style.display = 'none';
+                    continueContainer.style.display = 'none';
+
+                    headerTitle.style.display = 'block';
+                    createStoryBtn.style.display = 'flex';
+                    progressContainer.style.display = 'none';
+                    progressText.style.display = 'none';
+                    mainContent.classList.remove('with-continue');
+                    isReadingMode = false;
+                }
+            } catch (e) {
+                // Ignore cache errors
+            }
 
             try {
                 const [storiesResp, decksResp] = await Promise.all([
@@ -1027,21 +1100,43 @@
                 const storiesData = await storiesResp.json();
                 const decksData = await decksResp.json();
 
-                allStories = storiesData.stories || [];
-                allDecks = Array.isArray(decksData) ? decksData : [];
+                const newStories = storiesData.stories || [];
+                const newDecks = Array.isArray(decksData) ? decksData : [];
+
+                // Compare with current data to avoid re-render (which restarts animation)
+                const isStoriesChanged = JSON.stringify(newStories) !== JSON.stringify(allStories);
+                const isDecksChanged = JSON.stringify(newDecks) !== JSON.stringify(allDecks);
+
+                if (!isStoriesChanged && !isDecksChanged) {
+                    loadingState.style.display = 'none';
+                    return; // Data is same, skip re-render
+                }
+
+                allStories = newStories;
+                allDecks = newDecks;
+
+                // Update cache
+                try {
+                    sessionStorage.setItem('cached_stories', JSON.stringify(allStories));
+                    sessionStorage.setItem('cached_decks_for_stories', JSON.stringify(allDecks));
+                } catch (e) { }
 
                 loadingState.style.display = 'none';
-                renderStoryList();
+                renderStoryList(true); // false indicates this might be an update
 
             } catch (error) {
                 console.error('Failed to load stories:', error);
-                loadingState.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state__emoji">😕</div>
-                        <h3 class="empty-state__title">Failed to load stories</h3>
-                        <button class="continue-btn" onclick="location.href='/'">Go to Home</button>
-                    </div>
-                `;
+
+                // Only show error state if we didn't show cached content
+                if (storyListView.style.display === 'none') {
+                    loadingState.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state__emoji">😕</div>
+                            <h3 class="empty-state__title">Failed to load stories</h3>
+                            <button class="continue-btn" onclick="location.href='/'">Go to Home</button>
+                        </div>
+                    `;
+                }
             }
         }
 
@@ -1066,12 +1161,14 @@
                 return dateB - dateA;
             });
 
-            storyList.innerHTML = allStories.map(s => {
-                        const title = s.title_de || s.deck;
-                        const subtitle = s.title_en || '';
-                        const level = s.level || '';
-                        return `
-                    <div class="story-item" data-deck="${s.deck}" data-title="${title}">
+            storyList.innerHTML = allStories.map((s, i) => {
+                const title = s.title_de || s.deck;
+                const subtitle = s.title_en || '';
+                const level = s.level || '';
+                // Stagger animation: 40ms per item
+                const delay = i * 40;
+                return `
+                    <div class="story-item tile-enter" style="animation-delay: ${delay}ms;" data-deck="${s.deck}" data-title="${title}">
                         ${level ? `<span class="story-item__level">${level}</span>` : ''}
                         <!-- <h3 class="story-item__title">${title}</h3> -->
                         ${subtitle ? `<p class="story-item__subtitle">${subtitle}</p>` : ''}
@@ -1169,14 +1266,14 @@
 
         async function loadStory(deck, refresh = false) {
             currentDeck = deck;
-            
+
             // Clear previous caches
             audioCache.forEach(url => {
                 if (url.startsWith('blob:')) URL.revokeObjectURL(url);
             });
             audioCache.clear();
             vocabulary = {};
-            
+
             loadingState.style.display = 'flex';
             loadingText.textContent = refresh ? 'Creating new story with AI...' : 'Loading story...';
             storyListView.style.display = 'none';
@@ -1202,7 +1299,7 @@
                 story = data.story;
                 characters = story.characters || [];
                 vocabulary = story.vocabulary || {};
-                
+
                 // Convert vocabulary keys to lowercase for easier lookup
                 const lowerVocab = {};
                 Object.entries(vocabulary).forEach(([de, en]) => {
@@ -1215,10 +1312,10 @@
                 }
 
                 currentSegmentIndex = 0;
-                
+
                 // Start story immediately, prefetch audio in background
                 showStory();
-                
+
                 // Prefetch all audio in background (non-blocking)
                 prefetchAllAudio();
 
@@ -1240,14 +1337,14 @@
             // Generate a unique ID for this story
             const storyId = 'custom_' + Date.now();
             currentDeck = storyId;
-            
+
             // Clear previous caches
             audioCache.forEach(url => {
                 if (url.startsWith('blob:')) URL.revokeObjectURL(url);
             });
             audioCache.clear();
             vocabulary = {};
-            
+
             loadingState.style.display = 'flex';
             loadingText.textContent = 'Creating your story with AI...';
             storyListView.style.display = 'none';
@@ -1277,7 +1374,7 @@
                 currentDeck = data.story_id || storyId;
                 characters = story.characters || [];
                 vocabulary = story.vocabulary || {};
-                
+
                 // Convert vocabulary keys to lowercase for easier lookup
                 const lowerVocab = {};
                 Object.entries(vocabulary).forEach(([de, en]) => {
@@ -1290,17 +1387,17 @@
                 }
 
                 currentSegmentIndex = 0;
-                
+
                 // Start story immediately, prefetch audio in background
                 showStory();
-                
+
                 // Prefetch all audio in background (non-blocking)
                 prefetchAllAudio();
 
                 // Reload story list in background to show the new story
                 fetch('/stories/list').then(r => r.json()).then(data => {
                     allStories = data.stories || [];
-                }).catch(() => {});
+                }).catch(() => { });
 
             } catch (error) {
                 console.error('Failed to create story:', error);
@@ -1318,7 +1415,7 @@
 
         async function prefetchAllAudio() {
             if (!story || !story.segments) return;
-            
+
             const texts = new Set();
             story.segments.forEach(seg => {
                 const text = (seg.text_de || '').trim();
@@ -1419,22 +1516,22 @@
         function makeWordsTappable(text, highlightWords = []) {
             // Split text into words while preserving spaces and punctuation
             const parts = text.split(/(\s+)/);
-            
+
             return parts.map(part => {
                 if (!part.trim()) return part; // Keep whitespace
-                
+
                 // Check if this word should be highlighted (vocabulary word)
                 const cleanWord = part.replace(/[.,!?;:'"„"»«()]/g, '').toLowerCase();
-                const isHighlight = highlightWords.some(hw => 
+                const isHighlight = highlightWords.some(hw =>
                     hw.toLowerCase() === cleanWord
                 );
-                
+
                 // Extract punctuation
                 const match = part.match(/^([.,!?;:'"„"»«()]*)(.+?)([.,!?;:'"„"»«()]*)$/);
                 const prefix = match ? match[1] : '';
                 const core = match ? match[2] : part;
                 const suffix = match ? match[3] : '';
-                
+
                 if (isHighlight) {
                     return `${prefix}<span class="word-highlight tappable-word" data-word="${core}">${core}</span>${suffix}`;
                 } else {
@@ -1463,14 +1560,14 @@
             try {
                 audioPlayer.pause();
                 audioPlayer.currentTime = 0;
-                
+
                 // Use prefetched audio if available, otherwise fetch from server
                 if (audioCache.has(text)) {
                     audioPlayer.src = audioCache.get(text);
                 } else {
                     audioPlayer.src = `/story/audio?deck=${encodeURIComponent(currentDeck)}&text=${encodeURIComponent(text)}`;
                 }
-                
+
                 await audioPlayer.play();
             } catch (error) {
                 console.warn('Audio failed:', error);
