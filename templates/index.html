@@ -2099,7 +2099,11 @@
                         order: names
                     })
                 });
-                if (resp.ok) ordersCache.folders = Array.isArray(names) ? names.slice() : [];
+                if (resp.ok) {
+                    ordersCache.folders = Array.isArray(names) ? names.slice() : [];
+                    // Update sessionStorage cache immediately
+                    saveToCache('flashcard_folder_order_cache', ordersCache.folders);
+                }
             } else {
                 const key = scope || 'root';
                 const resp = await fetch('/order/decks', {
@@ -2112,7 +2116,10 @@
                         order: names
                     })
                 });
-                if (resp.ok) ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
+                if (resp.ok) {
+                    ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
+                    // Deck order cache is not used in index.html, but update for consistency
+                }
             }
         }
         async function refreshFolderOrder() {
@@ -2796,14 +2803,21 @@
             return null;
         }
 
-        // Optimized parallel loading function with stale-while-revalidate
+        function clearCache() {
+            // Clear all caches to force fresh data load
+            sessionStorage.removeItem(CACHE_KEY_FOLDERS);
+            sessionStorage.removeItem(CACHE_KEY_DECKS);
+            sessionStorage.removeItem('flashcard_folder_order_cache');
+        }
+
+        // Optimized parallel loading function with instant cache
         async function loadAllData() {
             // Try to load from cache first for instant display
             const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
             const cachedDecks = getFromCache(CACHE_KEY_DECKS);
             const cachedFolderOrder = getFromCache('flashcard_folder_order_cache');
 
-            // If we have cached data, show it immediately (no loader)
+            // If we have cached data, show it immediately - NO background refresh, NO flicker
             if (cachedFolders && cachedDecks) {
                 cachedFolderList = cachedFolders;
                 cachedDeckList = cachedDecks;
@@ -2813,10 +2827,7 @@
                 renderDeckGrid();
                 populateDeckSelect();
                 handleUrlParams();
-
-                // Refresh in background (no loader, no blocking)
-                refreshDataInBackground();
-                return;
+                return; // Done - use cache for entire session
             }
 
             // No cache - show loader and fetch fresh data
@@ -2897,10 +2908,12 @@
                 // Update decks if changed
                 if (decksResp) {
                     const newDecks = Array.isArray(decksResp) ? decksResp : [];
-                    // Compare deck names only
-                    const oldNames = cachedDeckList.map(d => d.name).sort().join(',');
-                    const newNames = newDecks.map(d => d.name).sort().join(',');
-                    if (oldNames !== newNames) {
+                    // Compare deck names AND folders to detect moves
+                    const getKey = d => `${d.name}:${d.folder || ''}`;
+                    const oldKeys = cachedDeckList.map(getKey).sort().join(',');
+                    const newKeys = newDecks.map(getKey).sort().join(',');
+
+                    if (oldKeys !== newKeys) {
                         cachedDeckList = newDecks;
                         saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                         updateDeckCounts();
@@ -3222,6 +3235,7 @@
                 }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to create folder');
                 createFolderStatus.textContent = 'Created';
+                clearCache(); // Invalidate cache to fetch fresh data
                 await loadFolders();
                 closeCreateFolderModal();
                 createFolderSaveBtn.disabled = false;

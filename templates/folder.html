@@ -690,7 +690,14 @@
                         order: names
                     })
                 });
-                if (resp.ok) ordersCache.folders = Array.isArray(names) ? names.slice() : [];
+                if (resp.ok) {
+                    ordersCache.folders = Array.isArray(names) ? names.slice() : [];
+                    // Update CACHE_FOLDERS data in sessionStorage so navigation preserves order
+                    const cached = getCache(CACHE_FOLDERS);
+                    if (cached) {
+                        saveCache(CACHE_FOLDERS, cached); // Re-save with updated timestamp
+                    }
+                }
             } else {
                 const key = scope || 'root';
                 const resp = await fetch('/order/decks', {
@@ -703,7 +710,14 @@
                         order: names
                     })
                 });
-                if (resp.ok) ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
+                if (resp.ok) {
+                    ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
+                    // Update deck cache in sessionStorage
+                    const cached = getCache(CACHE_DECKS);
+                    if (cached) {
+                        saveCache(CACHE_DECKS, cached); // Re-save with updated timestamp
+                    }
+                }
             }
         }
         async function refreshDeckOrder(scope) {
@@ -1391,7 +1405,7 @@
             const cachedDecks = getCache(CACHE_DECKS);
 
             if (cachedFolders && cachedDecks) {
-                // Show cached data immediately (no loader)
+                // Show cached data immediately - NO background refresh, NO flicker
                 allFolders = Array.isArray(cachedFolders.data || cachedFolders) ? (cachedFolders.data || cachedFolders) : [];
                 const allDecks = Array.isArray(cachedDecks.data || cachedDecks) ? (cachedDecks.data || cachedDecks) : [];
 
@@ -1401,10 +1415,7 @@
                 const list = allDecks.filter(d => ((d.folder || 'Uncategorized') === folder));
                 const ordered = applyOrder(list, 'deck', folder);
                 renderList(ordered);
-
-                // Refresh in background
-                refreshDecksInBackground();
-                return;
+                return; // Done - use cache for entire session
             }
 
             // No cache - show loader and fetch fresh data
@@ -1482,16 +1493,19 @@
                 }
 
                 let decksChanged = false;
-                let prevDecksJson = '';
 
                 if (decksData) {
                     const newDecks = Array.isArray(decksData) ? decksData : [];
                     const list = newDecks.filter(d => ((d.folder || 'Uncategorized') === folder));
-                    prevDecksJson = JSON.stringify(list);
 
-                    // Check if decks actually changed
-                    const currentList = (getCache(CACHE_DECKS)?.data || []).filter(d => ((d.folder || 'Uncategorized') === folder));
-                    if (JSON.stringify(currentList) !== prevDecksJson) {
+                    // Check if decks actually changed (compare sorted names only)
+                    const currentAll = (getCache(CACHE_DECKS)?.data || []);
+                    const currentList = currentAll.filter(d => ((d.folder || 'Uncategorized') === folder));
+
+                    const oldNames = currentList.map(d => d.name).sort().join(',');
+                    const newNames = list.map(d => d.name).sort().join(',');
+
+                    if (oldNames !== newNames) {
                         decksChanged = true;
                     }
 
@@ -1502,6 +1516,13 @@
                             ordersCache.decks[folder] = newDeckOrder;
                             decksChanged = true;
                         }
+                    } else if (!decksChanged) {
+                        // If no explicit order update, check if default order (alphabetical) changed due to new/removed items
+                        // But wait, if names changed (added/removed), decksChanged is already true.
+                        // Order matters if names are SAME but sequence different.
+                        // If deckOrderData is missing, we use default sort.
+                        // If the list of names changed, we already flagged it.
+                        // If the list of names is SAME but default sort order changed? Unlikely unless casing changed.
                     }
 
                     saveCache(CACHE_DECKS, { data: newDecks, timestamp: Date.now() });
