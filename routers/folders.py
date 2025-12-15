@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import APIRouter, HTTPException
 from botocore.exceptions import ClientError
 
@@ -7,67 +8,138 @@ from services.storage import (
     r2_client, R2_BUCKET_NAME, 
     order_folders_key as _order_folders_key
 )
+from services.cache import get_cached, set_cached, invalidate_cache
 from utils import safe_deck_name as _safe_deck_name
 
 router = APIRouter()
+
+# Cache TTL in seconds
+CACHE_TTL = 30
+
+def _fetch_deck_index():
+    """Fetch csv/index.json from R2 (with caching)."""
+    cache_key = "folders:deck_index"
+    cached = get_cached(cache_key, CACHE_TTL)
+    if cached is not None:
+        return cached
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=f"{R2_BUCKET_NAME}/csv/index.json")
+        data = obj["Body"].read().decode("utf-8")
+        result = json.loads(data)
+        set_cached(cache_key, result)
+        return result
+    except Exception:
+        return []
+
+def _fetch_folders_index():
+    """Fetch folders/index.json from R2 (with caching)."""
+    cache_key = "folders:folders_index"
+    cached = get_cached(cache_key, CACHE_TTL)
+    if cached is not None:
+        return cached
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=f"{R2_BUCKET_NAME}/folders/index.json")
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        result = parsed if isinstance(parsed, list) else []
+        set_cached(cache_key, result)
+        return result
+    except Exception:
+        return []
+
+def _fetch_parents():
+    """Fetch folders/parents.json from R2 (with caching)."""
+    cache_key = "folders:parents"
+    cached = get_cached(cache_key, CACHE_TTL)
+    if cached is not None:
+        return cached
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=f"{R2_BUCKET_NAME}/folders/parents.json")
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        result = parsed if isinstance(parsed, dict) else {}
+        set_cached(cache_key, result)
+        return result
+    except Exception:
+        return {}
+
+def _fetch_folder_order():
+    """Fetch order/folders.json from R2 (with caching)."""
+    cache_key = "folders:order"
+    cached = get_cached(cache_key, CACHE_TTL)
+    if cached is not None:
+        return cached
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key())
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        result = parsed if isinstance(parsed, list) else []
+        set_cached(cache_key, result)
+        return result
+    except Exception:
+        return []
 
 @router.get("/folders")
 def get_folders():
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
-    index_key = f"{R2_BUCKET_NAME}/csv/index.json"
-    folders_key = f"{R2_BUCKET_NAME}/folders/index.json"
-    parents_key = f"{R2_BUCKET_NAME}/folders/parents.json"
+    
+    # Parallel R2 fetches
+    deck_index = []
+    folders_index = []
+    parents_data = {}
+    order_data = []
+    
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_fetch_deck_index): "deck_index",
+            executor.submit(_fetch_folders_index): "folders_index",
+            executor.submit(_fetch_parents): "parents",
+            executor.submit(_fetch_folder_order): "order",
+        }
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                result = future.result()
+                if key == "deck_index":
+                    deck_index = result if isinstance(result, list) else []
+                elif key == "folders_index":
+                    folders_index = result if isinstance(result, list) else []
+                elif key == "parents":
+                    parents_data = result if isinstance(result, dict) else {}
+                elif key == "order":
+                    order_data = result if isinstance(result, list) else []
+            except Exception:
+                pass
+    
+    # Process deck index to get folder names and counts
     names = set()
     counts = {}
-    try:
-        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
-        idx_data = idx_obj["Body"].read().decode("utf-8")
-        parsed = json.loads(idx_data)
-        if isinstance(parsed, list):
-            for d in parsed:
-                if isinstance(d, dict):
-                    f = d.get("folder") or "Uncategorized"
-                    names.add(f)
-                    counts[f] = counts.get(f, 0) + 1
-    except Exception:
-        pass
-    extra = []
-    try:
-        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=folders_key)
-        data = obj["Body"].read().decode("utf-8")
-        parsed = json.loads(data)
-        if isinstance(parsed, list):
-            extra = [str(x) for x in parsed]
-    except Exception:
-        pass
-    for f in extra:
-        names.add(f)
-        counts.setdefault(f, 0)
-    # Load parent relationships
-    parents_data = {}
-    try:
-        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=parents_key)
-        data = obj["Body"].read().decode("utf-8")
-        parsed = json.loads(data)
-        if isinstance(parsed, dict):
-            parents_data = parsed
-    except Exception:
-        pass
+    for d in deck_index:
+        if isinstance(d, dict):
+            f = d.get("folder") or "Uncategorized"
+            names.add(f)
+            counts[f] = counts.get(f, 0) + 1
+    
+    # Add folders from folders_index
+    for f in folders_index:
+        if isinstance(f, str):
+            names.add(f)
+            counts.setdefault(f, 0)
+    
+    # Build base list
     base = [{"name": n, "count": counts.get(n, 0), "parent": parents_data.get(n)} for n in names]
-    ordered = base
-    try:
-        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key())
-        data = obj["Body"].read().decode("utf-8")
-        arr = json.loads(data)
-        if isinstance(arr, list):
-            name_to_item = {x["name"]: x for x in base}
-            ordered = [name_to_item[n] for n in arr if n in name_to_item]
-            for x in base:
-                if x["name"] not in arr:
-                    ordered.append(x)
-    except Exception:
+    
+    # Apply order
+    if order_data:
+        name_to_item = {x["name"]: x for x in base}
+        ordered = [name_to_item[n] for n in order_data if n in name_to_item]
+        for x in base:
+            if x["name"] not in order_data:
+                ordered.append(x)
+    else:
         ordered = sorted(base, key=lambda x: x["name"].lower())
+    
     return {"folders": ordered}
 
 @router.post("/folder/create")
@@ -90,6 +162,7 @@ def folder_create(payload: FolderCreate):
     if name not in items:
         items.append(name)
     r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=json.dumps(items).encode("utf-8"), ContentType="application/json")
+    invalidate_cache("folders:")
     return {"ok": True, "name": name}
 
 @router.post("/folder/rename")
@@ -172,6 +245,7 @@ def folder_rename(payload: FolderRename):
             r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=parents_key, Body=json.dumps(parents_data).encode("utf-8"), ContentType="application/json")
     except Exception:
         pass
+    invalidate_cache("folders:")
     return {"ok": True, "old_name": old, "new_name": new}
 
 @router.post("/folder/delete")
@@ -247,6 +321,7 @@ def folder_delete(payload: FolderDelete):
             r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=parents_key, Body=json.dumps(parents_data).encode("utf-8"), ContentType="application/json")
     except Exception:
         pass
+    invalidate_cache("folders:")
     return {"ok": True, "deleted": name}
 
 @router.post("/folder/move")
@@ -300,6 +375,7 @@ def folder_move(payload: FolderMove):
         ContentType="application/json"
     )
     
+    invalidate_cache("folders:")
     return {"ok": True, "name": name, "parent": parent}
 
 @router.get("/order/folders")
@@ -328,6 +404,7 @@ def order_folders_set(payload: FolderOrderUpdate):
     names = [ _safe_deck_name(x) for x in (payload.order or []) if _safe_deck_name(x) ]
     try:
         r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=_order_folders_key(), Body=json.dumps(names).encode("utf-8"), ContentType="application/json")
+        invalidate_cache("folders:")
         return {"ok": True, "order": names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
