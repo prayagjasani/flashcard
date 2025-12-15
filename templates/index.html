@@ -2804,10 +2804,11 @@
         }
 
         function clearCache() {
-            // Clear all caches to force fresh data load
+            // Clear folder/deck data caches to force fresh load
+            // But preserve order cache since it's already in sync with R2
             sessionStorage.removeItem(CACHE_KEY_FOLDERS);
             sessionStorage.removeItem(CACHE_KEY_DECKS);
-            sessionStorage.removeItem('flashcard_folder_order_cache');
+            // DON'T clear 'flashcard_folder_order_cache' - it stays in sync via writeOrder()
         }
 
         // Optimized parallel loading function with instant cache
