@@ -1409,6 +1409,15 @@
                 allFolders = Array.isArray(cachedFolders.data || cachedFolders) ? (cachedFolders.data || cachedFolders) : [];
                 const allDecks = Array.isArray(cachedDecks.data || cachedDecks) ? (cachedDecks.data || cachedDecks) : [];
 
+                // Fetch deck order for this folder (always needed for correct sorting)
+                try {
+                    const deckOrderResp = await fetch(`/order/decks?scope=${encodeURIComponent(folder)}`);
+                    const deckOrderData = await deckOrderResp.json().catch(() => []);
+                    ordersCache.decks[folder] = Array.isArray(deckOrderData) ? deckOrderData : [];
+                } catch {
+                    ordersCache.decks[folder] = [];
+                }
+
                 // Build UI with cached data
                 buildBreadcrumb();
                 renderSubFolders();
