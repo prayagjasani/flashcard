@@ -2494,6 +2494,11 @@
             if (globalLoader) globalLoader.classList.remove('is-active');
         }
 
+        // Ensure loader is hidden when navigating back (BFCache)
+        window.addEventListener('pageshow', () => {
+            hideLoader();
+        });
+
         // Auto-play toggle functionality
         function updateAutoPlayToggle() {
             const toggleIcon = autoPlayToggle.querySelector('.toggle-icon');
