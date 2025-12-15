@@ -2796,11 +2796,32 @@
             return null;
         }
 
-        // Optimized parallel loading function
+        // Optimized parallel loading function with stale-while-revalidate
         async function loadAllData() {
+            // Try to load from cache first for instant display
+            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
+            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
+            const cachedFolderOrder = getFromCache('flashcard_folder_order_cache');
+
+            // If we have cached data, show it immediately (no loader)
+            if (cachedFolders && cachedDecks) {
+                cachedFolderList = cachedFolders;
+                cachedDeckList = cachedDecks;
+                ordersCache.folders = cachedFolderOrder || [];
+                updateDeckCounts();
+                renderFolderGrid();
+                renderDeckGrid();
+                populateDeckSelect();
+                handleUrlParams();
+
+                // Refresh in background (no loader, no blocking)
+                refreshDataInBackground();
+                return;
+            }
+
+            // No cache - show loader and fetch fresh data
             showLoader();
 
-            // Fetch all data in parallel
             try {
                 const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
                     fetch('/folders').then(r => r.json()).catch(() => ({
@@ -2814,6 +2835,7 @@
                 cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
                 saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                 ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+                saveToCache('flashcard_folder_order_cache', ordersCache.folders);
 
                 // Update decks
                 cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
@@ -2828,6 +2850,74 @@
 
             // Handle URL parameters
             handleUrlParams();
+        }
+
+        // Background refresh - updates cache and UI if data changed
+        async function refreshDataInBackground() {
+            try {
+                const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
+                    fetch('/folders').then(r => r.json()).catch(() => null),
+                    fetch('/decks').then(r => r.json()).catch(() => null),
+                    fetch('/order/folders').then(r => r.json()).catch(() => null)
+                ]);
+
+                let needsRerender = false;
+
+                // Helper to compare folder lists by name and parent only (ignore count changes)
+                function compareFolders(a, b) {
+                    if (!a || !b || a.length !== b.length) return false;
+                    const aMap = new Map(a.map(f => [f.name, f.parent || null]));
+                    return b.every(f => aMap.get(f.name) === (f.parent || null));
+                }
+
+                // Update folders if structure changed (not just counts)
+                if (foldersResp && foldersResp.folders) {
+                    const newFolders = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
+                    if (!compareFolders(newFolders, cachedFolderList)) {
+                        cachedFolderList = newFolders;
+                        saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
+                        needsRerender = true;
+                    } else {
+                        // Just update counts silently without re-rendering
+                        cachedFolderList = newFolders;
+                        saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
+                    }
+                }
+
+                // Update folder order if changed
+                if (folderOrderResp) {
+                    const newOrder = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+                    if (JSON.stringify(newOrder) !== JSON.stringify(ordersCache.folders)) {
+                        ordersCache.folders = newOrder;
+                        saveToCache('flashcard_folder_order_cache', ordersCache.folders);
+                        needsRerender = true;
+                    }
+                }
+
+                // Update decks if changed
+                if (decksResp) {
+                    const newDecks = Array.isArray(decksResp) ? decksResp : [];
+                    // Compare deck names only
+                    const oldNames = cachedDeckList.map(d => d.name).sort().join(',');
+                    const newNames = newDecks.map(d => d.name).sort().join(',');
+                    if (oldNames !== newNames) {
+                        cachedDeckList = newDecks;
+                        saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                        updateDeckCounts();
+                        needsRerender = true;
+                    } else {
+                        // Just update cache silently
+                        cachedDeckList = newDecks;
+                        saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                    }
+                }
+
+                // Re-render only if structure actually changed
+                if (needsRerender) {
+                    renderFolderGrid();
+                    renderDeckGrid();
+                }
+            } catch { }
         }
 
         function populateDeckSelect() {

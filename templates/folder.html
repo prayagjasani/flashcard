@@ -1386,8 +1386,28 @@
         }
 
         async function loadDecks() {
-            // For folder view, prefer a single, final render:
-            // show loader, fetch everything (including saved order), then render once.
+            // Try to load from cache first for instant display
+            const cachedFolders = getCache(CACHE_FOLDERS);
+            const cachedDecks = getCache(CACHE_DECKS);
+
+            if (cachedFolders && cachedDecks) {
+                // Show cached data immediately (no loader)
+                allFolders = Array.isArray(cachedFolders.data || cachedFolders) ? (cachedFolders.data || cachedFolders) : [];
+                const allDecks = Array.isArray(cachedDecks.data || cachedDecks) ? (cachedDecks.data || cachedDecks) : [];
+
+                // Build UI with cached data
+                buildBreadcrumb();
+                renderSubFolders();
+                const list = allDecks.filter(d => ((d.folder || 'Uncategorized') === folder));
+                const ordered = applyOrder(list, 'deck', folder);
+                renderList(ordered);
+
+                // Refresh in background
+                refreshDecksInBackground();
+                return;
+            }
+
+            // No cache - show loader and fetch fresh data
             showLoader();
             try {
                 const [foldersData, decksData, deckOrderData, folderOrderData] = await Promise.all([
@@ -1399,9 +1419,9 @@
 
                 // Save to cache so the home page can reuse this data
                 allFolders = Array.isArray(foldersData.folders) ? foldersData.folders : [];
-                saveCache(CACHE_FOLDERS, allFolders);
+                saveCache(CACHE_FOLDERS, { data: allFolders, timestamp: Date.now() });
                 const all = Array.isArray(decksData) ? decksData : [];
-                saveCache(CACHE_DECKS, all);
+                saveCache(CACHE_DECKS, { data: all, timestamp: Date.now() });
 
                 // Store folder order
                 ordersCache.folders = Array.isArray(folderOrderData) ? folderOrderData : [];
@@ -1420,6 +1440,84 @@
             } finally {
                 hideLoader();
             }
+        }
+
+        async function refreshDecksInBackground() {
+            try {
+                const [foldersData, decksData, deckOrderData, folderOrderData] = await Promise.all([
+                    fetch('/folders').then(r => r.json()).catch(() => null),
+                    fetch('/decks').then(r => r.json()).catch(() => null),
+                    fetch(`/order/decks?scope=${encodeURIComponent(folder)}`).then(r => r.json()).catch(() => null),
+                    fetch('/order/folders').then(r => r.json()).catch(() => null)
+                ]);
+
+                let needsRerender = false;
+
+                // Helper to compare folder lists by name and parent only (ignore count changes)
+                function compareFolders(a, b) {
+                    if (!a || !b || a.length !== b.length) return false;
+                    const aMap = new Map(a.map(f => [f.name, f.parent || null]));
+                    return b.every(f => aMap.get(f.name) === (f.parent || null));
+                }
+
+                if (foldersData && foldersData.folders) {
+                    const newFolders = Array.isArray(foldersData.folders) ? foldersData.folders : [];
+                    if (!compareFolders(newFolders, allFolders)) {
+                        allFolders = newFolders;
+                        saveCache(CACHE_FOLDERS, { data: allFolders, timestamp: Date.now() });
+                        needsRerender = true;
+                    } else {
+                        // Just update silently
+                        allFolders = newFolders;
+                        saveCache(CACHE_FOLDERS, { data: allFolders, timestamp: Date.now() });
+                    }
+                }
+
+                if (folderOrderData) {
+                    const newOrder = Array.isArray(folderOrderData) ? folderOrderData : [];
+                    if (JSON.stringify(newOrder) !== JSON.stringify(ordersCache.folders)) {
+                        ordersCache.folders = newOrder;
+                        needsRerender = true;
+                    }
+                }
+
+                let decksChanged = false;
+                let prevDecksJson = '';
+
+                if (decksData) {
+                    const newDecks = Array.isArray(decksData) ? decksData : [];
+                    const list = newDecks.filter(d => ((d.folder || 'Uncategorized') === folder));
+                    prevDecksJson = JSON.stringify(list);
+
+                    // Check if decks actually changed
+                    const currentList = (getCache(CACHE_DECKS)?.data || []).filter(d => ((d.folder || 'Uncategorized') === folder));
+                    if (JSON.stringify(currentList) !== prevDecksJson) {
+                        decksChanged = true;
+                    }
+
+                    // Check if order changed
+                    if (deckOrderData) {
+                        const newDeckOrder = Array.isArray(deckOrderData) ? deckOrderData : [];
+                        if (JSON.stringify(newDeckOrder) !== JSON.stringify(ordersCache.decks[folder] || [])) {
+                            ordersCache.decks[folder] = newDeckOrder;
+                            decksChanged = true;
+                        }
+                    }
+
+                    saveCache(CACHE_DECKS, { data: newDecks, timestamp: Date.now() });
+
+                    // Only re-render if decks actually changed
+                    if (decksChanged) {
+                        const ordered = applyOrder(list, 'deck', folder);
+                        renderList(ordered);
+                    }
+                }
+
+                if (needsRerender) {
+                    buildBreadcrumb();
+                    renderSubFolders();
+                }
+            } catch { }
         }
 
         function renderList(items) {
