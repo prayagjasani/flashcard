@@ -1185,6 +1185,24 @@
             box-shadow: none !important;
         }
 
+        .btn--secondary {
+            background: #f3f4f6 !important;
+            color: var(--text) !important;
+            border: 1px solid var(--card-border) !important;
+            font-weight: 600;
+            border-radius: 10px;
+            height: 44px;
+            box-shadow: none !important;
+            transition: background 0.15s ease, transform 0.1s ease;
+            cursor: default;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn--secondary:active {
+            background: #e5e7eb !important;
+            transform: scale(0.98);
+        }
+
         .multi-deck-list::-webkit-scrollbar-thumb {
             background: transparent !important;
         }
@@ -1254,12 +1272,26 @@
 
         .modal--center-actions .modal__actions {
             flex-direction: row;
+            flex-wrap: wrap;
             gap: 10px;
         }
 
         .modal--center-actions .modal__actions .btn {
             height: 44px;
             font-weight: 600;
+            width: 40px;
+            flex: 1 1 auto;
+        }
+
+        /* Make actions stack on narrow screens */
+        @media (max-width: 380px) {
+            .modal--center-actions .modal__actions {
+                flex-direction: column;
+            }
+
+            .modal--center-actions .modal__actions .btn {
+                width: 100%;
+            }
         }
 
         .modal__close {
@@ -1908,10 +1940,12 @@
                 <input id="renameFolderInput" type="text" />
             </div>
             <div class="modal__actions">
-                <button class="btn" id="renameFolderCancelBtn" type="button">Cancel</button>
-                <button class="btn btn--signup" id="renameFolderSaveBtn" type="button">Rename</button>
-                <button class="btn btn--pill" id="moveFolderBtn" type="button">Move</button>
+                <button class="btn btn--secondary" id="moveFolderBtn" type="button">Move</button>
+                <button class="btn btn--primary" id="renameFolderSaveBtn" type="button">Rename</button>
+            </div>
+            <div class="modal__actions" style="margin-top: 8px;">
                 <button class="btn btn--danger" id="deleteFolderBtn" type="button">Delete</button>
+                <button class="btn btn--secondary" id="renameFolderCancelBtn" type="button">Cancel</button>
             </div>
             <p class="modal__status" id="renameFolderStatus"></p>
         </div>
