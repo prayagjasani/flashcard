@@ -3338,7 +3338,7 @@
         async function deleteFolder(name) {
             try {
                 const resp = await fetch('/folder/delete', {
-                    method: 'POST',
+                    method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
                     },
