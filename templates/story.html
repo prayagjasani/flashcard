@@ -674,16 +674,56 @@
         }
 
         .word-highlight {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
-            border-bottom: 2px solid var(--success);
             padding: 1px 4px;
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.15s ease;
         }
 
+        /* Colored highlights for vocabulary words */
+        .highlight-0 {
+            background: rgba(147, 197, 253, 0.5);
+        }
+
+        /* Blue */
+        .highlight-1 {
+            background: rgba(254, 202, 202, 0.5);
+        }
+
+        /* Pink/Red */
+        .highlight-2 {
+            background: rgba(167, 243, 208, 0.5);
+        }
+
+        /* Green */
+        .highlight-3 {
+            background: rgba(253, 230, 138, 0.5);
+        }
+
+        /* Yellow */
+        .highlight-4 {
+            background: rgba(196, 181, 253, 0.5);
+        }
+
+        /* Purple */
+        .highlight-5 {
+            background: rgba(254, 215, 170, 0.5);
+        }
+
+        /* Orange */
+        .highlight-6 {
+            background: rgba(165, 243, 252, 0.5);
+        }
+
+        /* Cyan */
+        .highlight-7 {
+            background: rgba(252, 211, 235, 0.5);
+        }
+
+        /* Pink light */
+
         .word-highlight:hover {
-            background: rgba(16, 185, 129, 0.3);
+            filter: brightness(0.9);
         }
 
         .tappable-word {
@@ -1483,7 +1523,27 @@
                 `;
             }
 
-            const textDe = makeWordsTappable(segment.text_de || '', segment.highlight_words || []);
+            // Build vocabulary color mapping from AI-provided highlight_pairs
+            const highlightPairs = segment.highlight_pairs || [];
+            const colorMapDe = {};
+            const colorMapEn = {};
+
+            if (highlightPairs.length > 0) {
+                // New format: use highlight_pairs with color indices
+                highlightPairs.forEach(pair => {
+                    if (pair.de) colorMapDe[pair.de.toLowerCase()] = pair.color;
+                    if (pair.en) colorMapEn[pair.en.toLowerCase()] = pair.color;
+                });
+            } else if (segment.highlight_words && segment.highlight_words.length > 0) {
+                // Old format fallback: generate colors for highlight_words
+                segment.highlight_words.forEach((word, idx) => {
+                    colorMapDe[word.toLowerCase()] = idx % 8;
+                });
+                // For old format, no English highlighting (we don't have the mapping)
+            }
+
+            const textDe = highlightWordsInText(segment.text_de || '', colorMapDe);
+            const textEn = highlightWordsInText(segment.text_en || '', colorMapEn);
 
             html += `
                 <div class="segment-content">
@@ -1492,7 +1552,7 @@
                     </button>
                     <div>
                         <p class="segment-text">${textDe}</p>
-                        <p class="segment-translation visible">${segment.text_en || ''}</p>
+                        <p class="segment-translation visible">${textEn}</p>
                     </div>
                 </div>
             `;
@@ -1513,18 +1573,16 @@
             div.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        function makeWordsTappable(text, highlightWords = []) {
+        // Simple function to highlight words using AI-provided color map
+        function highlightWordsInText(text, colorMap) {
             // Split text into words while preserving spaces and punctuation
             const parts = text.split(/(\s+)/);
 
             return parts.map(part => {
                 if (!part.trim()) return part; // Keep whitespace
 
-                // Check if this word should be highlighted (vocabulary word)
+                // Clean word for matching (remove punctuation)
                 const cleanWord = part.replace(/[.,!?;:'"„"»«()]/g, '').toLowerCase();
-                const isHighlight = highlightWords.some(hw =>
-                    hw.toLowerCase() === cleanWord
-                );
 
                 // Extract punctuation
                 const match = part.match(/^([.,!?;:'"„"»«()]*)(.+?)([.,!?;:'"„"»«()]*)$/);
@@ -1532,12 +1590,21 @@
                 const core = match ? match[2] : part;
                 const suffix = match ? match[3] : '';
 
-                if (isHighlight) {
-                    return `${prefix}<span class="word-highlight tappable-word" data-word="${core}">${core}</span>${suffix}`;
+                // Check if this word has a color assigned
+                const colorIndex = colorMap[cleanWord];
+
+                if (colorIndex !== undefined) {
+                    return `${prefix}<span class="word-highlight highlight-${colorIndex} tappable-word" data-word="${core}">${core}</span>${suffix}`;
                 } else {
                     return `${prefix}<span class="tappable-word" data-word="${core}">${core}</span>${suffix}`;
                 }
             }).join('');
+        }
+
+        function makeWordsTappable(text, highlightWords = []) {
+            // Legacy function - now uses colors
+            const vocabColorMap = buildVocabColorMap(highlightWords);
+            return makeWordsTappableWithColors(text, vocabColorMap, 'de');
         }
 
         function updateProgress() {

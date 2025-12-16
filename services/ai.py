@@ -153,27 +153,27 @@ Output ONLY a JSON object with this exact structure:
   "title_de": "Catchy German title",
   "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
-  "vocabulary": {{
-    "german_word": "english meaning",
-    "Flughafen": "airport",
-    "sind": "are",
-    "am": "at the",
-    "angekommen": "arrived"
-  }},
   "segments": [
     {{
       "type": "narration" or "dialogue",
       "speaker": "narrator" or character name,
       "text_de": "German text",
       "text_en": "English translation",
-      "highlight_words": ["word1", "word2"]
+      "highlight_pairs": [
+        {{"de": "Frage", "en": "question", "color": 0}},
+        {{"de": "Taxi", "en": "taxi", "color": 1}}
+      ]
     }}
   ]
 }}
 
-The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
-Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), etc.
-The highlight_words should contain vocabulary words from the input list that appear in that segment.
+IMPORTANT: Each segment MUST include "highlight_pairs" array with vocabulary word pairs.
+- "de": The exact German word as it appears in text_de
+- "en": The exact English word as it appears in text_en
+- "color": A number 0-7, use different colors for different word pairs within the same segment
+
+The highlight_pairs should contain 2-4 vocabulary words from the input list that appear in that segment.
+Make sure the German and English words are EXACTLY as they appear in the text (same case, same form).
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
@@ -256,25 +256,27 @@ Output ONLY a JSON object with this exact structure:
   "title_de": "Catchy German title",
   "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
-  "vocabulary": {{
-    "german_word": "english meaning",
-    "der": "the",
-    "ist": "is",
-    "und": "and"
-  }},
   "segments": [
     {{
       "type": "narration" or "dialogue",
       "speaker": "narrator" or character name,
       "text_de": "German text",
       "text_en": "English translation",
-      "highlight_words": ["key", "vocabulary", "words"]
+      "highlight_pairs": [
+        {{"de": "Flughafen", "en": "airport", "color": 0}},
+        {{"de": "nervös", "en": "nervous", "color": 1}},
+        {{"de": "Koffer", "en": "suitcase", "color": 2}}
+      ]
     }}
   ]
 }}
 
-The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
-Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), prepositions, etc.
+IMPORTANT: Each segment MUST include "highlight_pairs" array with 2-4 vocabulary word pairs.
+- "de": The exact German word as it appears in text_de (same case, same form)
+- "en": The exact English word as it appears in text_en (same case, same form)
+- "color": A number 0-7, use different colors for different word pairs within the same segment
+
+This creates visual links between German words and their English translations with matching colors.
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
@@ -300,6 +302,8 @@ Remember: The best language learning happens when students are entertained and w
                 p0 = parts[0]
                 if isinstance(p0, dict) and "text" in p0:
                     return json.loads(p0["text"])
+        print(f"[AI] No valid response from Gemini: {parsed}")
         return None
-    except Exception:
+    except Exception as e:
+        print(f"[AI] Error generating custom story: {e}")
         return None
