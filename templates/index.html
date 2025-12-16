@@ -2101,6 +2101,18 @@
             folders: [],
             decks: {}
         };
+        // Helper to clear Service Worker API cache
+        async function clearSwApiCache() {
+            if ('caches' in window) {
+                try {
+                    await caches.delete('flashcard-api-v1');
+                    await caches.delete('flashcard-api-v2');
+                } catch (e) {
+                    console.log('Failed to clear SW cache:', e);
+                }
+            }
+        }
+
         async function writeOrder(type, names, scope) {
             if (type === 'folder') {
                 const resp = await fetch('/order/folders', {
@@ -2114,11 +2126,13 @@
                 });
                 if (resp.ok) {
                     ordersCache.folders = Array.isArray(names) ? names.slice() : [];
-                    // Clear and recreate cache after order change
+                    // Clear sessionStorage cache
                     sessionStorage.removeItem(CACHE_KEY_FOLDERS);
                     sessionStorage.removeItem(CACHE_KEY_DECKS);
                     sessionStorage.removeItem('flashcard_folder_order_cache');
                     saveToCache('flashcard_folder_order_cache', ordersCache.folders);
+                    // Clear Service Worker API cache
+                    await clearSwApiCache();
                 }
             } else {
                 const key = scope || 'root';
@@ -2134,10 +2148,12 @@
                 });
                 if (resp.ok) {
                     ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
-                    // Clear and recreate cache after order change
+                    // Clear sessionStorage cache
                     sessionStorage.removeItem(CACHE_KEY_FOLDERS);
                     sessionStorage.removeItem(CACHE_KEY_DECKS);
                     sessionStorage.removeItem('flashcard_folder_order_cache');
+                    // Clear Service Worker API cache
+                    await clearSwApiCache();
                 }
             }
         }
