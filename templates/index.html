@@ -10,6 +10,7 @@
     <meta name="msapplication-navbutton-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1804,7 +1805,8 @@
             </div>
         </div>
     </header>
-    <div class="loading-overlay" id="globalLoader" aria-hidden="true">
+    <!-- Loader shown immediately on page load, hidden after content renders -->
+    <div class="loading-overlay is-active" id="globalLoader" aria-hidden="false">
         <div class="loading-dots"><span></span><span></span><span></span></div>
     </div>
     <section class="deck-list" id="homeDeckList">
@@ -1969,6 +1971,17 @@
         </div>
     </div>
 
+    <!-- Service Worker Registration for Offline Support -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+
     <script>
         const card = document.getElementById('card');
         const wrongBtn = document.getElementById('wrong');
@@ -2101,7 +2114,10 @@
                 });
                 if (resp.ok) {
                     ordersCache.folders = Array.isArray(names) ? names.slice() : [];
-                    // Update sessionStorage cache immediately
+                    // Clear and recreate cache after order change
+                    sessionStorage.removeItem(CACHE_KEY_FOLDERS);
+                    sessionStorage.removeItem(CACHE_KEY_DECKS);
+                    sessionStorage.removeItem('flashcard_folder_order_cache');
                     saveToCache('flashcard_folder_order_cache', ordersCache.folders);
                 }
             } else {
@@ -2118,7 +2134,10 @@
                 });
                 if (resp.ok) {
                     ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
-                    // Deck order cache is not used in index.html, but update for consistency
+                    // Clear and recreate cache after order change
+                    sessionStorage.removeItem(CACHE_KEY_FOLDERS);
+                    sessionStorage.removeItem(CACHE_KEY_DECKS);
+                    sessionStorage.removeItem('flashcard_folder_order_cache');
                 }
             }
         }
@@ -2828,11 +2847,12 @@
                 renderDeckGrid();
                 populateDeckSelect();
                 handleUrlParams();
+                // Hide loader after render (use requestAnimationFrame for smooth transition)
+                requestAnimationFrame(() => hideLoader());
                 return; // Done - use cache for entire session
             }
 
-            // No cache - show loader and fetch fresh data
-            showLoader();
+            // No cache - loader is already visible, fetch fresh data
 
             try {
                 const [foldersResp, decksResp, folderOrderResp] = await Promise.all([

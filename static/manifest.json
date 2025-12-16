@@ -1,0 +1,9 @@
+{
+    "name": "Flashcard App",
+    "short_name": "Flashcard",
+    "description": "German vocabulary flashcard learning app",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3b82f6"
+}
