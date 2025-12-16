@@ -110,6 +110,9 @@ def get_folders():
             folders_from_decks.add(f)
             counts[f] = counts.get(f, 0) + 1
     
+    # Collect all parent folders from parents_data
+    parent_folders = set(parents_data.values())
+    
     # Build ordered list from folders_index (preserving order)
     ordered = []
     seen = set()
@@ -124,10 +127,20 @@ def get_folders():
             })
             seen.add(f)
     
-    # Then add any folders that exist in decks but not in the index (e.g., "Uncategorized")
+    # Then add any folders that exist in decks but not in the index
     for f in sorted(folders_from_decks):
         if f not in seen:
             ordered.append({
+                "name": f, 
+                "count": counts.get(f, 0), 
+                "parent": parents_data.get(f)
+            })
+            seen.add(f)
+    
+    # Also add parent folders that are referenced but not in the list (e.g., "A1")
+    for f in sorted(parent_folders):
+        if f and f not in seen:
+            ordered.insert(0, {  # Insert at beginning since parent folders are usually top-level
                 "name": f, 
                 "count": counts.get(f, 0), 
                 "parent": parents_data.get(f)
