@@ -169,10 +169,13 @@ Output ONLY a JSON object with this exact structure:
 
 IMPORTANT: Each segment MUST include "highlight_pairs" array with vocabulary word pairs.
 - "de": The exact German word as it appears in text_de
-- "en": The exact English word as it appears in text_en
-- "color": A number 0-7, use different colors for different word pairs within the same segment
+- "en": The exact English word as it appears in text_en  
+- "color": SEQUENTIAL number starting from 0. First word pair = 0, second = 1, third = 2, etc. Each word pair in the segment MUST have a unique color number (0-15).
 
-The highlight_pairs should contain 2-4 vocabulary words from the input list that appear in that segment.
+CRITICAL: Highlight EVERY word in the sentence EXCEPT these common words: der, die, das, ein, eine, und, oder.
+Include ALL other words: verbs (bin, ist, war, habe, gehe, etc.), pronouns (ich, du, er, sie, wir, etc.), 
+nouns, adjectives, adverbs, prepositions (in, auf, mit, zu, etc.), and ALL other vocabulary.
+Do NOT skip words just because they seem simple - learners need to see ALL translations.
 Make sure the German and English words are EXACTLY as they appear in the text (same case, same form).
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
@@ -271,11 +274,15 @@ Output ONLY a JSON object with this exact structure:
   ]
 }}
 
-IMPORTANT: Each segment MUST include "highlight_pairs" array with 2-4 vocabulary word pairs.
+IMPORTANT: Each segment MUST include "highlight_pairs" array with vocabulary word pairs.
 - "de": The exact German word as it appears in text_de (same case, same form)
 - "en": The exact English word as it appears in text_en (same case, same form)
-- "color": A number 0-7, use different colors for different word pairs within the same segment
+- "color": SEQUENTIAL number starting from 0. First word pair = 0, second = 1, third = 2, etc. Each word pair in the segment MUST have a unique color number (0-15).
 
+CRITICAL: Highlight EVERY word in the sentence EXCEPT these common words: der, die, das, ein, eine, und, oder.
+Include ALL other words: verbs (bin, ist, war, habe, gehe, etc.), pronouns (ich, du, er, sie, wir, etc.), 
+nouns, adjectives, adverbs, prepositions (in, auf, mit, zu, etc.), and ALL other vocabulary.
+Do NOT skip words just because they seem simple - learners need to see ALL translations.
 This creates visual links between German words and their English translations with matching colors.
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""

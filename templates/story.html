@@ -721,6 +721,46 @@
         }
 
         /* Pink light */
+        .highlight-8 {
+            background: rgba(134, 239, 172, 0.5);
+        }
+
+        /* Lime */
+        .highlight-9 {
+            background: rgba(249, 168, 212, 0.5);
+        }
+
+        /* Rose */
+        .highlight-10 {
+            background: rgba(147, 51, 234, 0.25);
+        }
+
+        /* Violet */
+        .highlight-11 {
+            background: rgba(251, 191, 36, 0.4);
+        }
+
+        /* Amber */
+        .highlight-12 {
+            background: rgba(56, 189, 248, 0.4);
+        }
+
+        /* Sky */
+        .highlight-13 {
+            background: rgba(248, 113, 113, 0.4);
+        }
+
+        /* Red */
+        .highlight-14 {
+            background: rgba(74, 222, 128, 0.4);
+        }
+
+        /* Emerald */
+        .highlight-15 {
+            background: rgba(232, 121, 249, 0.4);
+        }
+
+        /* Fuchsia */
 
         .word-highlight:hover {
             filter: brightness(0.9);
@@ -1055,6 +1095,26 @@
         let currentDeck = params.get('deck') || '';
         let story = null;
         let vocabulary = {}; // German -> English word mappings
+
+        // Common German words fallback dictionary
+        const commonWords = {
+            'ich': 'I', 'du': 'you', 'er': 'he', 'sie': 'she/they', 'es': 'it', 'wir': 'we', 'ihr': 'you (pl.)',
+            'der': 'the', 'die': 'the', 'das': 'the', 'ein': 'a/an', 'eine': 'a/an',
+            'ist': 'is', 'bin': 'am', 'bist': 'are', 'sind': 'are', 'war': 'was', 'waren': 'were',
+            'hat': 'has', 'habe': 'have', 'haben': 'have', 'hatte': 'had', 'hatten': 'had',
+            'und': 'and', 'oder': 'or', 'aber': 'but', 'weil': 'because', 'wenn': 'if/when',
+            'nicht': 'not', 'kein': 'no/none', 'keine': 'no/none',
+            'was': 'what', 'wer': 'who', 'wo': 'where', 'wie': 'how', 'warum': 'why', 'wann': 'when',
+            'hier': 'here', 'dort': 'there', 'da': 'there', 'jetzt': 'now', 'dann': 'then', 'immer': 'always',
+            'sehr': 'very', 'so': 'so', 'auch': 'also', 'nur': 'only', 'noch': 'still/yet',
+            'mit': 'with', 'zu': 'to', 'in': 'in', 'an': 'at/on', 'auf': 'on', 'für': 'for', 'von': 'from',
+            'mein': 'my', 'dein': 'your', 'sein': 'his', 'ihr': 'her', 'unser': 'our',
+            'ja': 'yes', 'nein': 'no', 'gut': 'good', 'schlecht': 'bad', 'groß': 'big', 'klein': 'small',
+            'kann': 'can', 'muss': 'must', 'will': 'want', 'soll': 'should', 'darf': 'may',
+            'gehen': 'go', 'kommen': 'come', 'sehen': 'see', 'machen': 'make/do', 'sagen': 'say',
+            'mehr': 'more', 'alle': 'all', 'viel': 'much', 'wenig': 'little', 'etwas': 'something',
+            'ans': 'to the', 'ins': 'into the', 'beim': 'at the', 'zum': 'to the', 'vom': 'from the'
+        };
         let currentSegmentIndex = 0;
         let audioPlayer = new Audio();
         let audioCache = new Map();
@@ -1338,14 +1398,24 @@
 
                 story = data.story;
                 characters = story.characters || [];
-                vocabulary = story.vocabulary || {};
 
-                // Convert vocabulary keys to lowercase for easier lookup
-                const lowerVocab = {};
-                Object.entries(vocabulary).forEach(([de, en]) => {
-                    lowerVocab[de.toLowerCase()] = en;
-                });
-                vocabulary = lowerVocab;
+                // Build vocabulary from story.vocabulary or from highlight_pairs
+                vocabulary = {};
+                if (story.vocabulary && Object.keys(story.vocabulary).length > 0) {
+                    // Old format: use vocabulary object
+                    Object.entries(story.vocabulary).forEach(([de, en]) => {
+                        vocabulary[de.toLowerCase()] = en;
+                    });
+                } else if (story.segments) {
+                    // New format: build vocabulary from highlight_pairs
+                    story.segments.forEach(seg => {
+                        (seg.highlight_pairs || []).forEach(pair => {
+                            if (pair.de && pair.en) {
+                                vocabulary[pair.de.toLowerCase()] = pair.en;
+                            }
+                        });
+                    });
+                }
 
                 if (!story.segments || story.segments.length === 0) {
                     throw new Error('Story has no content');
@@ -1413,14 +1483,24 @@
                 story = data.story;
                 currentDeck = data.story_id || storyId;
                 characters = story.characters || [];
-                vocabulary = story.vocabulary || {};
 
-                // Convert vocabulary keys to lowercase for easier lookup
-                const lowerVocab = {};
-                Object.entries(vocabulary).forEach(([de, en]) => {
-                    lowerVocab[de.toLowerCase()] = en;
-                });
-                vocabulary = lowerVocab;
+                // Build vocabulary from story.vocabulary or from highlight_pairs
+                vocabulary = {};
+                if (story.vocabulary && Object.keys(story.vocabulary).length > 0) {
+                    // Old format: use vocabulary object
+                    Object.entries(story.vocabulary).forEach(([de, en]) => {
+                        vocabulary[de.toLowerCase()] = en;
+                    });
+                } else if (story.segments) {
+                    // New format: build vocabulary from highlight_pairs
+                    story.segments.forEach(seg => {
+                        (seg.highlight_pairs || []).forEach(pair => {
+                            if (pair.de && pair.en) {
+                                vocabulary[pair.de.toLowerCase()] = pair.en;
+                            }
+                        });
+                    });
+                }
 
                 if (!story.segments || story.segments.length === 0) {
                     throw new Error('Story has no content');
@@ -1529,15 +1609,27 @@
             const colorMapEn = {};
 
             if (highlightPairs.length > 0) {
-                // New format: use highlight_pairs with color indices
+                const textDeLower = (segment.text_de || '').toLowerCase();
+                const textEnLower = (segment.text_en || '').toLowerCase();
+
+                // Only include pairs where BOTH German and English words exist in their texts
                 highlightPairs.forEach(pair => {
-                    if (pair.de) colorMapDe[pair.de.toLowerCase()] = pair.color;
-                    if (pair.en) colorMapEn[pair.en.toLowerCase()] = pair.color;
+                    const deWord = (pair.de || '').toLowerCase();
+                    const enWord = (pair.en || '').toLowerCase();
+
+                    // Check if both words actually appear in their respective texts
+                    const deExists = deWord && textDeLower.includes(deWord);
+                    const enExists = enWord && textEnLower.includes(enWord);
+
+                    if (deExists && enExists) {
+                        colorMapDe[deWord] = pair.color;
+                        colorMapEn[enWord] = pair.color;
+                    }
                 });
             } else if (segment.highlight_words && segment.highlight_words.length > 0) {
                 // Old format fallback: generate colors for highlight_words
                 segment.highlight_words.forEach((word, idx) => {
-                    colorMapDe[word.toLowerCase()] = idx % 8;
+                    colorMapDe[word.toLowerCase()] = idx % 16;
                 });
                 // For old format, no English highlighting (we don't have the mapping)
             }
@@ -1597,7 +1689,7 @@
                     const placeholder = `__HIGHLIGHT_${idx}__`;
                     placeholders.push({
                         placeholder,
-                        html: `<span class="word-highlight highlight-${colorIndex}" data-word="${actualPhrase}">${actualPhrase}</span>`
+                        html: `<span class="word-highlight highlight-${colorIndex} tappable-word" data-word="${actualPhrase}">${actualPhrase}</span>`
                     });
                     return before + placeholder + after;
                 });
@@ -1711,8 +1803,8 @@
                 e.stopPropagation(); // Prevent hiding when clicking on word
                 const word = tappable.dataset.word;
                 const cleanWord = word.toLowerCase().replace(/[.,!?;:'"„"»«()]/g, '');
-                // Look up English meaning from vocabulary
-                const meaning = vocabulary[cleanWord] || vocabulary[word.toLowerCase()] || word;
+                // Look up English meaning from vocabulary, then commonWords fallback
+                const meaning = vocabulary[cleanWord] || vocabulary[word.toLowerCase()] || commonWords[cleanWord] || `"${word}"`;
                 showTooltip(tappable, meaning);
             }
         });
