@@ -1573,16 +1573,43 @@
             div.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // Simple function to highlight words using AI-provided color map
+        // Function to highlight words/phrases using AI-provided color map
         function highlightWordsInText(text, colorMap) {
-            // Split text into words while preserving spaces and punctuation
-            const parts = text.split(/(\s+)/);
+            if (!text || Object.keys(colorMap).length === 0) return text;
 
-            return parts.map(part => {
-                if (!part.trim()) return part; // Keep whitespace
+            let result = text;
 
-                // Clean word for matching (remove punctuation)
-                const cleanWord = part.replace(/[.,!?;:'"„"»«()]/g, '').toLowerCase();
+            // Sort by phrase length (longer first) to match "zu viel" before "zu"
+            const sortedPhrases = Object.keys(colorMap).sort((a, b) => b.length - a.length);
+
+            // Replace each phrase with a placeholder, then restore with highlighting
+            const placeholders = [];
+
+            sortedPhrases.forEach((phrase, idx) => {
+                const colorIndex = colorMap[phrase];
+                // Create regex that matches the phrase case-insensitively, with word boundaries
+                const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`(^|[\\s.,!?;:'"„"»«()])${escaped}([\\s.,!?;:'"„"»«()]|$)`, 'gi');
+
+                result = result.replace(regex, (match, before, after) => {
+                    // Find the actual matched phrase (preserving original case)
+                    const actualPhrase = match.substring(before.length, match.length - after.length);
+                    const placeholder = `__HIGHLIGHT_${idx}__`;
+                    placeholders.push({
+                        placeholder,
+                        html: `<span class="word-highlight highlight-${colorIndex}" data-word="${actualPhrase}">${actualPhrase}</span>`
+                    });
+                    return before + placeholder + after;
+                });
+            });
+
+            // Make remaining words tappable
+            result = result.split(/(\s+|__HIGHLIGHT_\d+__)/).map(part => {
+                if (!part.trim() || part.startsWith('__HIGHLIGHT_')) return part;
+
+                // Skip if it's punctuation only
+                const cleanPart = part.replace(/[.,!?;:'"„"»«()]/g, '');
+                if (!cleanPart) return part;
 
                 // Extract punctuation
                 const match = part.match(/^([.,!?;:'"„"»«()]*)(.+?)([.,!?;:'"„"»«()]*)$/);
@@ -1590,21 +1617,15 @@
                 const core = match ? match[2] : part;
                 const suffix = match ? match[3] : '';
 
-                // Check if this word has a color assigned
-                const colorIndex = colorMap[cleanWord];
-
-                if (colorIndex !== undefined) {
-                    return `${prefix}<span class="word-highlight highlight-${colorIndex} tappable-word" data-word="${core}">${core}</span>${suffix}`;
-                } else {
-                    return `${prefix}<span class="tappable-word" data-word="${core}">${core}</span>${suffix}`;
-                }
+                return `${prefix}<span class="tappable-word" data-word="${core}">${core}</span>${suffix}`;
             }).join('');
-        }
 
-        function makeWordsTappable(text, highlightWords = []) {
-            // Legacy function - now uses colors
-            const vocabColorMap = buildVocabColorMap(highlightWords);
-            return makeWordsTappableWithColors(text, vocabColorMap, 'de');
+            // Restore placeholders with actual HTML
+            placeholders.forEach(({ placeholder, html }) => {
+                result = result.replace(placeholder, html);
+            });
+
+            return result;
         }
 
         function updateProgress() {

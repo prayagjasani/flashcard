@@ -7,7 +7,8 @@
     <meta name="color-scheme" content="light" />
     <title>Manage Flashcards</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         .material-symbols-outlined {
@@ -49,7 +50,7 @@
         body {
             min-height: max(884px, 100dvh);
         }
-        
+
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -57,18 +58,18 @@
             display: none;
             background: rgba(255, 255, 255, 0.6);
         }
-        
+
         .loading-overlay.is-active {
             display: grid;
             place-items: center;
         }
-        
+
         .loading-dots {
             display: flex;
             gap: 8px;
             color: #8E8E93;
         }
-        
+
         .loading-dots span {
             width: 8px;
             height: 8px;
@@ -77,51 +78,56 @@
             opacity: 0.5;
             animation: dotPulse 1000ms infinite ease-in-out;
         }
-        
+
         .loading-dots span:nth-child(2) {
             animation-delay: 150ms;
         }
-        
+
         .loading-dots span:nth-child(3) {
             animation-delay: 300ms;
         }
-        
+
         @keyframes dotPulse {
             0% {
                 transform: scale(1);
                 opacity: 0.35;
             }
+
             50% {
                 transform: scale(1.25);
                 opacity: 1;
             }
+
             100% {
                 transform: scale(1);
                 opacity: 0.35;
             }
         }
-        
+
         .row-enter {
             animation: slideDown 360ms ease-out both;
             will-change: transform, opacity;
         }
-        
+
         @keyframes slideDown {
             0% {
                 transform: translateY(-6px);
                 opacity: 0;
             }
+
             100% {
                 transform: translateY(0);
                 opacity: 1;
             }
         }
+
         .manage-card {
-            border: 1px solid rgba(0,0,0,0.08);
+            border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 12px;
             background: #fff;
             padding: 8px;
         }
+
         .manage-toggle {
             width: 100%;
             display: flex;
@@ -131,31 +137,37 @@
             border-radius: 8px;
             background: transparent;
         }
+
         .manage-title {
             font-weight: 600;
         }
+
         .manage-body {
             margin-top: 8px;
         }
+
         .manage-card.collapsed .manage-body {
             display: none;
         }
-        
     </style>
 </head>
 
 <body class="font-display bg-background-light dark:bg-background-dark">
     <div class="relative flex min-h-screen w-full flex-col">
-        <header class="sticky top-0 z-10 border-b border-gray-200 bg-background-light dark:border-gray-800 dark:bg-background-dark">
+        <header
+            class="sticky top-0 z-10 border-b border-gray-200 bg-background-light dark:border-gray-800 dark:bg-background-dark">
             <div class="mx-auto max-w-2xl px-2 py-2 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-near-black dark:text-white">
+                    <button id="backBtn"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-near-black dark:text-white">
                         <span class="material-symbols-outlined text-base">arrow_back_ios_new</span>
                     </button>
                 </div>
                 <h1 id="deckTitle" class="text-base font-semibold text-near-black dark:text-white">Deck</h1>
                 <div class="flex items-center gap-1">
-                    <button id="navAddBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-near-black dark:text-white" aria-label="Add">
+                    <button id="navAddBtn"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-near-black dark:text-white"
+                        aria-label="Add">
                         <span class="material-symbols-outlined text-xl">add</span>
                     </button>
                 </div>
@@ -163,8 +175,10 @@
         </header>
         <main class="flex-1 px-4 py-6 pb-24">
             <div class="mb-4 flex items-center gap-3">
-                <label id="deckLabelEdit" for="deckSelectEdit" class="text-sm font-medium text-near-black dark:text-white cursor-pointer">Deck</label>
-                <select id="deckSelectEdit" class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white"></select>
+                <label id="deckLabelEdit" for="deckSelectEdit"
+                    class="text-sm font-medium text-near-black dark:text-white cursor-pointer">Deck</label>
+                <select id="deckSelectEdit"
+                    class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white"></select>
             </div>
             <div id="cardList" class="space-y-3 mt-4"></div>
             <div id="manageCard" class="manage-card collapsed mt-4">
@@ -174,11 +188,16 @@
                 </button>
                 <div class="manage-body">
                     <div class="mb-4 flex items-center">
-                        <input id="renameInput" type="text" class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white" placeholder="New deck name" />
-                        <button id="renameBtn" class="h-10 rounded-lg bg-primary px-4 text-white ml-2 mr-0">Rename</button>
+                        <input id="renameInput" type="text"
+                            class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60 dark:text-white"
+                            placeholder="New deck name" />
+                        <button id="renameBtn"
+                            class="h-10 rounded-lg bg-primary px-4 text-white ml-2 mr-0">Rename</button>
                     </div>
                     <div class="mb-3">
-                        <button id="deleteDeckBtn" class="h-10 w-full rounded-lg border border-destructive-red text-destructive-red">Delete deck</button>
+                        <button id="deleteDeckBtn"
+                            class="h-10 w-full rounded-lg border border-destructive-red text-destructive-red">Delete
+                            deck</button>
                     </div>
                 </div>
             </div>
@@ -190,16 +209,21 @@
             <div class="w-full max-w-sm rounded-xl bg-background-light dark:bg-background-dark p-4 shadow-xl">
                 <h2 class="text-base font-semibold text-near-black dark:text-white">Edit Card</h2>
                 <div class="mt-3 space-y-3">
-                    <input id="editEn" type="text" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60" placeholder="English" />
-                    <input id="editDe" type="text" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60" placeholder="German" />
+                    <input id="editEn" type="text"
+                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60"
+                        placeholder="English" />
+                    <input id="editDe" type="text"
+                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800/60"
+                        placeholder="German" />
                 </div>
                 <div class="mt-4 grid grid-cols-2 gap-3">
-                    <button id="editCancel" class="h-10 rounded-lg border border-gray-300 bg-white text-near-black dark:border-gray-700 dark:bg-gray-800/60 dark:text-white">Cancel</button>
+                    <button id="editCancel"
+                        class="h-10 rounded-lg border border-gray-300 bg-white text-near-black dark:border-gray-700 dark:bg-gray-800/60 dark:text-white">Cancel</button>
                     <button id="editSave" class="h-10 rounded-lg bg-primary text-white">Save</button>
                 </div>
             </div>
         </div>
-        
+
     </div>
 
 </body>
@@ -287,7 +311,7 @@
         cards.forEach((c, i) => {
             const row = document.createElement('div');
             row.className = 'flex items-center gap-4 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800/50' + (didInitialAnimation ? '' : ' row-enter');
-            if (!didInitialAnimation) row.style.animationDelay = `${i*40}ms`;
+            if (!didInitialAnimation) row.style.animationDelay = `${i * 40}ms`;
             const left = document.createElement('div');
             left.className = 'flex flex-1 flex-col justify-center';
             const de = document.createElement('p');
@@ -338,7 +362,7 @@
     editModal.addEventListener('click', (e) => {
         if (e.target === editModal) closeEdit();
     });
-    editSave.addEventListener('click', async() => {
+    editSave.addEventListener('click', async () => {
         const en = (editEn.value || '').trim();
         const de = (editDe.value || '').trim();
         if (!en || !de) return;
@@ -392,8 +416,8 @@
         saveDeckSilent();
         if (removed && removed.de) removeAudioCacheForWord(removed.de);
     }
-    
-    
+
+
     loadCards();
 
     async function loadDecks() {
@@ -417,7 +441,7 @@
             if (deck) {
                 deckSelectEdit.value = deck;
             }
-            deckSelectEdit.addEventListener('change', async(e) => {
+            deckSelectEdit.addEventListener('change', async (e) => {
                 deck = e.target.value || '';
                 deckTitle.textContent = deck || 'Deck';
                 cards = [];
@@ -436,7 +460,7 @@
     function sanitizeName(n) {
         return (n || '').trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50)
     }
-    if (renameBtn) renameBtn.addEventListener('click', async() => {
+    if (renameBtn) renameBtn.addEventListener('click', async () => {
         const newRaw = (renameInput && renameInput.value || '').trim();
         const newName = sanitizeName(newRaw);
         if (!deck) {
@@ -484,7 +508,7 @@
             renameBtn.textContent = 'Rename'
         }
     });
-    if (deleteDeckBtn) deleteDeckBtn.addEventListener('click', async() => {
+    if (deleteDeckBtn) deleteDeckBtn.addEventListener('click', async () => {
         if (!deck) {
             alert('Please select a deck.');
             return
@@ -493,7 +517,7 @@
         deleteDeckBtn.textContent = 'Deleting...';
         try {
             const resp = await fetch('/deck/delete', {
-                method: 'POST',
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -541,7 +565,7 @@
                 audioPlayer.src = url;
                 await audioPlayer.play();
             }
-        } catch {}
+        } catch { }
     }
 
     function cleanupAudioCache() {
@@ -550,7 +574,7 @@
             const toRemove = entries.slice(0, entries.length - MAX_CACHE_SIZE);
             toRemove.forEach(([key, url]) => {
                 if (typeof url === 'string' && url.startsWith('blob:')) {
-                    try { URL.revokeObjectURL(url); } catch {}
+                    try { URL.revokeObjectURL(url); } catch { }
                 }
                 audioCache.delete(key);
             });
@@ -574,7 +598,7 @@
             const entries = Object.entries((data && data.audio_urls) || {});
             const tasks = entries.map(([text, url]) => fetchAudioAndCache(text, url));
             await Promise.allSettled(tasks);
-        } catch {}
+        } catch { }
     }
 
     function preloadAudioForWord(text) {
@@ -596,8 +620,8 @@
             try {
                 const base64 = await blobToBase64(blob);
                 localStorage.setItem(cacheKey, base64);
-            } catch {}
-        } catch {}
+            } catch { }
+        } catch { }
     }
 
     function blobToBase64(blob) {
@@ -614,13 +638,13 @@
         try {
             const val = audioCache.get(text);
             if (val && typeof val === 'string' && val.startsWith('blob:')) {
-                try { URL.revokeObjectURL(val); } catch {}
+                try { URL.revokeObjectURL(val); } catch { }
             }
             audioCache.delete(text);
-        } catch {}
+        } catch { }
         try {
             localStorage.removeItem(`audio:de:${text}`);
-        } catch {}
+        } catch { }
     }
 </script>
 
