@@ -5,7 +5,6 @@ import csv
 import asyncio
 import urllib.request
 import urllib.error
-from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -18,9 +17,14 @@ from services.storage import (
     lines_key as _lines_key
 )
 from services.ai import generate_lines as _gemini_generate_lines, GEMINI_API_KEY
+from services.executor import get_executor
+from services.deck_service import get_cards_silent
 from utils import safe_deck_name as _safe_deck_name, safe_tts_key as _safe_tts_key_util
 
 router = APIRouter()
+
+# TTS configuration
+MAX_TTS_TEXT_LENGTH = 500  # Maximum characters for TTS input
 
 # Helper access to tts key
 def _safe_tts_key(text: str, lang: str = "de") -> str:
@@ -29,6 +33,15 @@ def _safe_tts_key(text: str, lang: str = "de") -> str:
 @router.get("/tts")
 def tts(text: str, lang: str = "de", slow: bool = False):
     """Stream from R2 if available; otherwise generate in-memory and upload when configured."""
+    # Validate text length to prevent abuse
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+    if len(text) > MAX_TTS_TEXT_LENGTH:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Text too long. Maximum {MAX_TTS_TEXT_LENGTH} characters allowed."
+        )
+    
     try:
         if r2_client and R2_BUCKET_NAME:
             key = _safe_tts_key(text, lang)
@@ -93,21 +106,23 @@ async def generate_lines(deck: str, limit: int | None = None, refresh: bool = Fa
             pass
 
     try:
-        # Inline get_cards logic to avoid circular dependency
-        cards = []
-        if r2_client and R2_BUCKET_NAME:
-            csv_key = f"{R2_BUCKET_NAME}/csv/{safe}.csv"
-            try:
-                obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=csv_key)
-                data = obj["Body"].read().decode("utf-8")
-                reader = csv.reader(io.StringIO(data))
-                for row in reader:
-                    if len(row) >= 2:
-                        en, de = row[0].strip(), row[1].strip()
-                        if en and de:
-                            cards.append({"en": en, "de": de})
-            except Exception:
-                pass
+        # Use shared deck service instead of duplicating logic
+        cards = get_cards_silent(deck)
+        if not cards:
+            # Try inline fallback if service returns empty
+            if r2_client and R2_BUCKET_NAME:
+                csv_key = f"{R2_BUCKET_NAME}/csv/{safe}.csv"
+                try:
+                    obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=csv_key)
+                    data = obj["Body"].read().decode("utf-8")
+                    reader = csv.reader(io.StringIO(data))
+                    for row in reader:
+                        if len(row) >= 2:
+                            en, de = row[0].strip(), row[1].strip()
+                            if en and de:
+                                cards.append({"en": en, "de": de})
+                except Exception:
+                    pass
         
         items = _gemini_generate_lines(cards)
         cleaned = []
@@ -170,10 +185,11 @@ async def generate_lines(deck: str, limit: int | None = None, refresh: bool = Fa
                             return True
                         except Exception:
                             return None
-                            
+                
+                # Use shared executor instead of creating new one per request
+                executor = get_executor()
                 loop = asyncio.get_event_loop()
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    await loop.run_in_executor(executor, lambda: [process_one_sync(it) for it in cleaned])
+                await loop.run_in_executor(executor, lambda: [process_one_sync(it) for it in cleaned])
             except Exception:
                 pass
                 
@@ -275,9 +291,10 @@ async def preload_lines_audio(deck: str, lang: str = "de"):
                         return text, f"/r2/get?key={r2_key}"
                     except Exception:
                         return None, None
+            # Use shared executor
+            executor = get_executor()
             loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                return await loop.run_in_executor(executor, check_and_generate)
+            return await loop.run_in_executor(executor, check_and_generate)
         sem = asyncio.Semaphore(10)
         async def with_sem(it):
             async with sem:

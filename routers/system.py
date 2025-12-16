@@ -1,4 +1,6 @@
 import io
+import os
+import re
 import json
 import csv
 from fastapi import APIRouter, HTTPException
@@ -15,6 +17,19 @@ from services.storage import (
 from utils import safe_tts_key as _safe_tts_key_util, safe_deck_name as _safe_deck_name
 
 router = APIRouter()
+
+# Debug mode from environment
+DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() in ("true", "1", "yes")
+
+# Allowed R2 key prefixes for public access
+ALLOWED_KEY_PREFIXES = [
+    "tts/",
+    "csv/",
+    "lines/",
+    "stories/",
+    "order/",
+    "folders/",
+]
 
 def _safe_tts_key(text: str, lang: str = "de") -> str:
     return _safe_tts_key_util(text, R2_BUCKET_NAME, lang)
@@ -36,19 +51,24 @@ def r2_health():
 
 @router.get("/debug/r2-config")
 def debug_r2_config():
-    """Debug endpoint to check R2 configuration in deployment."""
+    """Debug endpoint to check R2 configuration in deployment.
+    
+    Protected: Only available when DEBUG_MODE=true in environment.
+    """
+    if not DEBUG_MODE:
+        raise HTTPException(status_code=403, detail="Debug endpoints are disabled in production")
+    
     config_info = {
         "r2_configured": bool(r2_client and R2_BUCKET_NAME),
         "bucket_name": R2_BUCKET_NAME,
         "endpoint": R2_ENDPOINT,
         "has_credentials": bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY),
-        "account_id": "HIDDEN" if R2_ACCESS_KEY_ID else None, # Simplified
+        "account_id": "HIDDEN" if R2_ACCESS_KEY_ID else None,
     }
     
     # Test basic R2 connection
     if r2_client and R2_BUCKET_NAME:
         try:
-            # Try to list objects with the bucket prefix
             response = r2_client.list_objects_v2(
                 Bucket=R2_BUCKET_NAME,
                 Prefix=f"{R2_BUCKET_NAME}/csv/",
@@ -67,9 +87,27 @@ def debug_r2_config():
 
 @router.get("/r2/get")
 def r2_get(key: str):
-    """Stream an object from Cloudflare R2 by key."""
+    """Stream an object from Cloudflare R2 by key.
+    
+    Key must start with an allowed prefix for security.
+    """
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    
+    # Validate key format and prevent path traversal
+    if ".." in key or key.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid key format")
+    
+    # Extract the path after bucket name prefix
+    key_path = key
+    if key.startswith(f"{R2_BUCKET_NAME}/"):
+        key_path = key[len(f"{R2_BUCKET_NAME}/"):]
+    
+    # Check if key is in allowed prefixes
+    is_allowed = any(key_path.startswith(prefix) for prefix in ALLOWED_KEY_PREFIXES)
+    if not is_allowed:
+        raise HTTPException(status_code=403, detail="Access to this key is not allowed")
+    
     try:
         obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
         stream = obj["Body"]

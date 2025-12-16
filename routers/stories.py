@@ -1,4 +1,6 @@
 import json
+import io
+import csv
 import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -25,44 +27,13 @@ from services.ai import (
 )
 from services.audio import generate_story_audio_background
 from services.cache import get_cached, set_cached, invalidate_cache
-from routers.decks import get_cards # We need get_cards logic. It's in new router. 
-# Problem: circular import or just duplicating logic? 
-# Better to import get_cards from a common place. 
-# But get_cards is a route handler. 
-# I should extract get_cards logic to a helper in services or utils.
-# For now, I will duplicate the simple get_cards logic or re-implement it to avoid dependency on routers.decks
+from services.deck_service import get_cards as _get_cards_from_service
 from utils import safe_deck_name as _safe_deck_name
 
 router = APIRouter()
-
-import csv
-import io
-
-# Helper specific for stories.py to avoid circular import with routers.decks
 def _get_cards_helper(deck: str):
-    safe = _safe_deck_name(deck)
-    if not safe:
-        raise HTTPException(status_code=400, detail="Invalid deck name")
-
-    if r2_client and R2_BUCKET_NAME:
-        key = f"{R2_BUCKET_NAME}/csv/{safe}.csv"
-        try:
-            obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
-            data = obj["Body"].read().decode("utf-8")
-            result = []
-            reader = csv.reader(io.StringIO(data))
-            for row in reader:
-                if len(row) >= 2:
-                    en, de = row[0].strip(), row[1].strip()
-                    if en and de:
-                        result.append({"en": en, "de": de})
-            return result
-        except ClientError as e:
-            code = e.response.get("Error", {}).get("Code")
-            if code in ("404", "NoSuchKey", "NotFound"):
-                raise HTTPException(status_code=404, detail="Deck not found")
-            raise HTTPException(status_code=500, detail=str(e))
-    raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    """Get cards for a deck using the shared deck service."""
+    return _get_cards_from_service(deck)
 
 def _rebuild_stories_index_internal():
     if not r2_client or not R2_BUCKET_NAME:

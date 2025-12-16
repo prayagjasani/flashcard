@@ -4,7 +4,6 @@ import json
 import threading
 import asyncio
 from typing import List
-from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, HTTPException
 from gtts import gTTS
@@ -17,6 +16,8 @@ from services.storage import (
 )
 from services.audio import background_audio_generation, background_audio_cleanup_and_generate, _safe_tts_key_helper, _safe_tts_key_helper as _safe_tts_key
 from services.cache import invalidate_cache
+from services.executor import get_executor
+from services.deck_service import get_cards as get_cards_from_service
 from utils import safe_deck_name as _safe_deck_name
 
 router = APIRouter()
@@ -287,7 +288,7 @@ def update_deck(payload: DeckUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update deck CSV: {e}")
 
-@router.post("/deck/delete")
+@router.delete("/deck/delete")
 def delete_deck(payload: DeckDelete):
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
@@ -584,10 +585,10 @@ async def preload_deck_audio(deck: str, lang: str = "de"):
                         return None, None
             
             # Run the blocking operation in a thread pool
+            executor = get_executor()
             loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                result = await loop.run_in_executor(executor, check_and_generate)
-                return result
+            result = await loop.run_in_executor(executor, check_and_generate)
+            return result
         
         # Process all cards concurrently (limit to 10 concurrent operations)
         semaphore = asyncio.Semaphore(10)

@@ -248,7 +248,7 @@ def folder_rename(payload: FolderRename):
     invalidate_cache("folders:")
     return {"ok": True, "old_name": old, "new_name": new}
 
-@router.post("/folder/delete")
+@router.delete("/folder/delete")
 def folder_delete(payload: FolderDelete):
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")

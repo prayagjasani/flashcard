@@ -1,9 +1,14 @@
 import os
 import re
+import logging
+import threading
 import boto3
 from botocore.config import Config
 from dotenv import load_dotenv
 from utils import safe_deck_name
+
+# Logger for storage operations
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -66,6 +71,10 @@ def story_audio_prefix(deck: str) -> str:
 # -----------------
 import json
 
+# Lock for stories index operations to prevent race conditions
+_stories_index_lock = threading.Lock()
+
+
 def stories_index_key() -> str:
     return f"{R2_BUCKET_NAME}/stories/index.json"
 
@@ -79,42 +88,24 @@ def get_stories_index():
         return []
 
 def update_stories_index(new_story_meta: dict):
+    """Update the stories index with new story metadata (thread-safe)."""
     if not r2_client or not R2_BUCKET_NAME:
         return
     
-    # Simple Read-Modify-Write
-    # We acquire the lock conceptually by doing this in one thread usually, but here request scoped.
-    # Ideally use a lock file or conditional update, but simplistic approach for now.
-    current = get_stories_index()
-    
-    # Remove existing entry if any (by deck name which is unique ID here)
-    filtered = [s for s in current if s.get("deck") != new_story_meta.get("deck")]
-    filtered.append(new_story_meta)
-    
-    # Sort by last_modified desc
-    try:
-        filtered.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
-    except Exception:
-        pass
-    
-    try:
-        r2_client.put_object(
-            Bucket=R2_BUCKET_NAME,
-            Key=stories_index_key(),
-            Body=json.dumps(filtered).encode("utf-8"),
-            ContentType="application/json"
-        )
-    except Exception:
-        pass
-
-def remove_from_stories_index(deck: str):
-    if not r2_client or not R2_BUCKET_NAME:
-        return
+    # Use lock to prevent concurrent read-modify-write race conditions
+    with _stories_index_lock:
+        current = get_stories_index()
         
-    current = get_stories_index()
-    filtered = [s for s in current if s.get("deck") != deck]
-    
-    if len(filtered) != len(current):
+        # Remove existing entry if any (by deck name which is unique ID here)
+        filtered = [s for s in current if s.get("deck") != new_story_meta.get("deck")]
+        filtered.append(new_story_meta)
+        
+        # Sort by last_modified desc
+        try:
+            filtered.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
+        except Exception as e:
+            logger.warning(f"Failed to sort stories index: {e}")
+        
         try:
             r2_client.put_object(
                 Bucket=R2_BUCKET_NAME,
@@ -122,5 +113,26 @@ def remove_from_stories_index(deck: str):
                 Body=json.dumps(filtered).encode("utf-8"),
                 ContentType="application/json"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to update stories index: {e}")
+
+def remove_from_stories_index(deck: str):
+    """Remove a story from the index (thread-safe)."""
+    if not r2_client or not R2_BUCKET_NAME:
+        return
+    
+    # Use lock to prevent concurrent modifications
+    with _stories_index_lock:
+        current = get_stories_index()
+        filtered = [s for s in current if s.get("deck") != deck]
+        
+        if len(filtered) != len(current):
+            try:
+                r2_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=stories_index_key(),
+                    Body=json.dumps(filtered).encode("utf-8"),
+                    ContentType="application/json"
+                )
+            except Exception as e:
+                logger.error(f"Failed to remove from stories index: {e}")
