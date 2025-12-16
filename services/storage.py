@@ -38,8 +38,6 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT:
     except Exception:
         r2_client = None
 
-def order_folders_key() -> str:
-    return f"{R2_BUCKET_NAME}/order/folders.json"
 
 def order_decks_key(scope: str | None) -> str:
     s = safe_deck_name(scope or "root") or "root"
