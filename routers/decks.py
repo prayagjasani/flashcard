@@ -15,12 +15,15 @@ from services.storage import (
     order_decks_key as _order_decks_key
 )
 from services.audio import background_audio_generation, background_audio_cleanup_and_generate, _safe_tts_key_helper, _safe_tts_key_helper as _safe_tts_key
-from services.cache import invalidate_cache
+from services.cache import invalidate_cache, get_cached, set_cached
 from services.executor import get_executor
 from services.deck_service import get_cards as get_cards_from_service
 from utils import safe_deck_name as _safe_deck_name
 
 router = APIRouter()
+
+# Cache TTL for deck order (in seconds)
+DECK_ORDER_CACHE_TTL = 30
 
 @router.get("/decks")
 def list_decks():
@@ -208,6 +211,11 @@ def create_deck(payload: DeckCreate):
     de_words = [de for _, de in rows]
     background_audio_generation(de_words)
 
+    # Invalidate caches to reflect new deck
+    folder_scope = _safe_deck_name(payload.folder) if payload.folder else "root"
+    invalidate_cache(f"decks:order:{folder_scope}")
+    invalidate_cache("folders:")
+
     # Return immediately - audio will be generated in background
     return {
         "ok": True,
@@ -352,6 +360,11 @@ def delete_deck(payload: DeckDelete):
         index_rebuild = rebuild_deck_index()
     except Exception as e:
         index_rebuild = {"ok": False, "error": str(e)}
+    
+    # Invalidate caches
+    invalidate_cache("decks:order:")
+    invalidate_cache("folders:")
+    
     return {
         "ok": True,
         "csv_deleted": csv_deleted,
@@ -415,6 +428,11 @@ def rename_deck(payload: DeckRename):
         index_rebuild = rebuild_deck_index()
     except Exception as e:
         index_rebuild = {"ok": False, "error": str(e)}
+    
+    # Invalidate caches
+    invalidate_cache("decks:order:")
+    invalidate_cache("folders:")
+    
     return {"ok": True, "old_name": old, "new_name": new, "index_updated": index_updated, "index_rebuild": index_rebuild}
 
 @router.post("/deck/move")
@@ -471,6 +489,11 @@ def deck_move(payload: DeckMove):
                     r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=tkey, Body=json.dumps(tlist).encode("utf-8"), ContentType="application/json")
             except Exception:
                 pass
+            # Invalidate caches for affected order lists
+            if prev_folder:
+                invalidate_cache(f"decks:order:{_safe_deck_name(prev_folder)}")
+            invalidate_cache(f"decks:order:{_safe_deck_name(folder or 'root')}")
+            invalidate_cache("folders:")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"ok": True, "name": name, "folder": folder or None}
@@ -618,11 +641,20 @@ async def preload_deck_audio(deck: str, lang: str = "de"):
 def order_decks_get(scope: str | None = None):
     if not r2_client or not R2_BUCKET_NAME:
         raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    
+    # Check cache first
+    safe_scope = _safe_deck_name((scope or "root")) or "root"
+    cache_key = f"decks:order:{safe_scope}"
+    cached = get_cached(cache_key, DECK_ORDER_CACHE_TTL)
+    if cached is not None:
+        return cached
+    
     try:
         obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_order_decks_key(scope))
         data = obj["Body"].read().decode("utf-8")
         arr = json.loads(data)
         if isinstance(arr, list):
+            set_cached(cache_key, arr)
             return arr
         return []
     except ClientError as e:
@@ -641,6 +673,10 @@ def order_decks_set(payload: DeckOrderUpdate):
     names = [ _safe_deck_name(x) for x in (payload.order or []) if _safe_deck_name(x) ]
     try:
         r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=_order_decks_key(scope), Body=json.dumps(names).encode("utf-8"), ContentType="application/json")
+        # Invalidate cache for this scope's deck order
+        invalidate_cache(f"decks:order:{scope}")
+        # Also invalidate the folders cache since deck order affects folder display
+        invalidate_cache("folders:")
         return {"ok": True, "scope": scope, "order": names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
