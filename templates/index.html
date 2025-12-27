@@ -2426,8 +2426,8 @@
                                 if (dragTileEl) dragTileEl.classList.remove('is-dragging-hidden');
                                 dragTileEl = null;
                                 dragTileHeight = 0;
-                                // Reload folders
-                                await loadFolders();
+                                // Refresh data and update cache immediately
+                                await refreshDataAndCache();
                             }
                         } catch { }
                     }
@@ -2919,10 +2919,15 @@
                 renderFolderGrid();
                 renderDeckGrid();
                 populateDeckSelect();
-                handleUrlParams();
-                // Mark data as loaded but wait for page to fully load
-                dataLoaded = true;
-                checkAndHideLoader();
+                try {
+                    handleUrlParams();
+                } catch (err) {
+                    console.error('Error handling URL params:', err);
+                } finally {
+                    // Mark data as loaded but wait for page to fully load
+                    dataLoaded = true;
+                    checkAndHideLoader();
+                }
                 return; // Done - use cache for entire session
             }
 
@@ -2949,16 +2954,53 @@
                 updateDeckCounts();
             } catch { }
 
-            renderFolderGrid();
-            renderDeckGrid();
-            populateDeckSelect();
+            try {
+                renderFolderGrid();
+                renderDeckGrid();
+                populateDeckSelect();
 
-            // Handle URL parameters
-            handleUrlParams();
-            
-            // Mark data as loaded
-            dataLoaded = true;
-            checkAndHideLoader();
+                // Handle URL parameters
+                handleUrlParams();
+            } catch (err) {
+                console.error('Error rendering homepage data:', err);
+            } finally {
+                // Always mark data as loaded, even if rendering fails
+                dataLoaded = true;
+                checkAndHideLoader();
+            }
+        }
+
+        // Refresh data from server and update cache + UI immediately
+        async function refreshDataAndCache() {
+            try {
+                const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
+                    fetch('/folders').then(r => r.json()).catch(() => ({
+                        folders: []
+                    })),
+                    fetch('/decks').then(r => r.json()).catch(() => []),
+                    fetch('/order/folders').then(r => r.json()).catch(() => [])
+                ]);
+
+                // Update folders
+                cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
+                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
+                
+                // Update folder order
+                ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+                saveToCache('flashcard_folder_order_cache', ordersCache.folders);
+
+                // Update decks
+                cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
+                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                
+                // Update deck counts and re-render UI
+                updateDeckCounts();
+                renderFolderGrid();
+                renderDeckGrid();
+                populateDeckSelect();
+            } catch (err) {
+                console.error('Error refreshing data:', err);
+            }
         }
 
         // Background refresh - updates cache and UI if data changed
@@ -3333,8 +3375,8 @@
                 }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to create folder');
                 createFolderStatus.textContent = 'Created';
-                clearCache(); // Invalidate cache to fetch fresh data
-                await loadFolders();
+                // Refresh data and update cache immediately
+                await refreshDataAndCache();
                 closeCreateFolderModal();
                 createFolderSaveBtn.disabled = false;
                 createFolderSaveBtn.textContent = 'Create';
@@ -3378,8 +3420,8 @@
                 }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to delete folder');
                 if (selectedFolder === name) selectedFolder = '';
-                await loadDecks();
-                await loadFolders();
+                // Refresh data and update cache immediately
+                await refreshDataAndCache();
                 closeRenameFolderModal();
             } catch (err) {
                 renameFolderStatus.textContent = String(err.message || err);
@@ -3408,8 +3450,8 @@
                 }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to rename');
                 if (selectedFolder === folderToManage) selectedFolder = newName;
-                await loadDecks();
-                await loadFolders();
+                // Refresh data and update cache immediately
+                await refreshDataAndCache();
                 closeRenameFolderModal();
             } catch (err) {
                 renameFolderStatus.textContent = String(err.message || err);
@@ -3537,7 +3579,8 @@
                 }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
                 moveFolderStatus.textContent = 'Moved!';
-                await loadFolders();
+                // Refresh data and update cache immediately
+                await refreshDataAndCache();
                 closeMoveFolderModal();
             } catch (err) {
                 moveFolderStatus.textContent = String(err.message || err);
@@ -3684,8 +3727,8 @@
                 }));
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
                 moveDeckStatus.textContent = 'Moved';
-                await loadDecks();
-                await loadFolders();
+                // Refresh data and update cache immediately
+                await refreshDataAndCache();
                 closeMoveDeckModal();
                 chooseActionModal.classList.remove('is-open');
                 chooseActionModal.setAttribute('aria-hidden', 'true');
@@ -4386,10 +4429,21 @@
         // Check if page is already loaded (edge case)
         if (document.readyState === 'complete') {
             pageFullyLoaded = true;
+            checkAndHideLoader();
         }
         
         // Load folders and decks in parallel for faster startup
         loadAllData();
+        
+        // Fallback: Hide loader after maximum wait time (10 seconds) to prevent stuck loader
+        setTimeout(() => {
+            if (globalLoader && globalLoader.classList.contains('is-active')) {
+                console.warn('Loader timeout - forcing hide after 10 seconds');
+                dataLoaded = true;
+                pageFullyLoaded = true;
+                hideLoader();
+            }
+        }, 10000);
 
         // Simple dropdown change handler
         deckSelect.addEventListener('change', (e) => {
