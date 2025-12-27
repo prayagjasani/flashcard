@@ -2910,9 +2910,9 @@
             } catch { }
 
             try {
-                requestAnimationFrame(() => {
-                    renderFolderGrid();
-                    renderDeckGrid();
+                requestAnimationFrame(async () => {
+                    await renderFolderGrid();
+                    await renderDeckGrid();
                     populateDeckSelect();
                 });
 
@@ -2949,9 +2949,9 @@
                 
                 // Update deck counts and re-render UI with smooth animation
                 updateDeckCounts();
-                requestAnimationFrame(() => {
-                    renderFolderGrid();
-                    renderDeckGrid();
+                requestAnimationFrame(async () => {
+                    await renderFolderGrid();
+                    await renderDeckGrid();
                     populateDeckSelect();
                 });
             } catch (err) {
@@ -2959,68 +2959,25 @@
             }
         }
 
-        // Background refresh - updates cache and UI if data changed
+        // Background refresh - always fetch fresh and re-render (no caching)
         async function refreshDataInBackground() {
             try {
+                // Always fetch fresh data and re-render
                 const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
-                    fetch('/folders').then(r => r.json()).catch(() => null),
-                    fetch('/decks').then(r => r.json()).catch(() => null),
-                    fetch('/order/folders').then(r => r.json()).catch(() => null)
+                    fetch('/folders').then(r => r.json()).catch(() => ({ folders: [] })),
+                    fetch('/decks').then(r => r.json()).catch(() => []),
+                    fetch('/order/folders').then(r => r.json()).catch(() => [])
                 ]);
 
-                let needsRerender = false;
+                // Always update with fresh data
+                cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
+                ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+                cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
+                updateDeckCounts();
 
-                // Helper to compare folder lists by name and parent only (ignore count changes)
-                function compareFolders(a, b) {
-                    if (!a || !b || a.length !== b.length) return false;
-                    const aMap = new Map(a.map(f => [f.name, f.parent || null]));
-                    return b.every(f => aMap.get(f.name) === (f.parent || null));
-                }
-
-                // Update folders if structure changed (always fresh, no cache)
-                if (foldersResp && foldersResp.folders) {
-                    const newFolders = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
-                    if (!compareFolders(newFolders, cachedFolderList)) {
-                        cachedFolderList = newFolders;
-                        needsRerender = true;
-                    } else {
-                        // Just update silently without re-rendering
-                        cachedFolderList = newFolders;
-                    }
-                }
-
-                // Update folder order if changed (always fresh, no cache)
-                if (folderOrderResp) {
-                    const newOrder = Array.isArray(folderOrderResp) ? folderOrderResp : [];
-                    if (JSON.stringify(newOrder) !== JSON.stringify(ordersCache.folders)) {
-                        ordersCache.folders = newOrder;
-                        needsRerender = true;
-                    }
-                }
-
-                // Update decks if changed
-                if (decksResp) {
-                    const newDecks = Array.isArray(decksResp) ? decksResp : [];
-                    // Compare deck names AND folders to detect moves
-                    const getKey = d => `${d.name}:${d.folder || ''}`;
-                    const oldKeys = cachedDeckList.map(getKey).sort().join(',');
-                    const newKeys = newDecks.map(getKey).sort().join(',');
-
-                    if (oldKeys !== newKeys) {
-                        cachedDeckList = newDecks;
-                        updateDeckCounts();
-                        needsRerender = true;
-                    } else {
-                        // Just update silently (no cache)
-                        cachedDeckList = newDecks;
-                    }
-                }
-
-                // Re-render only if structure actually changed
-                if (needsRerender) {
-                    renderFolderGrid();
-                    renderDeckGrid();
-                }
+                // Always re-render with fresh data
+                await renderFolderGrid();
+                await renderDeckGrid();
             } catch { }
         }
 
@@ -3054,8 +3011,8 @@
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
                 updateDeckCounts();
-                renderFolderGrid();
-                renderDeckGrid();
+                await renderFolderGrid();
+                await renderDeckGrid();
             } catch (err) {
                 console.error('loadDecks error:', err);
             }
@@ -3140,18 +3097,24 @@
                 // Always fetch fresh folders (no cache)
                 cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
                 await refreshFolderOrder();
-                renderFolderGrid();
+                await renderFolderGrid();
             } catch { }
         }
 
         async function renderDeckGrid(skipOrderRefresh = false) {
             if (!deckGrid) return;
+            // Always fetch fresh deck data before rendering
+            try {
+                const decksResp = await fetch('/decks').then(r => r.json()).catch(() => []);
+                cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
+            } catch {}
+            
             deckGrid.innerHTML = '';
             if (!Array.isArray(cachedDeckList) || !cachedDeckList.length) return;
             const base = selectedFolder ? cachedDeckList.filter(d => ((d.folder || 'Uncategorized') === selectedFolder)) : cachedDeckList;
-            // Only refresh order from server if not already loaded and not skipped
+            // Always fetch fresh order from server
             const scope = selectedFolder || 'root';
-            if (!skipOrderRefresh && !ordersCache.decks[scope]) {
+            if (!skipOrderRefresh) {
                 await refreshDeckOrder(scope);
             }
             const ordered = applyOrder(base, 'deck', scope);
@@ -3208,8 +3171,17 @@
             return total;
         }
 
-        function renderFolderGrid() {
+        async function renderFolderGrid() {
             if (!folderGrid) return;
+            // Always fetch fresh folder data before rendering
+            try {
+                const foldersResp = await fetch('/folders').then(r => r.json()).catch(() => ({ folders: [] }));
+                cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
+                // Also fetch fresh folder order
+                const folderOrderResp = await fetch('/order/folders').then(r => r.json()).catch(() => []);
+                ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+            } catch {}
+            
             folderGrid.innerHTML = '';
             const base = cachedFolderList.length ? cachedFolderList.slice() : [{
                 name: 'Uncategorized',
