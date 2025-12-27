@@ -2120,6 +2120,10 @@
         const flashApp = document.getElementById('flashApp');
         const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
+        
+        // Track loading state for homepage loader
+        let dataLoaded = false;
+        let pageFullyLoaded = false;
 
         function shuffle(arr) {
             for (let i = arr.length - 1; i > 0; i--) {
@@ -2570,8 +2574,17 @@
             if (globalLoader) globalLoader.classList.remove('is-active');
         }
 
+        // Track when page is fully loaded (all resources)
+        window.addEventListener('load', () => {
+            pageFullyLoaded = true;
+            checkAndHideLoader();
+        });
+
         // Ensure loader is hidden when navigating back (BFCache)
         window.addEventListener('pageshow', () => {
+            // Reset loading state for BFCache
+            dataLoaded = true;
+            pageFullyLoaded = true;
             hideLoader();
         });
 
@@ -2880,6 +2893,16 @@
             // DON'T clear 'flashcard_folder_order_cache' - it stays in sync via writeOrder()
         }
 
+        function checkAndHideLoader() {
+            // Only hide loader when both data is loaded AND page is fully loaded
+            if (dataLoaded && pageFullyLoaded) {
+                // Small delay for smooth transition
+                requestAnimationFrame(() => {
+                    setTimeout(() => hideLoader(), 100);
+                });
+            }
+        }
+
         // Optimized parallel loading function with instant cache
         async function loadAllData() {
             // Try to load from cache first for instant display
@@ -2897,8 +2920,9 @@
                 renderDeckGrid();
                 populateDeckSelect();
                 handleUrlParams();
-                // Hide loader after render (use requestAnimationFrame for smooth transition)
-                requestAnimationFrame(() => hideLoader());
+                // Mark data as loaded but wait for page to fully load
+                dataLoaded = true;
+                checkAndHideLoader();
                 return; // Done - use cache for entire session
             }
 
@@ -2925,13 +2949,16 @@
                 updateDeckCounts();
             } catch { }
 
-            hideLoader();
             renderFolderGrid();
             renderDeckGrid();
             populateDeckSelect();
 
             // Handle URL parameters
             handleUrlParams();
+            
+            // Mark data as loaded
+            dataLoaded = true;
+            checkAndHideLoader();
         }
 
         // Background refresh - updates cache and UI if data changed
@@ -4355,6 +4382,12 @@
 
         // Initialize auto-play state and load data
         initAutoPlayState();
+        
+        // Check if page is already loaded (edge case)
+        if (document.readyState === 'complete') {
+            pageFullyLoaded = true;
+        }
+        
         // Load folders and decks in parallel for faster startup
         loadAllData();
 

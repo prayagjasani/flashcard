@@ -1,7 +1,9 @@
 import json
 import io
 import csv
+import os
 import threading
+import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -28,9 +30,11 @@ from services.ai import (
 from services.audio import generate_story_audio_background
 from services.cache import get_cached, set_cached, invalidate_cache
 from services.deck_service import get_cards as _get_cards_from_service
+from services import metrics
 from utils import safe_deck_name as _safe_deck_name
 
 router = APIRouter()
+CUSTOM_STORY_CACHE_TTL = int(os.getenv("CUSTOM_STORY_CACHE_TTL", "1800"))
 def _get_cards_helper(deck: str):
     """Get cards for a deck using the shared deck service."""
     return _get_cards_from_service(deck)
@@ -205,9 +209,17 @@ def generate_story(deck: str, refresh: bool = False):
             pass
 
     # Generate story
+    start = time.perf_counter()
     story = _gemini_generate_story(cards, deck)
+    elapsed_ms = (time.perf_counter() - start) * 1000
     if not story:
+        metrics.record_error("generate_story", "gemini_failed")
         raise HTTPException(status_code=500, detail="Failed to generate story")
+    metrics.record_timing("generate_story", elapsed_ms)
+    try:
+        print(f"[story] deck='{deck}' generated in {elapsed_ms:.1f} ms")
+    except Exception:
+        pass
 
     # For deck-based stories, mark an approximate level so UI can label it
     if isinstance(story, dict):
@@ -262,15 +274,36 @@ def generate_custom_story(payload: CustomStoryRequest):
     if level not in valid_levels:
         level = "A2"
     
-    # Generate a unique story ID
-    import time
+    # Determine cache key and possible reuse
+    cache_key_base = payload.story_id or f"{level}:{topic.lower()}"
+    cache_key = f"custom_story:{cache_key_base}"
+    cached_story = get_cached(cache_key, CUSTOM_STORY_CACHE_TTL)
+    if cached_story and isinstance(cached_story, dict):
+        story = cached_story.get("story")
+        story_id = cached_story.get("story_id") or cache_key_base
+        if story:
+            try:
+                print(f"[story] custom topic cache hit key='{cache_key}'")
+            except Exception:
+                pass
+            return {"story": story, "story_id": story_id, "cached": True}
+
+    # Generate a unique story ID for new content
     story_id = payload.story_id or f"custom_{int(time.time())}"
     safe_id = _safe_deck_name(story_id)
     
     # Generate story with custom topic
+    start = time.perf_counter()
     story = _gemini_generate_custom_story(topic, level=level)
+    elapsed_ms = (time.perf_counter() - start) * 1000
     if not story:
+        metrics.record_error("generate_custom_story", "gemini_failed")
         raise HTTPException(status_code=500, detail="Failed to generate story")
+    metrics.record_timing("generate_custom_story", elapsed_ms)
+    try:
+        print(f"[story] custom topic='{topic[:40]}' level={level} generated in {elapsed_ms:.1f} ms")
+    except Exception:
+        pass
 
     # Attach level metadata so it can be shown in the UI
     if isinstance(story, dict):
@@ -300,6 +333,12 @@ def generate_custom_story(payload: CustomStoryRequest):
                  "level": story.get("level")
              }
              update_stories_index(meta)
+
+    # Cache the story to avoid regenerating identical requests within TTL
+    try:
+        set_cached(cache_key, {"story": story, "story_id": safe_id})
+    except Exception:
+        pass
 
     # Generate audio in background
     if story and story.get("segments"):

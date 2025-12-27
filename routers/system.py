@@ -3,6 +3,8 @@ import os
 import re
 import json
 import csv
+import urllib.request
+import urllib.error
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from gtts import gTTS
@@ -14,6 +16,8 @@ from services.storage import (
     R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_PUBLIC_URL_BASE,
     lines_key as _lines_key
 )
+from services.ai import GEMINI_API_KEY, DEFAULT_GEMINI_MODEL
+from services import metrics
 from utils import safe_tts_key as _safe_tts_key_util, safe_deck_name as _safe_deck_name
 
 router = APIRouter()
@@ -34,6 +38,20 @@ ALLOWED_KEY_PREFIXES = [
 def _safe_tts_key(text: str, lang: str = "de") -> str:
     return _safe_tts_key_util(text, R2_BUCKET_NAME, lang)
 
+
+def _ping_gemini(model: str = DEFAULT_GEMINI_MODEL) -> bool:
+    if not GEMINI_API_KEY:
+        return False
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}?key={GEMINI_API_KEY}"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            return resp.status == 200
+    except urllib.error.HTTPError as e:
+        # 404/403 still show connectivity even if model restricted
+        return e.code < 500
+    except Exception:
+        return False
+
 @router.get("/r2/health")
 def r2_health():
     """Simple health endpoint for R2 configuration diagnostics (no secrets)."""
@@ -48,6 +66,24 @@ def r2_health():
         "bucket": R2_BUCKET_NAME,
         "public_url_base": R2_PUBLIC_URL_BASE,
     }
+
+
+@router.get("/health/ai")
+def ai_health(check: bool = False):
+    """Lightweight health endpoint for Gemini configuration and recent metrics."""
+    stats = metrics.get_stats()
+    payload = {
+        "has_api_key": bool(GEMINI_API_KEY),
+        "model": DEFAULT_GEMINI_MODEL,
+        "metrics": {
+            "generate_story": stats.get("generate_story"),
+            "generate_custom_story": stats.get("generate_custom_story"),
+            "generate_lines": stats.get("generate_lines"),
+        },
+    }
+    if check:
+        payload["reachable"] = _ping_gemini()
+    return payload
 
 @router.get("/debug/r2-config")
 def debug_r2_config():

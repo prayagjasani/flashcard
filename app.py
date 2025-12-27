@@ -1,7 +1,7 @@
 import os
 import uvicorn
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -44,6 +44,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    """Add aggressive caching for static assets to improve page-load time."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/"):
+        if path.endswith((".js", ".css", ".png", ".json", ".svg", ".woff2", ".woff", ".jpg", ".jpeg", ".gif", ".webp")):
+            response.headers.setdefault("Cache-Control", "public, max-age=604800, immutable")
+        else:
+            response.headers.setdefault("Cache-Control", "public, max-age=86400")
+    return response
+
 # Include Routers
 app.include_router(screens.router)
 app.include_router(decks.router)
@@ -56,7 +69,13 @@ app.include_router(system.router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
-    host = os.getenv("HOST", "0.0.0.0")
+    # Prefer IPv6 dual-stack if available to avoid localhost (::1) empty replies
+    host_env = os.getenv("HOST")
+    host = host_env if host_env else "::"
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host=host, port=port)
+    try:
+        uvicorn.run(app, host=host, port=port)
+    except OSError:
+        # Fallback to IPv4-only if IPv6 is not available
+        uvicorn.run(app, host="0.0.0.0", port=port)
 

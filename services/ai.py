@@ -4,17 +4,83 @@ import base64
 import urllib.request
 import urllib.error
 import random
+import time
+from typing import Optional
 from dotenv import load_dotenv
+
+import services.metrics as metrics
 
 # Force load from .env file
 load_dotenv(override=True)
 GEMINI_API_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+MAX_GEMINI_ATTEMPTS = int(os.getenv("GEMINI_MAX_ATTEMPTS", "3"))
+GEMINI_TIMEOUT_SECONDS = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
+
+
+def _ms(start: float) -> float:
+    return (time.perf_counter() - start) * 1000
+
+
+def _gemini_request(
+    body: dict,
+    endpoint: str,
+    label: str,
+    timeout: int = GEMINI_TIMEOUT_SECONDS,
+    max_attempts: int = MAX_GEMINI_ATTEMPTS,
+) -> Optional[str]:
+    """Call Gemini with retries and basic timing/error logging."""
+    for attempt in range(1, max_attempts + 1):
+        start = time.perf_counter()
+        try:
+            req = urllib.request.Request(
+                endpoint,
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode("utf-8")
+            duration = _ms(start)
+            metrics.record_timing(label, duration)
+            print(f"[AI] {label} attempt {attempt}/{max_attempts} ok in {duration:.1f} ms")
+            return raw
+        except urllib.error.HTTPError as e:
+            duration = _ms(start)
+            error_body = ""
+            try:
+                error_body = e.read().decode("utf-8")
+            except Exception:
+                pass
+            metrics.record_error(label, f"HTTP {e.code}: {e.reason}")
+            print(f"[AI] HTTP {e.code} on {label} attempt {attempt}/{max_attempts} after {duration:.1f} ms: {e.reason}")
+            if error_body:
+                print(f"[AI] {label} error body: {error_body[:400]}")
+            if e.code not in RETRYABLE_HTTP_CODES or attempt == max_attempts:
+                return None
+            time.sleep(min(2 ** (attempt - 1), 8))
+        except urllib.error.URLError as e:
+            duration = _ms(start)
+            metrics.record_error(label, f"URL error: {e.reason}")
+            print(f"[AI] URL error on {label} attempt {attempt}/{max_attempts} after {duration:.1f} ms: {e.reason}")
+            if attempt == max_attempts:
+                return None
+            time.sleep(min(2 ** (attempt - 1), 8))
+        except Exception as e:
+            duration = _ms(start)
+            metrics.record_error(label, f"{type(e).__name__}: {e}")
+            print(f"[AI] Error on {label} attempt {attempt}/{max_attempts} after {duration:.1f} ms: {type(e).__name__}: {e}")
+            if attempt == max_attempts:
+                return None
+            time.sleep(min(2 ** (attempt - 1), 8))
+    return None
 
 def generate_lines(cards):
     if not GEMINI_API_KEY:
         return []
 
-    model = "gemini-2.5-flash"
+    model = DEFAULT_GEMINI_MODEL
     endpoint = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent?key={GEMINI_API_KEY}"
@@ -40,14 +106,9 @@ Vocabulary:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"},
         }
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode("utf-8")
+        raw = _gemini_request(body, endpoint, label="generate_lines", timeout=30)
+        if not raw:
+            return []
         parsed = json.loads(raw)
         candidates = parsed.get("candidates") or []
         if candidates:
@@ -74,8 +135,8 @@ Vocabulary:
             res = run_chunk(chunk) or []
             if isinstance(res, list):
                 all_items.extend(res)
-        except Exception:
-            pass  # Skip failed chunks silently
+        except Exception as e:
+            metrics.record_error("generate_lines", f"chunk_error:{type(e).__name__}")
         i += CHUNK_SIZE
     return all_items
 
@@ -84,7 +145,7 @@ def generate_story(cards, deck_name: str):
     if not GEMINI_API_KEY:
         return None
 
-    model = "gemini-2.5-flash"
+    model = DEFAULT_GEMINI_MODEL
     endpoint = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent?key={GEMINI_API_KEY}"
@@ -185,15 +246,11 @@ Remember: The best language learning happens when students are entertained and w
         "generationConfig": {"response_mime_type": "application/json"},
     }
     
+    raw = _gemini_request(body, endpoint, label="generate_story", timeout=GEMINI_TIMEOUT_SECONDS)
+    if not raw:
+        metrics.record_error("generate_story", "no_response")
+        return None
     try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
         parsed = json.loads(raw)
         candidates = parsed.get("candidates") or []
         if candidates:
@@ -203,7 +260,8 @@ Remember: The best language learning happens when students are entertained and w
                 if isinstance(p0, dict) and "text" in p0:
                     return json.loads(p0["text"])
         return None
-    except Exception:
+    except Exception as e:
+        metrics.record_error("generate_story", f"parse_error:{type(e).__name__}")
         return None
 
 def generate_custom_story(topic: str, level: str = "A2"):
@@ -211,7 +269,7 @@ def generate_custom_story(topic: str, level: str = "A2"):
     if not GEMINI_API_KEY:
         return None
     
-    model = "gemini-2.5-flash"
+    model = DEFAULT_GEMINI_MODEL
     endpoint = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent?key={GEMINI_API_KEY}"
@@ -259,31 +317,25 @@ Output ONLY a JSON object with this exact structure:
   "title_de": "Catchy German title",
   "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
+  "vocabulary": {{
+    "german_word": "english meaning",
+    "der": "the",
+    "ist": "is",
+    "und": "and"
+  }},
   "segments": [
     {{
       "type": "narration" or "dialogue",
       "speaker": "narrator" or character name,
       "text_de": "German text",
       "text_en": "English translation",
-      "highlight_pairs": [
-        {{"de": "Flughafen", "en": "airport", "color": 0}},
-        {{"de": "nervös", "en": "nervous", "color": 1}},
-        {{"de": "Koffer", "en": "suitcase", "color": 2}}
-      ]
+      "highlight_words": ["key", "vocabulary", "words"]
     }}
   ]
 }}
 
-IMPORTANT: Each segment MUST include "highlight_pairs" array with vocabulary word pairs.
-- "de": The exact German word as it appears in text_de (same case, same form)
-- "en": The exact English word as it appears in text_en (same case, same form)
-- "color": SEQUENTIAL number starting from 0. First word pair = 0, second = 1, third = 2, etc. Each word pair in the segment MUST have a unique color number (0-15).
-
-CRITICAL: Highlight EVERY word in the sentence EXCEPT these common words: der, die, das, ein, eine, und, oder.
-Include ALL other words: verbs (bin, ist, war, habe, gehe, etc.), pronouns (ich, du, er, sie, wir, etc.), 
-nouns, adjectives, adverbs, prepositions (in, auf, mit, zu, etc.), and ALL other vocabulary.
-Do NOT skip words just because they seem simple - learners need to see ALL translations.
-This creates visual links between German words and their English translations with matching colors.
+The "vocabulary" object MUST contain EVERY German word used in all segments with its English translation.
+Include common words like articles (der, die, das = the), verbs (ist = is, sind = are), prepositions, etc.
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
@@ -292,15 +344,11 @@ Remember: The best language learning happens when students are entertained and w
         "generationConfig": {"response_mime_type": "application/json"},
     }
     
+    raw = _gemini_request(body, endpoint, label="generate_custom_story", timeout=GEMINI_TIMEOUT_SECONDS)
+    if not raw:
+        metrics.record_error("generate_custom_story", "no_response")
+        return None
     try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
         parsed = json.loads(raw)
         candidates = parsed.get("candidates") or []
         if candidates:
@@ -312,5 +360,6 @@ Remember: The best language learning happens when students are entertained and w
         print(f"[AI] No valid response from Gemini: {parsed}")
         return None
     except Exception as e:
-        print(f"[AI] Error generating custom story: {e}")
+        metrics.record_error("generate_custom_story", f"parse_error:{type(e).__name__}")
+        print(f"[AI] Error generating custom story: {type(e).__name__}: {e}")
         return None

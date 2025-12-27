@@ -4,6 +4,9 @@ const CACHE_NAME = 'flashcard-v2';
 const STATIC_ASSETS = [
     '/',
     '/static/manifest.json',
+    '/static/css/common.css',
+    '/static/js/utils.js',
+    '/static/favicon.png',
 ];
 
 // API routes to cache (matches pathname prefix)
