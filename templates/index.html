@@ -2164,11 +2164,6 @@
                 });
                 if (resp.ok) {
                     ordersCache.folders = Array.isArray(names) ? names.slice() : [];
-                    // Clear sessionStorage cache
-                    sessionStorage.removeItem(CACHE_KEY_FOLDERS);
-                    sessionStorage.removeItem(CACHE_KEY_DECKS);
-                    sessionStorage.removeItem('flashcard_folder_order_cache');
-                    saveToCache('flashcard_folder_order_cache', ordersCache.folders);
                     // Clear Service Worker API cache
                     await clearSwApiCache();
                 }
@@ -2186,10 +2181,6 @@
                 });
                 if (resp.ok) {
                     ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
-                    // Clear sessionStorage cache
-                    sessionStorage.removeItem(CACHE_KEY_FOLDERS);
-                    sessionStorage.removeItem(CACHE_KEY_DECKS);
-                    sessionStorage.removeItem('flashcard_folder_order_cache');
                     // Clear Service Worker API cache
                     await clearSwApiCache();
                 }
@@ -2886,11 +2877,8 @@
         }
 
         function clearCache() {
-            // Clear folder/deck data caches to force fresh load
-            // But preserve order cache since it's already in sync with R2
-            sessionStorage.removeItem(CACHE_KEY_FOLDERS);
-            sessionStorage.removeItem(CACHE_KEY_DECKS);
-            // DON'T clear 'flashcard_folder_order_cache' - it stays in sync via writeOrder()
+            // No caching - this function is kept for compatibility but does nothing
+            // All data is always fetched fresh from server
         }
 
         function checkAndHideLoader() {
@@ -2903,36 +2891,9 @@
             }
         }
 
-        // Optimized parallel loading function with instant cache
+        // Always fetch fresh data - no caching for folders, decks, or deck order
         async function loadAllData() {
-            // Try to load from cache first for instant display
-            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
-            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
-            const cachedFolderOrder = getFromCache('flashcard_folder_order_cache');
-
-            // If we have cached data, show it immediately - NO background refresh, NO flicker
-            if (cachedFolders && cachedDecks) {
-                cachedFolderList = cachedFolders;
-                cachedDeckList = cachedDecks;
-                ordersCache.folders = cachedFolderOrder || [];
-                updateDeckCounts();
-                renderFolderGrid();
-                renderDeckGrid();
-                populateDeckSelect();
-                try {
-                    handleUrlParams();
-                } catch (err) {
-                    console.error('Error handling URL params:', err);
-                } finally {
-                    // Mark data as loaded but wait for page to fully load
-                    dataLoaded = true;
-                    checkAndHideLoader();
-                }
-                return; // Done - use cache for entire session
-            }
-
-            // No cache - loader is already visible, fetch fresh data
-
+            // Always fetch fresh data from server (no cache)
             try {
                 const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
                     fetch('/folders').then(r => r.json()).catch(() => ({
@@ -2942,22 +2903,21 @@
                     fetch('/order/folders').then(r => r.json()).catch(() => [])
                 ]);
 
-                // Update folders
+                // Update folders (always fresh, no cache)
                 cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
-                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                 ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
-                saveToCache('flashcard_folder_order_cache', ordersCache.folders);
 
-                // Update decks
+                // Update decks (always fresh, no cache)
                 cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
-                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                 updateDeckCounts();
             } catch { }
 
             try {
-                renderFolderGrid();
-                renderDeckGrid();
-                populateDeckSelect();
+                requestAnimationFrame(() => {
+                    renderFolderGrid();
+                    renderDeckGrid();
+                    populateDeckSelect();
+                });
 
                 // Handle URL parameters
                 handleUrlParams();
@@ -2970,7 +2930,7 @@
             }
         }
 
-        // Refresh data from server and update cache + UI immediately
+        // Refresh data from server and update UI immediately (no caching)
         async function refreshDataAndCache() {
             try {
                 const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
@@ -2981,23 +2941,22 @@
                     fetch('/order/folders').then(r => r.json()).catch(() => [])
                 ]);
 
-                // Update folders
+                // Update folders (always fresh, no cache)
                 cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
-                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                 
-                // Update folder order
+                // Update folder order (always fresh, no cache)
                 ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
-                saveToCache('flashcard_folder_order_cache', ordersCache.folders);
 
-                // Update decks
+                // Update decks (always fresh, no cache)
                 cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
-                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                 
-                // Update deck counts and re-render UI
+                // Update deck counts and re-render UI with smooth animation
                 updateDeckCounts();
-                renderFolderGrid();
-                renderDeckGrid();
-                populateDeckSelect();
+                requestAnimationFrame(() => {
+                    renderFolderGrid();
+                    renderDeckGrid();
+                    populateDeckSelect();
+                });
             } catch (err) {
                 console.error('Error refreshing data:', err);
             }
@@ -3021,26 +2980,23 @@
                     return b.every(f => aMap.get(f.name) === (f.parent || null));
                 }
 
-                // Update folders if structure changed (not just counts)
+                // Update folders if structure changed (always fresh, no cache)
                 if (foldersResp && foldersResp.folders) {
                     const newFolders = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
                     if (!compareFolders(newFolders, cachedFolderList)) {
                         cachedFolderList = newFolders;
-                        saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                         needsRerender = true;
                     } else {
-                        // Just update counts silently without re-rendering
+                        // Just update silently without re-rendering
                         cachedFolderList = newFolders;
-                        saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                     }
                 }
 
-                // Update folder order if changed
+                // Update folder order if changed (always fresh, no cache)
                 if (folderOrderResp) {
                     const newOrder = Array.isArray(folderOrderResp) ? folderOrderResp : [];
                     if (JSON.stringify(newOrder) !== JSON.stringify(ordersCache.folders)) {
                         ordersCache.folders = newOrder;
-                        saveToCache('flashcard_folder_order_cache', ordersCache.folders);
                         needsRerender = true;
                     }
                 }
@@ -3055,13 +3011,11 @@
 
                     if (oldKeys !== newKeys) {
                         cachedDeckList = newDecks;
-                        saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                         updateDeckCounts();
                         needsRerender = true;
                     } else {
-                        // Just update cache silently
+                        // Just update silently (no cache)
                         cachedDeckList = newDecks;
-                        saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                     }
                 }
 
@@ -3097,12 +3051,11 @@
         async function loadDecks() {
             showLoader();
 
-            // Fetch fresh data in background
+            // Fetch fresh data (no caching)
             try {
                 const resp = await fetch('/decks');
                 const list = await resp.json();
                 cachedDeckList = Array.isArray(list) ? list : [];
-                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                 updateDeckCounts();
                 renderFolderGrid();
                 renderDeckGrid();
@@ -3187,8 +3140,8 @@
                 const data = await resp.json().catch(() => ({
                     folders: []
                 }));
+                // Always fetch fresh folders (no cache)
                 cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
-                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                 await refreshFolderOrder();
                 renderFolderGrid();
             } catch { }
@@ -3213,12 +3166,48 @@
                 title.className = 'deck-title';
                 title.textContent = d.name;
                 wrap.appendChild(title);
+                // Preload deck cards and prefetch study pages on hover for instant navigation
+                let deckPrefetchTimeout;
+                let cardPreloadPromise = null;
+                wrap.addEventListener('mouseenter', () => {
+                    deckPrefetchTimeout = setTimeout(() => {
+                        // Preload deck cards in background
+                        const cached = sessionStorage.getItem(`flashcard_cards_${d.name}`);
+                        if (!cached) {
+                            cardPreloadPromise = fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
+                                .then(r => r.ok ? r.json() : [])
+                                .then(data => {
+                                    if (Array.isArray(data) && data.length) {
+                                        try {
+                                            sessionStorage.setItem(`flashcard_cards_${d.name}`, JSON.stringify(data));
+                                        } catch {}
+                                    }
+                                })
+                                .catch(() => {});
+                        }
+                        
+                        // Prefetch study pages
+                        const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                        ['learn', 'spelling', 'line', 'match'].forEach(mode => {
+                            const link = document.createElement('link');
+                            link.rel = 'prefetch';
+                            link.href = `/${mode}?deck=${encodeURIComponent(d.name)}${fromParam}`;
+                            document.head.appendChild(link);
+                        });
+                    }, 150);
+                });
+                wrap.addEventListener('mouseleave', () => {
+                    if (deckPrefetchTimeout) clearTimeout(deckPrefetchTimeout);
+                });
                 wrap.addEventListener('click', () => {
+                    if (deckPrefetchTimeout) clearTimeout(deckPrefetchTimeout);
                     selectedDeckForAction = d.name;
                     const ttl = document.getElementById('chooseActionTitle');
                     if (ttl) ttl.textContent = d.name;
                     chooseActionModal.classList.add('is-open');
                     chooseActionModal.setAttribute('aria-hidden', 'false');
+                    // Prefetch all study pages immediately when modal opens
+                    prefetchStudyPages(d.name);
                 });
                 attachDeckDnD(wrap, d.name, scope);
                 deckGrid.appendChild(wrap);
@@ -3267,7 +3256,21 @@
                 }
                 wrap.appendChild(title);
                 wrap.appendChild(sub);
+                // Prefetch folder page on hover for instant navigation
+                let prefetchTimeout;
+                wrap.addEventListener('mouseenter', () => {
+                    prefetchTimeout = setTimeout(() => {
+                        const link = document.createElement('link');
+                        link.rel = 'prefetch';
+                        link.href = `/folder?name=${encodeURIComponent(f.name)}`;
+                        document.head.appendChild(link);
+                    }, 100);
+                });
+                wrap.addEventListener('mouseleave', () => {
+                    if (prefetchTimeout) clearTimeout(prefetchTimeout);
+                });
                 wrap.addEventListener('click', () => {
+                    if (prefetchTimeout) clearTimeout(prefetchTimeout);
                     window.location.href = `/folder?name=${encodeURIComponent(f.name)}`;
                 });
                 if (f.name !== 'Uncategorized') {
@@ -3590,30 +3593,96 @@
             }
         });
 
-        if (homeBtn) homeBtn.addEventListener('click', () => {
-            window.location.href = '/';
-        });
+        if (homeBtn) {
+            // Prefetch home page on hover
+            homeBtn.addEventListener('mouseenter', () => {
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.href = '/';
+                document.head.appendChild(link);
+            });
+            homeBtn.addEventListener('click', () => {
+                window.location.href = '/';
+            });
+        }
 
-        if (openLearnBtn) openLearnBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
+        // Prefetch study pages when modal opens (deck already selected)
+        function prefetchStudyPages(deckName) {
+            if (!deckName) return;
             const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
-            window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
-        });
-        if (openSpellingBtn) openSpellingBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
-            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
-            window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
-        });
-        if (openLineBtn) openLineBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
-            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
-            window.location.href = `/line?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
-        });
-        if (openMatchBtn) openMatchBtn.addEventListener('click', () => {
-            if (!selectedDeckForAction) return;
-            const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
-            window.location.href = `/match?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
-        });
+            ['learn', 'spelling', 'line', 'match'].forEach(mode => {
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.href = `/${mode}?deck=${encodeURIComponent(deckName)}${fromParam}`;
+                document.head.appendChild(link);
+            });
+        }
+
+        if (openLearnBtn) {
+            // Prefetch on hover for instant navigation
+            openLearnBtn.addEventListener('mouseenter', () => {
+                if (selectedDeckForAction) {
+                    const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+                    document.head.appendChild(link);
+                }
+            });
+            openLearnBtn.addEventListener('click', () => {
+                if (!selectedDeckForAction) return;
+                const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                window.location.href = `/learn?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+            });
+        }
+        if (openSpellingBtn) {
+            openSpellingBtn.addEventListener('mouseenter', () => {
+                if (selectedDeckForAction) {
+                    const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+                    document.head.appendChild(link);
+                }
+            });
+            openSpellingBtn.addEventListener('click', () => {
+                if (!selectedDeckForAction) return;
+                const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                window.location.href = `/spelling?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+            });
+        }
+        if (openLineBtn) {
+            openLineBtn.addEventListener('mouseenter', () => {
+                if (selectedDeckForAction) {
+                    const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = `/line?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+                    document.head.appendChild(link);
+                }
+            });
+            openLineBtn.addEventListener('click', () => {
+                if (!selectedDeckForAction) return;
+                const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                window.location.href = `/line?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+            });
+        }
+        if (openMatchBtn) {
+            openMatchBtn.addEventListener('mouseenter', () => {
+                if (selectedDeckForAction) {
+                    const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = `/match?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+                    document.head.appendChild(link);
+                }
+            });
+            openMatchBtn.addEventListener('click', () => {
+                if (!selectedDeckForAction) return;
+                const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
+                window.location.href = `/match?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
+            });
+        }
         if (openFlashBtn) openFlashBtn.addEventListener('click', () => {
             if (!selectedDeckForAction) return;
             deckSelect.value = selectedDeckForAction;
