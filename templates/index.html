@@ -2734,10 +2734,7 @@
                 const response = await fetch(url);
                 if (response.ok) {
                     data = await response.json().catch(() => []);
-                    // Cache cards for instant navigation to study screens
-                    if (deckName && Array.isArray(data)) {
-                        try { sessionStorage.setItem(`flashcard_cards_${deckName}`, JSON.stringify(data)); } catch { }
-                    }
+                    // No caching - always fetch fresh card data
                 } else {
                     data = [];
                 }
@@ -3171,22 +3168,7 @@
                 let cardPreloadPromise = null;
                 wrap.addEventListener('mouseenter', () => {
                     deckPrefetchTimeout = setTimeout(() => {
-                        // Preload deck cards in background
-                        const cached = sessionStorage.getItem(`flashcard_cards_${d.name}`);
-                        if (!cached) {
-                            cardPreloadPromise = fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
-                                .then(r => r.ok ? r.json() : [])
-                                .then(data => {
-                                    if (Array.isArray(data) && data.length) {
-                                        try {
-                                            sessionStorage.setItem(`flashcard_cards_${d.name}`, JSON.stringify(data));
-                                        } catch {}
-                                    }
-                                })
-                                .catch(() => {});
-                        }
-                        
-                        // Prefetch study pages
+                        // Prefetch study pages (no card caching)
                         const fromParam = selectedFolder ? `&from=${encodeURIComponent(selectedFolder)}` : '';
                         ['learn', 'spelling', 'line', 'match'].forEach(mode => {
                             const link = document.createElement('link');
@@ -4736,12 +4718,7 @@
             try {
                 const promises = names.map((n) => fetch(`/cards?deck=${encodeURIComponent(n)}`).then(r => r.ok ? r.json() : []).catch(() => []));
                 const lists = await Promise.all(promises);
-                // Cache each deck's cards for instant navigation
-                names.forEach((n, i) => {
-                    if (Array.isArray(lists[i])) {
-                        try { sessionStorage.setItem(`flashcard_cards_${n}`, JSON.stringify(lists[i])); } catch { }
-                    }
-                });
+                // No caching - always fetch fresh card data
                 const combined = ([]).concat(...lists);
                 originalWords = Array.isArray(combined) ? combined : [];
                 words = originalWords.slice();
