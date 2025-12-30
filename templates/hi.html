@@ -594,10 +594,13 @@
         }
 
         function hydrateAudioFromLocalStorage() {
+            if (!Array.isArray(cards) || !cards.length) return;
             cards.forEach(c => {
-                const key = `audio:de:${c.de}`;
+                const text = c && c.de;
+                if (!text) return;
+                const key = `audio:de:${text}`;
                 const val = localStorage.getItem(key);
-                if (val) audioCache.set(c.de, val);
+                if (val) audioCache.set(text, val);
             });
         }
 
@@ -655,6 +658,17 @@
                 const tasks = entries.map(([text, url]) => fetchAudioAndCache(text, url));
 
                 await Promise.allSettled(tasks);
+
+                const allTexts = Array.isArray(cards) ? cards.map(c => c && c.de).filter(Boolean) : [];
+                const missing = allTexts.filter((text) => {
+                    const cacheKey = `audio:de:${text}`;
+                    return !audioCache.has(text) && !localStorage.getItem(cacheKey);
+                });
+
+                if (missing.length) {
+                    const extraTasks = missing.map((text) => preloadAudioForWord(text));
+                    await Promise.allSettled(extraTasks);
+                }
             } catch (error) {
                 console.warn('Audio preloading failed:', error);
             }
@@ -911,8 +925,8 @@
 
         async function initializeApp() {
             try {
-                hydrateAudioFromLocalStorage();
                 await loadDeck();
+                hydrateAudioFromLocalStorage();
             } catch (error) {
                 console.error('App initialization failed:', error);
             }
