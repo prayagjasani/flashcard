@@ -1390,13 +1390,10 @@
         const CACHE_DECKS = 'flashcard_decks_cache';
 
         function saveCache(key, data) {
-            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch { }
+            return;
         }
         function getCache(key) {
-            try {
-                const d = sessionStorage.getItem(key);
-                return d ? JSON.parse(d) : null;
-            } catch { return null; }
+            return null;
         }
 
         async function loadDecks() {

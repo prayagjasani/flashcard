@@ -9,8 +9,6 @@ const STATIC_ASSETS = [
 // API routes to cache (matches pathname prefix)
 const API_CACHE_NAME = 'flashcard-api-v1';
 const CACHEABLE_APIS = [
-    '/folders',
-    '/decks',
     '/order/folders',
     '/order/decks',
 ];
