@@ -267,7 +267,7 @@
             if (appHeader) appHeader.classList.add('backdrop-blur-sm');
         }
         const params = new URLSearchParams(location.search);
-        const deck = params.get('deck') || '';
+        let deck = params.get('deck') || '';
         const from = params.get('from') || '';
         if (deck) deckTitle.textContent = deck;
         let cards = [];
@@ -280,9 +280,11 @@
         const audioCache = new Map();
         const MAX_CACHE_SIZE = 50;
         const LONG_PRESS_DURATION = 300;
+        const RENAME_TITLE_LONG_PRESS = 500;
         let longPressTimer = null;
         let suppressNextClickFromLongPress = false;
         let editingIndex = -1;
+        let renameTitlePressTimer = null;
 
         function cleanupAudioCache() {
             if (audioCache.size > MAX_CACHE_SIZE) {
@@ -294,6 +296,61 @@
                     }
                     audioCache.delete(key);
                 });
+            }
+        }
+
+        function clearRenameTitlePressTimer() {
+            if (renameTitlePressTimer) {
+                clearTimeout(renameTitlePressTimer);
+                renameTitlePressTimer = null;
+            }
+        }
+
+        function sanitizeDeckName(n) {
+            return (n || '').trim().replace(/[^a-zA-Z0-9_\-]+/g, '_').substring(0, 50);
+        }
+
+        async function handleDeckTitleRename() {
+            if (!deck) return;
+            const current = deck || '';
+            const input = prompt('Rename deck', current);
+            if (input == null) return;
+            const newName = sanitizeDeckName(input);
+            if (!newName || newName === deck) return;
+            showLoader();
+            try {
+                const resp = await fetch('/deck/rename', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        old_name: deck,
+                        new_name: newName
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) {
+                    alert(out && out.detail ? out.detail : 'Failed to rename deck');
+                    return;
+                }
+                const oldDeck = deck;
+                deck = newName;
+                if (deckTitle) deckTitle.textContent = newName;
+                try {
+                    sessionStorage.removeItem(`flashcard_cards_${oldDeck}`);
+                } catch {}
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('deck', newName);
+                    window.history.replaceState({}, '', url.toString());
+                } catch {}
+            } catch (e) {
+                alert(String(e && e.message ? e.message : e || 'Failed to rename deck'));
+            } finally {
+                hideLoader();
             }
         }
         const eventListeners = [];
@@ -382,12 +439,36 @@
                 editModal.classList.remove('hidden');
             });
         }
+
+        if (deckTitle) {
+            addEventListenerWithCleanup(deckTitle, 'pointerdown', () => {
+                if (!deck) return;
+                clearRenameTitlePressTimer();
+                renameTitlePressTimer = setTimeout(() => {
+                    renameTitlePressTimer = null;
+                    handleDeckTitleRename();
+                }, RENAME_TITLE_LONG_PRESS);
+            });
+            ['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+                addEventListenerWithCleanup(deckTitle, evt, () => {
+                    clearRenameTitlePressTimer();
+                });
+            });
+        }
         // Cross-page cache
         function getCache(key) {
-            try { const d = sessionStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+            try {
+                const d = sessionStorage.getItem(key);
+                return d ? JSON.parse(d) : null;
+            } catch {
+                return null;
+            }
         }
+
         function saveCache(key, data) {
-            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+            try {
+                sessionStorage.setItem(key, JSON.stringify(data));
+            } catch {}
         }
 
         async function loadDeck() {
@@ -427,11 +508,13 @@
 
                 const data = await response.json();
                 saveCache(`flashcard_cards_${deck}`, data);
-                
+
                 if (!showedFromCache) {
                     cards = Array.isArray(data) ? data : [];
                     renderGrid();
                 }
+
+                await preloadDeckAudio();
 
             } catch (error) {
                 if (!showedFromCache) {
@@ -816,11 +899,6 @@
             try {
                 hydrateAudioFromLocalStorage();
                 await loadDeck();
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(() => preloadDeckAudio());
-                } else {
-                    setTimeout(preloadDeckAudio, 500);
-                }
             } catch (error) {
                 console.error('App initialization failed:', error);
             }

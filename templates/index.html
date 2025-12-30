@@ -2532,9 +2532,11 @@
             if (globalLoader) globalLoader.classList.remove('is-active');
         }
 
-        // Ensure loader is hidden when navigating back (BFCache)
-        window.addEventListener('pageshow', () => {
-            hideLoader();
+        // Ensure loader is hidden when navigating back from BFCache (not on first load)
+        window.addEventListener('pageshow', (event) => {
+            if (event && event.persisted) {
+                hideLoader();
+            }
         });
 
         // Auto-play toggle functionality
