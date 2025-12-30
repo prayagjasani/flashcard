@@ -514,7 +514,21 @@
                     renderGrid();
                 }
 
-                await preloadDeckAudio();
+                if (cards.length) {
+                    try {
+                        if ('requestIdleCallback' in window) {
+                            requestIdleCallback(() => {
+                                preloadDeckAudio().catch(() => {});
+                            });
+                        } else {
+                            setTimeout(() => {
+                                preloadDeckAudio().catch(() => {});
+                            }, 300);
+                        }
+                    } catch {
+                        preloadDeckAudio().catch(() => {});
+                    }
+                }
 
             } catch (error) {
                 if (!showedFromCache) {

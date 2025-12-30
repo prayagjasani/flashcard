@@ -1843,9 +1843,9 @@
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">match_word</span>
                     <span>Match</span>
                 </button>
-                <button id="openMoveBtn" class="study-action study-action--secondary" type="button">
-                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">drive_file_move</span>
-                    <span>Move</span>
+                <button id="openSettingsBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">settings</span>
+                    <span>Settings</span>
                 </button>
             </div>
         </div>
@@ -1860,6 +1860,17 @@
                 <button class="btn btn--pill" id="moveDeckSaveBtn" type="button">Move</button>
             </div>
             <p class="modal__status" id="moveDeckStatus"></p>
+        </div>
+    </div>
+
+    <div class="modal modal--multi" id="deckSettingsModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-settings="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="deckSettingsTitle">
+            <h2 id="deckSettingsTitle" class="modal__title">Deck Settings</h2>
+            <div class="multi-deck-list">
+                <button class="btn w-full" id="deckSettingsMoveBtn" type="button">Move</button>
+                <button class="btn w-full" id="deckSettingsDeleteBtn" type="button">Delete deck</button>
+            </div>
         </div>
     </div>
     <div class="modal modal--multi" id="multiDeckModal" aria-hidden="true">
@@ -2039,7 +2050,7 @@
         let openSpellingBtn = document.getElementById('openSpellingBtn');
         let openMatchBtn = document.getElementById('openMatchBtn');
         let openLineBtn = document.getElementById('openLineBtn');
-        const openMoveBtn = document.getElementById('openMoveBtn');
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
         const studyActionsEl = document.querySelector('#chooseActionModal .study-actions');
         if (!openSpellingBtn && studyActionsEl) {
             const btn = document.createElement('button');
@@ -2047,9 +2058,7 @@
             btn.className = 'study-action study-action--secondary';
             btn.type = 'button';
             btn.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span><span>Spelling</span>';
-            const moveBtnEl = document.getElementById('openMoveBtn');
-            if (moveBtnEl) studyActionsEl.insertBefore(btn, moveBtnEl);
-            else studyActionsEl.appendChild(btn);
+            studyActionsEl.appendChild(btn);
             openSpellingBtn = btn;
         }
         if (!openMatchBtn && studyActionsEl) {
@@ -2058,9 +2067,7 @@
             btn2.className = 'study-action study-action--secondary';
             btn2.type = 'button';
             btn2.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span><span>Match</span>';
-            const moveBtnEl2 = document.getElementById('openMoveBtn');
-            if (moveBtnEl2) studyActionsEl.insertBefore(btn2, moveBtnEl2);
-            else studyActionsEl.appendChild(btn2);
+            studyActionsEl.appendChild(btn2);
             openMatchBtn = btn2;
         }
         if (!openLineBtn && studyActionsEl) {
@@ -2069,9 +2076,7 @@
             btn3.className = 'study-action study-action--secondary';
             btn3.type = 'button';
             btn3.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span><span>Line</span>';
-            const moveBtnEl3 = document.getElementById('openMoveBtn');
-            if (moveBtnEl3) studyActionsEl.insertBefore(btn3, moveBtnEl3);
-            else studyActionsEl.appendChild(btn3);
+            studyActionsEl.appendChild(btn3);
             openLineBtn = btn3;
         }
         const moveDeckModal = document.getElementById('moveDeckModal');
@@ -2079,6 +2084,9 @@
         const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
         const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
         const moveDeckStatus = document.getElementById('moveDeckStatus');
+        const deckSettingsModal = document.getElementById('deckSettingsModal');
+        const deckSettingsMoveBtn = document.getElementById('deckSettingsMoveBtn');
+        const deckSettingsDeleteBtn = document.getElementById('deckSettingsDeleteBtn');
         const flashApp = document.getElementById('flashApp');
         const globalLoader = document.getElementById('globalLoader');
         let selectedDeckForAction = null;
@@ -3568,9 +3576,9 @@
             if (!selectedDeckForAction) return;
             moveDeckStatus.textContent = '';
             populateMoveFolderList();
-            if (chooseActionModal) {
-                chooseActionModal.classList.remove('is-open');
-                chooseActionModal.setAttribute('aria-hidden', 'true');
+            if (deckSettingsModal) {
+                deckSettingsModal.classList.remove('is-open');
+                deckSettingsModal.setAttribute('aria-hidden', 'true');
             }
             moveDeckModal.classList.add('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'false');
@@ -3580,7 +3588,6 @@
             moveDeckModal.classList.remove('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'true');
         }
-        if (openMoveBtn) openMoveBtn.addEventListener('click', openMoveDeckModal);
         if (moveDeckCancelBtn) moveDeckCancelBtn.addEventListener('click', closeMoveDeckModal);
         if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeMove === 'true') closeMoveDeckModal();
@@ -3617,6 +3624,78 @@
             } finally {
                 moveDeckSaveBtn.disabled = false;
                 moveDeckSaveBtn.textContent = 'Move';
+            }
+        });
+
+        function openDeckSettingsModal() {
+            if (!selectedDeckForAction) return;
+            if (chooseActionModal) {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
+            if (deckSettingsModal) {
+                const titleEl = document.getElementById('deckSettingsTitle');
+                if (titleEl) titleEl.textContent = selectedDeckForAction;
+                deckSettingsModal.classList.add('is-open');
+                deckSettingsModal.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closeDeckSettingsModal() {
+            if (!deckSettingsModal) return;
+            deckSettingsModal.classList.remove('is-open');
+            deckSettingsModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (openSettingsBtn) openSettingsBtn.addEventListener('click', openDeckSettingsModal);
+        if (deckSettingsModal) deckSettingsModal.addEventListener('click', (e) => {
+            if (e.target && e.target.dataset && e.target.dataset.closeSettings === 'true') {
+                closeDeckSettingsModal();
+            }
+        });
+        if (deckSettingsMoveBtn) deckSettingsMoveBtn.addEventListener('click', () => {
+            openMoveDeckModal();
+        });
+        if (deckSettingsDeleteBtn) deckSettingsDeleteBtn.addEventListener('click', async() => {
+            if (!selectedDeckForAction) return;
+            const ok = confirm(`Delete deck "${selectedDeckForAction}"? This cannot be undone.`);
+            if (!ok) return;
+            try {
+                const resp = await fetch('/deck/delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: selectedDeckForAction
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to delete deck');
+                closeDeckSettingsModal();
+                showLoader();
+                try {
+                    const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
+                        fetch('/folders').then(r => r.json()).catch(() => ({
+                            folders: []
+                        })),
+                        fetch('/decks').then(r => r.json()).catch(() => []),
+                        fetch('/order/folders').then(r => r.json()).catch(() => [])
+                    ]);
+                    cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
+                    ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
+                    cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
+                    updateDeckCounts();
+                    renderFolderGrid();
+                    renderDeckGrid();
+                    populateDeckSelect();
+                } finally {
+                    hideLoader();
+                }
+            } catch (e) {
+                alert(String(e && e.message ? e.message : e || 'Failed to delete deck'));
             }
         });
 

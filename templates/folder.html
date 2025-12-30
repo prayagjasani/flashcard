@@ -60,17 +60,17 @@
             justify-content: center;
             background: rgba(255, 255, 255, 0.6);
         }
-
+        
         .loading-overlay.is-active {
             display: flex;
         }
-
+        
         .loading-dots {
             display: flex;
             gap: 8px;
             color: #8E8E93;
         }
-
+        
         .loading-dots span {
             width: 8px;
             height: 8px;
@@ -79,32 +79,30 @@
             opacity: 0.5;
             animation: dotPulse 1000ms infinite ease-in-out;
         }
-
+        
         .loading-dots span:nth-child(2) {
             animation-delay: 150ms;
         }
-
+        
         .loading-dots span:nth-child(3) {
             animation-delay: 300ms;
         }
-
+        
         @keyframes dotPulse {
             0% {
                 transform: scale(1);
                 opacity: 0.35;
             }
-
             50% {
                 transform: scale(1.25);
                 opacity: 1;
             }
-
             100% {
                 transform: scale(1);
                 opacity: 0.35;
             }
         }
-
+        
         @media (prefers-color-scheme: dark) {
             .loading-dots {
                 color: #92adc9;
@@ -112,7 +110,7 @@
         }
     </style>
     <style>
-        :root {
+         :root {
             --bg: #f6f7fb;
             --text: #0f172a;
             --card-bg: #ffffff;
@@ -124,7 +122,7 @@
             --text-primary: var(--text);
             --text-secondary: var(--muted);
         }
-
+        
         .deck-list {
             max-width: none;
             width: 100%;
@@ -132,25 +130,25 @@
             margin-top: 16px;
             padding: 0px 0 16px;
         }
-
+        
         .deck-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 10px;
         }
-
+        
         @media (min-width: 640px) {
             .deck-grid {
                 grid-template-columns: 1fr 1fr;
             }
         }
-
+        
         @media (min-width: 1024px) {
             .deck-grid {
                 grid-template-columns: 1fr 1fr 1fr;
             }
         }
-
+        
         .deck-tile {
             position: relative;
             background: var(--card-bg);
@@ -162,39 +160,38 @@
             overflow: visible;
             z-index: 0;
         }
-
+        
         .deck-tile:hover {
             box-shadow: var(--card-shadow-hover);
         }
-
+        
         .tile-enter {
             animation: slideDown 380ms ease-out both;
             will-change: transform, opacity;
         }
-
+        
         @keyframes slideDown {
             0% {
                 transform: translateY(-6px);
                 opacity: 0;
             }
-
             100% {
                 transform: translateY(0);
                 opacity: 1;
             }
         }
-
+        
         .deck-title {
             font-weight: 400;
             color: var(--text-primary);
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         }
-
+        
         .deck-subtitle {
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
-
+        
         .modal {
             position: fixed;
             inset: 0;
@@ -203,18 +200,18 @@
             justify-content: center;
             z-index: 100;
         }
-
+        
         .modal.is-open {
             display: flex;
         }
-
+        
         .modal__backdrop {
             position: absolute;
             inset: 0;
             background: rgba(2, 8, 23, 0.5);
             backdrop-filter: blur(2px);
         }
-
+        
         .modal__dialog {
             position: relative;
             width: 90%;
@@ -225,27 +222,27 @@
             box-shadow: var(--shadow);
             padding: 16px;
         }
-
+        
         .modal__title {
             margin: 0 0 12px;
             font-weight: 700;
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             letter-spacing: -0.01em;
         }
-
+        
         .study-title {
             margin: 0 0 12px;
             text-align: center;
             font-weight: 400;
             font-size: 20px;
         }
-
+        
         .study-actions {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-
+        
         .study-action {
             display: flex;
             align-items: center;
@@ -257,17 +254,17 @@
             font-weight: 600;
             cursor: pointer;
         }
-
+        
         .study-action--primary {
             background: #eef0f4;
             color: var(--text);
         }
-
+        
         .study-action--secondary {
             background: #eef0f4;
             color: var(--text);
         }
-
+        
         .study-action__icon {
             display: inline-flex;
             align-items: center;
@@ -276,7 +273,7 @@
             font-size: 20px;
             line-height: 1;
         }
-
+        
         .modal__actions {
             display: flex;
             flex-direction: row;
@@ -284,7 +281,7 @@
             justify-content: center;
             gap: 10px;
         }
-
+        
         .btn {
             appearance: none;
             border: 1px solid var(--card-border);
@@ -295,7 +292,7 @@
             font-weight: 600;
             cursor: pointer;
         }
-
+        
         .btn--pill {
             border-radius: 9999px;
             background: #f3f4f6;
@@ -303,17 +300,17 @@
             border-color: var(--card-border);
             box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
         }
-
+        
         .btn--pill:hover {
             background: #eef0f4;
         }
-
+        
         @media (prefers-color-scheme: dark) {
             .modal__dialog {
                 background: #19242E;
             }
         }
-
+        
         .modal__close {
             position: absolute;
             top: 10px;
@@ -329,17 +326,17 @@
             justify-content: center;
             cursor: pointer;
         }
-
+        
         .modal__close:hover {
             background: #eef0f4;
         }
-
+        
         .multi-deck-list {
             max-height: 280px;
             overflow-y: auto;
             margin-bottom: 16px;
         }
-
+        
         .multi-deck-item {
             display: flex;
             align-items: center;
@@ -347,21 +344,21 @@
             padding: 14px;
             border-bottom: 1px solid var(--card-border);
         }
-
+        
         .multi-deck-item:last-child {
             border-bottom: none;
         }
-
+        
         .multi-deck-checkbox {
             width: 20px;
             height: 20px;
             accent-color: var(--accent);
         }
-
+        
         .modal--multi .modal__actions {
             gap: 12px;
         }
-
+        
         .is-dragging-hidden {
             position: absolute !important;
             width: 0 !important;
@@ -371,14 +368,14 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
-
+        
         .folder-drop-target {
             background: rgba(59, 130, 246, 0.15) !important;
             border: 2px dashed var(--accent) !important;
             transform: scale(1.02);
             transition: all 150ms ease;
         }
-
+        
         .folder-drop-target::after {
             content: 'Drop to move inside';
             position: absolute;
@@ -390,7 +387,7 @@
             font-weight: 600;
             white-space: nowrap;
         }
-
+        
         .kebab-btn {
             position: absolute;
             top: 50%;
@@ -407,11 +404,11 @@
             font-size: 18px;
             cursor: pointer;
         }
-
+        
         .kebab-btn:hover {
             color: var(--text);
         }
-
+        
         .kebab-menu {
             position: absolute;
             top: 46px;
@@ -425,11 +422,11 @@
             display: none;
             z-index: 3000;
         }
-
+        
         .kebab-menu.is-open {
             display: block;
         }
-
+        
         .kebab-item {
             display: flex;
             align-items: center;
@@ -448,11 +445,11 @@
             font-size: 14px;
             font-weight: 500;
         }
-
+        
         .kebab-item:hover {
             background: #eef0f4;
         }
-
+        
         .breadcrumb-item {
             color: #64748b;
             text-decoration: none;
@@ -463,29 +460,29 @@
             align-items: center;
             gap: 4px;
         }
-
+        
         .breadcrumb-item:hover {
             color: #3b82f6;
         }
-
+        
         .breadcrumb-item.is-current {
             color: #1e293b;
             font-weight: 600;
             pointer-events: none;
         }
-
+        
         .breadcrumb-sep {
             color: #94a3b8;
             margin: 0 4px;
             font-size: 12px;
         }
-
+        
         #breadcrumb {
             background: transparent;
             padding: 8px 0;
             margin-bottom: 8px;
         }
-
+        
         .folder-tile {
             position: relative;
             background: var(--card-bg);
@@ -499,21 +496,21 @@
             align-items: center;
             gap: 12px;
         }
-
+        
         .folder-tile:hover {
             box-shadow: var(--card-shadow-hover);
         }
-
+        
         .folder-tile .folder-icon {
             font-size: 24px;
             color: var(--accent);
         }
-
+        
         .folder-tile .folder-name {
             font-weight: 400;
             color: var(--text-primary);
         }
-
+        
         .folder-tile.menu-open {
             z-index: 4000 !important;
             transform: translateZ(10px);
@@ -523,17 +520,15 @@
         html {
             color-scheme: light;
         }
-
+        
         @media (prefers-color-scheme: dark) {
             .modal__dialog {
                 background: var(--card-bg) !important;
                 border-color: var(--card-border) !important;
             }
-
             .loading-overlay {
                 background: rgba(255, 255, 255, 0.6) !important;
             }
-
             .loading-dots {
                 color: #8E8E93 !important;
             }
@@ -543,14 +538,11 @@
 
 <body class="bg-background-light dark:bg-background-dark font-display">
     <div class="relative flex min-h-screen w-full flex-col">
-        <header
-            class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+        <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
             <div class="w-full px-3 py-2 flex items-center border-b border-slate-200/70">
-                <button id="backBtn"
-                    class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span
+                <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"><span
                         class="material-symbols-outlined text-xl">arrow_back</span></button>
-                <h1 id="folderTitle"
-                    class="flex-1 h-8 flex items-center justify-center text-base font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">
+                <h1 id="folderTitle" class="flex-1 h-8 flex items-center justify-center text-base font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark truncate">
                     Folder</h1>
                 <div class="h-8 w-8"></div>
             </div>
@@ -562,15 +554,13 @@
             <nav id="breadcrumb" class="flex items-center gap-1 text-sm py-2 overflow-x-auto" style="display:none;">
             </nav>
             <section id="subFoldersSection" class="deck-list" style="display:none;">
-                <div
-                    style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
+                <div style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
                     <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Sub-folders</h2>
                 </div>
                 <div class="deck-grid" id="subFolderGrid"></div>
             </section>
             <section class="deck-list">
-                <div id="decksHeader"
-                    style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
+                <div id="decksHeader" style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
                     <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Decks</h2>
                 </div>
                 <div class="deck-grid" id="deckList"></div>
@@ -603,9 +593,9 @@
                     <span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span>
                     <span>Match</span>
                 </button>
-                <button id="openMoveBtn" class="study-action study-action--secondary" type="button">
-                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">drive_file_move</span>
-                    <span>Move</span>
+                <button id="openSettingsBtn" class="study-action study-action--secondary" type="button">
+                    <span class="material-symbols-outlined study-action__icon" aria-hidden="true">settings</span>
+                    <span>Settings</span>
                 </button>
             </div>
         </div>
@@ -622,6 +612,17 @@
             <p class="modal__status" id="moveDeckStatus"></p>
         </div>
     </div>
+
+    <div class="modal modal--multi" id="deckSettingsModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-settings="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="deckSettingsTitle">
+            <h2 id="deckSettingsTitle" class="modal__title">Deck Settings</h2>
+            <div class="multi-deck-list">
+                <button class="btn w-full" id="deckSettingsMoveBtn" type="button">Move</button>
+                <button class="btn w-full" id="deckSettingsDeleteBtn" type="button">Delete deck</button>
+            </div>
+        </div>
+    </div>
     <script>
         const backBtn = document.getElementById('backBtn');
         const folderTitle = document.getElementById('folderTitle');
@@ -633,7 +634,7 @@
         let openSpellingBtn = document.getElementById('openSpellingBtn');
         let openLineBtn = document.getElementById('openLineBtn');
         let openMatchBtn = document.getElementById('openMatchBtn');
-        const openMoveBtn = document.getElementById('openMoveBtn');
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
         const studyActionsEl = document.querySelector('#chooseActionModal .study-actions');
         if (!openSpellingBtn && studyActionsEl) {
             const btn = document.createElement('button');
@@ -641,9 +642,7 @@
             btn.className = 'study-action study-action--secondary';
             btn.type = 'button';
             btn.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">spellcheck</span><span>Spelling</span>';
-            const moveBtnEl = document.getElementById('openMoveBtn');
-            if (moveBtnEl) studyActionsEl.insertBefore(btn, moveBtnEl);
-            else studyActionsEl.appendChild(btn);
+            studyActionsEl.appendChild(btn);
             openSpellingBtn = btn;
         }
         if (!openLineBtn && studyActionsEl) {
@@ -652,9 +651,7 @@
             btn2.className = 'study-action study-action--secondary';
             btn2.type = 'button';
             btn2.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">subtitles</span><span>Line</span>';
-            const moveBtnEl2 = document.getElementById('openMoveBtn');
-            if (moveBtnEl2) studyActionsEl.insertBefore(btn2, moveBtnEl2);
-            else studyActionsEl.appendChild(btn2);
+            studyActionsEl.appendChild(btn2);
             openLineBtn = btn2;
         }
         if (!openMatchBtn && studyActionsEl) {
@@ -663,9 +660,7 @@
             btn3.className = 'study-action study-action--secondary';
             btn3.type = 'button';
             btn3.innerHTML = '<span class="material-symbols-outlined study-action__icon" aria-hidden="true">swap_horiz</span><span>Match</span>';
-            const moveBtnEl3 = document.getElementById('openMoveBtn');
-            if (moveBtnEl3) studyActionsEl.insertBefore(btn3, moveBtnEl3);
-            else studyActionsEl.appendChild(btn3);
+            studyActionsEl.appendChild(btn3);
             openMatchBtn = btn3;
         }
         const moveDeckModal = document.getElementById('moveDeckModal');
@@ -673,6 +668,9 @@
         const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
         const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
         const moveDeckStatus = document.getElementById('moveDeckStatus');
+        const deckSettingsModal = document.getElementById('deckSettingsModal');
+        const deckSettingsMoveBtn = document.getElementById('deckSettingsMoveBtn');
+        const deckSettingsDeleteBtn = document.getElementById('deckSettingsDeleteBtn');
         let selectedDeckForAction = '';
 
         const ordersCache = {
@@ -907,7 +905,7 @@
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(deckList, idx < 0 ? 0 : idx);
             });
-            tile.addEventListener('drop', async (e) => {
+            tile.addEventListener('drop', async(e) => {
                 e.preventDefault();
                 const target = name;
                 const dragged = draggingDeck;
@@ -975,7 +973,10 @@
             while (current && !visited.has(current)) {
                 visited.add(current);
                 const folderData = allFolders.find(f => (f.name || f) === current);
-                path.unshift({ name: current, parent: folderData ? folderData.parent : null });
+                path.unshift({
+                    name: current,
+                    parent: folderData ? folderData.parent : null
+                });
                 current = folderData ? folderData.parent : null;
             }
 
@@ -1011,7 +1012,8 @@
 
             // Update page title to show full path
             const fullPath = path.map(p => p.name).join(' › ');
-            folderTitle.textContent = path[path.length - 1]?.name || folder;
+            const last = path[path.length - 1];
+            folderTitle.textContent = (last && last.name) ? last.name : folder;
         }
 
         // Drag and drop state for folders
@@ -1099,7 +1101,7 @@
                 placeFolderPlaceholder(container, idx < 0 ? 0 : idx);
             });
 
-            tile.addEventListener('drop', async (e) => {
+            tile.addEventListener('drop', async(e) => {
                 e.preventDefault();
                 clearFolderDropState();
 
@@ -1183,7 +1185,9 @@
                     const t = e.touches && e.touches[0];
                     if (!t) return;
                     startPress(t.clientY);
-                }, { passive: true });
+                }, {
+                    passive: true
+                });
 
                 tile.addEventListener('touchmove', (e) => {
                     const t = e.touches && e.touches[0];
@@ -1198,7 +1202,9 @@
                     e.preventDefault();
                     const idx = folderIndexFromY(container, fingerY);
                     placeFolderPlaceholder(container, idx);
-                }, { passive: false });
+                }, {
+                    passive: false
+                });
 
                 tile.addEventListener('touchend', () => {
                     clearPress();
@@ -1263,7 +1269,7 @@
                 mMoveUp.className = 'kebab-item';
                 mMoveUp.type = 'button';
                 mMoveUp.textContent = parentFolder ? `Move to ${parentFolder}` : 'Move to Root';
-                mMoveUp.addEventListener('click', async (e) => {
+                mMoveUp.addEventListener('click', async(e) => {
                     e.stopPropagation();
                     menu.classList.remove('is-open');
                     // Move to grandparent (parent's parent) or root
@@ -1277,7 +1283,7 @@
                 mMoveRoot.className = 'kebab-item';
                 mMoveRoot.type = 'button';
                 mMoveRoot.textContent = 'Move to Root';
-                mMoveRoot.addEventListener('click', async (e) => {
+                mMoveRoot.addEventListener('click', async(e) => {
                     e.stopPropagation();
                     menu.classList.remove('is-open');
                     await moveFolderInto(f.name, null);
@@ -1328,7 +1334,7 @@
                     tile.classList.add('folder-drop-target');
                     folderDropTarget = f.name;
 
-                    folderDropTimer = setTimeout(async () => {
+                    folderDropTimer = setTimeout(async() => {
                         if (folderDropTarget === f.name) {
                             if (draggingSubFolder && draggingSubFolder !== f.name) {
                                 // Move folder inside
@@ -1361,28 +1367,38 @@
             try {
                 const resp = await fetch('/folder/move', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: folderName, parent: targetParent })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: folderName,
+                        parent: targetParent
+                    })
                 });
                 if (resp.ok) {
                     draggingSubFolder = null;
                     await loadDecks();
                 }
-            } catch { }
+            } catch {}
         }
 
         async function moveDeckInto(deckName, targetFolder) {
             try {
                 const resp = await fetch('/deck/move', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: deckName, folder: targetFolder })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: deckName,
+                        folder: targetFolder
+                    })
                 });
                 if (resp.ok) {
                     draggingDeckName = null;
                     await loadDecks();
                 }
-            } catch { }
+            } catch {}
         }
 
         // Cross-page cache keys
@@ -1392,6 +1408,7 @@
         function saveCache(key, data) {
             return;
         }
+
         function getCache(key) {
             return null;
         }
@@ -1428,7 +1445,9 @@
             showLoader();
             try {
                 const [foldersData, decksData, deckOrderData, folderOrderData] = await Promise.all([
-                    fetch('/folders').then(r => r.json()).catch(() => ({ folders: [] })),
+                    fetch('/folders').then(r => r.json()).catch(() => ({
+                        folders: []
+                    })),
                     fetch('/decks').then(r => r.json()).catch(() => []),
                     fetch(`/order/decks?scope=${encodeURIComponent(folder)}`).then(r => r.json()).catch(() => []),
                     fetch('/order/folders').then(r => r.json()).catch(() => [])
@@ -1436,9 +1455,15 @@
 
                 // Save to cache so the home page can reuse this data
                 allFolders = Array.isArray(foldersData.folders) ? foldersData.folders : [];
-                saveCache(CACHE_FOLDERS, { data: allFolders, timestamp: Date.now() });
+                saveCache(CACHE_FOLDERS, {
+                    data: allFolders,
+                    timestamp: Date.now()
+                });
                 const all = Array.isArray(decksData) ? decksData : [];
-                saveCache(CACHE_DECKS, { data: all, timestamp: Date.now() });
+                saveCache(CACHE_DECKS, {
+                    data: all,
+                    timestamp: Date.now()
+                });
 
                 // Store folder order
                 ordersCache.folders = Array.isArray(folderOrderData) ? folderOrderData : [];
@@ -1481,12 +1506,18 @@
                     const newFolders = Array.isArray(foldersData.folders) ? foldersData.folders : [];
                     if (!compareFolders(newFolders, allFolders)) {
                         allFolders = newFolders;
-                        saveCache(CACHE_FOLDERS, { data: allFolders, timestamp: Date.now() });
+                        saveCache(CACHE_FOLDERS, {
+                            data: allFolders,
+                            timestamp: Date.now()
+                        });
                         needsRerender = true;
                     } else {
                         // Just update silently
                         allFolders = newFolders;
-                        saveCache(CACHE_FOLDERS, { data: allFolders, timestamp: Date.now() });
+                        saveCache(CACHE_FOLDERS, {
+                            data: allFolders,
+                            timestamp: Date.now()
+                        });
                     }
                 }
 
@@ -1505,7 +1536,8 @@
                     const list = newDecks.filter(d => ((d.folder || 'Uncategorized') === folder));
 
                     // Check if decks actually changed (compare sorted names only)
-                    const currentAll = (getCache(CACHE_DECKS)?.data || []);
+                    const cachedDecksEntry = getCache(CACHE_DECKS) || {};
+                    const currentAll = cachedDecksEntry.data || [];
                     const currentList = currentAll.filter(d => ((d.folder || 'Uncategorized') === folder));
 
                     const oldNames = currentList.map(d => d.name).sort().join(',');
@@ -1531,7 +1563,10 @@
                         // If the list of names is SAME but default sort order changed? Unlikely unless casing changed.
                     }
 
-                    saveCache(CACHE_DECKS, { data: newDecks, timestamp: Date.now() });
+                    saveCache(CACHE_DECKS, {
+                        data: newDecks,
+                        timestamp: Date.now()
+                    });
 
                     // Only re-render if decks actually changed
                     if (decksChanged) {
@@ -1544,7 +1579,7 @@
                     buildBreadcrumb();
                     renderSubFolders();
                 }
-            } catch { }
+            } catch {}
         }
 
         function renderList(items) {
@@ -1632,15 +1667,15 @@
                     row.appendChild(label);
                     moveDeckList.appendChild(row);
                 });
-            } catch { }
+            } catch {}
         }
 
         function openMoveDeckModal() {
             moveDeckStatus.textContent = '';
             loadFoldersIntoMoveList();
-            if (chooseActionModal) {
-                chooseActionModal.classList.remove('is-open');
-                chooseActionModal.setAttribute('aria-hidden', 'true');
+            if (deckSettingsModal) {
+                deckSettingsModal.classList.remove('is-open');
+                deckSettingsModal.setAttribute('aria-hidden', 'true');
             }
             moveDeckModal.classList.add('is-open');
             moveDeckModal.setAttribute('aria-hidden', 'false');
@@ -1669,7 +1704,6 @@
             const fromParam = `&from=${encodeURIComponent(folder)}`;
             window.location.href = `/match?deck=${encodeURIComponent(selectedDeckForAction)}${fromParam}`;
         });
-        if (openMoveBtn) openMoveBtn.addEventListener('click', openMoveDeckModal);
 
         function closeMoveDeckModal() {
             moveDeckModal.classList.remove('is-open');
@@ -1679,7 +1713,7 @@
         if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => {
             if (e.target && (e.target.dataset.close === 'true')) closeMoveDeckModal();
         });
-        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async () => {
+        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
             if (!selectedDeckForAction) return;
             const picked = document.querySelector('input[name="moveFolder"]:checked');
             const targetFolder = picked ? picked.value : '';
@@ -1710,6 +1744,60 @@
             } finally {
                 moveDeckSaveBtn.disabled = false;
                 moveDeckSaveBtn.textContent = 'Move';
+            }
+        });
+
+        function openDeckSettingsModal() {
+            if (!selectedDeckForAction) return;
+            if (chooseActionModal) {
+                chooseActionModal.classList.remove('is-open');
+                chooseActionModal.setAttribute('aria-hidden', 'true');
+            }
+            if (deckSettingsModal) {
+                const titleEl = document.getElementById('deckSettingsTitle');
+                if (titleEl) titleEl.textContent = selectedDeckForAction;
+                deckSettingsModal.classList.add('is-open');
+                deckSettingsModal.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closeDeckSettingsModal() {
+            if (!deckSettingsModal) return;
+            deckSettingsModal.classList.remove('is-open');
+            deckSettingsModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (openSettingsBtn) openSettingsBtn.addEventListener('click', openDeckSettingsModal);
+        if (deckSettingsModal) deckSettingsModal.addEventListener('click', (e) => {
+            if (e.target && e.target.dataset && e.target.dataset.closeSettings === 'true') {
+                closeDeckSettingsModal();
+            }
+        });
+        if (deckSettingsMoveBtn) deckSettingsMoveBtn.addEventListener('click', () => {
+            openMoveDeckModal();
+        });
+        if (deckSettingsDeleteBtn) deckSettingsDeleteBtn.addEventListener('click', async() => {
+            if (!selectedDeckForAction) return;
+            const ok = confirm(`Delete deck "${selectedDeckForAction}"? This cannot be undone.`);
+            if (!ok) return;
+            try {
+                const resp = await fetch('/deck/delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: selectedDeckForAction
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to delete deck');
+                closeDeckSettingsModal();
+                await loadDecks();
+            } catch (e) {
+                alert(String(e && e.message ? e.message : e || 'Failed to delete deck'));
             }
         });
         if (chooseActionModal) chooseActionModal.addEventListener('click', (e) => {
