@@ -285,6 +285,44 @@
         let suppressNextClickFromLongPress = false;
         let editingIndex = -1;
         let renameTitlePressTimer = null;
+        let audioStatsInitialized = false;
+
+        function ensureAudioStatsEl() {
+            if (!cardGrid) return null;
+            let el = cardGrid.querySelector('[data-audio-stats="1"]');
+            if (!el) {
+                el = document.createElement('div');
+                el.dataset.audioStats = '1';
+                el.className = 'mt-3 text-sm text-text-secondary-light dark:text-text-secondary-dark';
+                cardGrid.appendChild(el);
+            }
+            return el;
+        }
+
+        function updateAudioStats() {
+            if (!Array.isArray(cards) || !cards.length) {
+                const el = cardGrid && cardGrid.querySelector('[data-audio-stats="1"]');
+                if (el) el.textContent = '';
+                return;
+            }
+            const total = cards.length;
+            let available = 0;
+            cards.forEach(c => {
+                const text = c && c.de;
+                if (!text) return;
+                const cacheKey = `audio:de:${text}`;
+                if (audioCache.has(text)) {
+                    available++;
+                    return;
+                }
+                try {
+                    if (localStorage.getItem(cacheKey)) available++;
+                } catch {}
+            });
+            const el = ensureAudioStatsEl();
+            if (!el) return;
+            el.textContent = `Words: ${total} • Audio ready: ${available}`;
+        }
 
         function cleanupAudioCache() {
             if (audioCache.size > MAX_CACHE_SIZE) {
@@ -587,6 +625,8 @@
                 tbody.appendChild(fragment);
                 if (index < cards.length) {
                     requestAnimationFrame(appendBatch);
+                } else {
+                    updateAudioStats();
                 }
             }
 
@@ -602,6 +642,7 @@
                 const val = localStorage.getItem(key);
                 if (val) audioCache.set(text, val);
             });
+            updateAudioStats();
         }
 
         function removeAudioCacheForWord(text) {
@@ -669,6 +710,7 @@
                     const extraTasks = missing.map((text) => preloadAudioForWord(text));
                     await Promise.allSettled(extraTasks);
                 }
+                updateAudioStats();
             } catch (error) {
                 console.warn('Audio preloading failed:', error);
             }
@@ -899,6 +941,7 @@
                 // Preload fresh audio for the updated word
                 try {
                     await preloadAudioForWord(newDe);
+                    updateAudioStats();
                 } catch {}
             });
         }

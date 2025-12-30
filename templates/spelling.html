@@ -315,12 +315,20 @@
         }
         // Cross-page cache
         function getCache(key) {
-            try { const d = sessionStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+            try {
+                const d = sessionStorage.getItem(key);
+                return d ? JSON.parse(d) : null;
+            } catch {
+                return null;
+            }
         }
+
         function saveCache(key, data) {
-            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+            try {
+                sessionStorage.setItem(key, JSON.stringify(data));
+            } catch {}
         }
-        
+
         function initCardsFromCache() {
             if (!currentDeck) return false;
             const cached = getCache(`flashcard_cards_${currentDeck}`);
@@ -343,7 +351,7 @@
             // Try instant load from cache
             const cachedDecks = getCache('flashcard_decks_cache');
             let showedFromCache = false;
-            
+
             if (currentDeck) {
                 // Populate deck select from cache instantly
                 if (cachedDecks && Array.isArray(cachedDecks)) {
@@ -363,20 +371,20 @@
                 // Try to show cards from cache instantly
                 showedFromCache = initCardsFromCache();
             }
-            
+
             if (!showedFromCache) showLoader();
-            
+
             try {
                 if (currentDeck) {
                     const [decksResp, cardsResp] = await Promise.all([
                         fetch('/decks').then(r => r.json()).catch(() => []),
                         fetch(`/cards?deck=${encodeURIComponent(currentDeck)}`).then(r => r.json()).catch(() => [])
                     ]);
-                    
+
                     // Save to cache
                     saveCache('flashcard_decks_cache', decksResp);
                     saveCache(`flashcard_cards_${currentDeck}`, cardsResp);
-                    
+
                     // Update deck select
                     deckSelect.innerHTML = '';
                     const ph = document.createElement('option');
@@ -390,7 +398,7 @@
                         deckSelect.appendChild(opt);
                     });
                     deckSelect.value = currentDeck;
-                    
+
                     // Only re-render if data changed or wasn't cached
                     if (!showedFromCache) {
                         cards = Array.isArray(cardsResp) ? cardsResp : [];
@@ -481,13 +489,7 @@
                     audio.src = `/tts?text=${encodeURIComponent(c.de)}&lang=de`;
                 }
             }
-            audio.play().catch(() => {
-                try {
-                    const u = new SpeechSynthesisUtterance(c.de);
-                    u.lang = 'de-DE';
-                    speechSynthesis.speak(u);
-                } catch {}
-            })
+            audio.play().catch(() => {})
         }
 
         function normalizeForCompare(s) {

@@ -2622,15 +2622,7 @@
                     console.warn('Auto-play failed with fetch:', e);
                 }
 
-                // Fallback to speech synthesis
-                try {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'de-DE';
-                    if (germanVoice) utterance.voice = germanVoice;
-                    speechSynthesis.speak(utterance);
-                } catch (e) {
-                    console.warn('Auto-play failed with speech synthesis:', e);
-                }
+                // If audio could not be fetched, do nothing rather than using a fallback voice
             } catch (e) {
                 console.error('Auto-play error:', e);
             }
@@ -3947,14 +3939,7 @@
                             const audio = new Audio(url);
                             await audio.play();
                         }
-                    } catch {
-                        // Fallback to speech synthesis
-                        try {
-                            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-                            utterance.lang = lang === 'de' ? 'de-DE' : 'en-US';
-                            speechSynthesis.speak(utterance);
-                        } catch {}
-                    }
+                    } catch {}
                 }
             });
         }
@@ -4078,14 +4063,7 @@
                     const audio = new Audio(url);
                     await audio.play();
                 }
-            } catch {
-                // Fallback to speech synthesis
-                try {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'de-DE';
-                    speechSynthesis.speak(utterance);
-                } catch {}
-            }
+            } catch {}
         }
 
         let recentlyTouched = false;

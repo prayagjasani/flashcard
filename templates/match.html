@@ -403,13 +403,7 @@
                     audio.src = `/tts?text=${encodeURIComponent(text)}&lang=de`;
                 }
             }
-            audio.play().catch(() => {
-                try {
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.lang = 'de-DE';
-                    speechSynthesis.speak(u);
-                } catch {}
-            })
+            audio.play().catch(() => {})
         }
 
         function hydrateAudioLocal() {
@@ -722,12 +716,20 @@
         }
         // Cross-page cache
         function getCache(key) {
-            try { const d = sessionStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+            try {
+                const d = sessionStorage.getItem(key);
+                return d ? JSON.parse(d) : null;
+            } catch {
+                return null;
+            }
         }
+
         function saveCache(key, data) {
-            try { sessionStorage.setItem(key, JSON.stringify(data)); } catch {}
+            try {
+                sessionStorage.setItem(key, JSON.stringify(data));
+            } catch {}
         }
-        
+
         function initFromCache(name) {
             const cached = getCache(`flashcard_cards_${name}`);
             if (!cached || !Array.isArray(cached) || !cached.length) return false;
@@ -737,7 +739,10 @@
             pickRound();
             renderRound();
             setProgress();
-            try { feedback.hidden = true; feedback.textContent = ''; } catch {}
+            try {
+                feedback.hidden = true;
+                feedback.textContent = '';
+            } catch {}
             sessionStart = performance.now();
             attempts = 0;
             correctAttempts = 0;
@@ -752,12 +757,12 @@
             // Try instant load from cache
             const showedFromCache = initFromCache(name);
             if (!showedFromCache) showLoader();
-            
+
             try {
                 const resp = await fetch(`/cards?deck=${encodeURIComponent(name)}`);
                 const data = await resp.json();
                 saveCache(`flashcard_cards_${name}`, data);
-                
+
                 if (!showedFromCache) {
                     cards = Array.isArray(data) ? data : [];
                     originalCards = cards.slice();
@@ -765,7 +770,10 @@
                     pickRound();
                     renderRound();
                     setProgress();
-                    try { feedback.hidden = true; feedback.textContent = ''; } catch {}
+                    try {
+                        feedback.hidden = true;
+                        feedback.textContent = '';
+                    } catch {}
                     sessionStart = performance.now();
                     attempts = 0;
                     correctAttempts = 0;
