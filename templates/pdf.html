@@ -331,6 +331,23 @@
             justify-content: center;
         }
         
+        .pdf-kebab-btn {
+            position: static;
+            top: auto;
+            right: auto;
+            margin-left: 8px;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pdf-kebab-actions .kebab-menu {
+            top: calc(100% + 4px);
+            right: 0;
+        }
+        
         .kebab-menu {
             position: absolute;
             top: 32px;
@@ -623,6 +640,30 @@
         
         .pdf-card-subtitle {
             display: none;
+        }
+        
+        .pdf-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        
+        .pdf-kebab-actions {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        
+        .pdf-card-title {
+            flex: 1 1 auto;
+            font-size: 0.95rem;
+            line-height: 1.25;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
         }
     </style>
 </head>
@@ -1192,7 +1233,10 @@
                 }
                 removePlaceholder(pdfListEl);
                 tile.classList.remove('is-dragging-hidden');
-                const newOrder = Array.from(pdfListEl.querySelectorAll('.deck-title')).map(el => el.textContent);
+                const newOrder = Array.from(pdfListEl.querySelectorAll('.deck-title')).map(el => {
+                    const d = el.dataset && el.dataset.name ? el.dataset.name : el.textContent;
+                    return d;
+                });
                 await writePdfOrder(newOrder, scope || 'root');
                 dragTileEl = null;
                 dragTileHeight = 0;
@@ -1578,18 +1622,18 @@
                 thumbWrap.appendChild(img);
                 tile.appendChild(thumbWrap);
                 const headerRow = document.createElement('div');
-                headerRow.style.display = 'flex';
-                headerRow.style.alignItems = 'center';
-                headerRow.style.justifyContent = 'space-between';
+                headerRow.className = 'pdf-card-header';
                 const title = document.createElement('div');
-                title.className = 'deck-title';
-                title.textContent = p.name;
+                title.className = 'deck-title pdf-card-title';
+                title.dataset.name = p.name;
+                const displayName = (p.name || '').split('_').join(' ');
+                title.textContent = displayName;
                 const subtitle = document.createElement('div');
                 subtitle.className = 'deck-subtitle pdf-card-subtitle';
                 subtitle.textContent = p.folder ? p.folder : 'Uncategorized';
                 const kebab = document.createElement('button');
                 kebab.type = 'button';
-                kebab.className = 'kebab-btn';
+                kebab.className = 'kebab-btn pdf-kebab-btn';
                 kebab.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>';
                 const menu = document.createElement('div');
                 menu.className = 'kebab-menu';
@@ -1657,11 +1701,14 @@
                         parentTile.classList.remove('menu-open');
                     }
                 });
+                const actions = document.createElement('div');
+                actions.className = 'pdf-kebab-actions';
+                actions.appendChild(kebab);
+                actions.appendChild(menu);
                 headerRow.appendChild(title);
-                headerRow.appendChild(kebab);
+                headerRow.appendChild(actions);
                 tile.appendChild(headerRow);
                 tile.appendChild(subtitle);
-                tile.appendChild(menu);
                 tile.addEventListener('click', () => {
                     const url = buildPdfUrl(p);
                     if (url) {
