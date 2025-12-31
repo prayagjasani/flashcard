@@ -90,6 +90,38 @@
             display: none;
         }
         
+        .header__actions>.nav__link,
+        .header__actions>.nav__link--button {
+            flex: 0 0 auto;
+        }
+        
+        @media (max-width: 640px) {
+            .header__inner {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+            .header__actions {
+                grid-column: 1;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px 14px;
+                overflow-x: visible;
+                white-space: normal;
+            }
+            .nav__link {
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header__inner {
+                padding: 10px 12px;
+            }
+            .header__actions {
+                gap: 10px 12px;
+            }
+        }
+        
         .nav__link {
             position: relative;
             display: inline-block;
@@ -558,9 +590,11 @@
     </div>
     <script>
         const globalLoader = document.getElementById('globalLoader');
+
         function showLoader() {
             if (globalLoader) globalLoader.classList.add('is-active');
         }
+
         function hideLoader() {
             if (globalLoader) globalLoader.classList.remove('is-active');
         }
@@ -620,6 +654,7 @@
         let dragTileEl = null;
         let dragTileHeight = 0;
         const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
+
         function openUploadModal() {
             if (!uploadPdfModal) return;
             uploadPdfStatus.textContent = '';
@@ -628,6 +663,7 @@
             uploadPdfModal.classList.add('is-open');
             uploadPdfModal.setAttribute('aria-hidden', 'false');
         }
+
         function closeUploadModal() {
             if (!uploadPdfModal) return;
             uploadPdfModal.classList.remove('is-open');
@@ -679,6 +715,7 @@
         if (uploadPdfSaveBtn) uploadPdfSaveBtn.addEventListener('click', () => {
             doUploadPdf();
         });
+
         function openRenameModal(name) {
             if (!renamePdfModal) return;
             selectedPdfName = name;
@@ -687,6 +724,7 @@
             renamePdfModal.classList.add('is-open');
             renamePdfModal.setAttribute('aria-hidden', 'false');
         }
+
         function closeRenameModal() {
             if (!renamePdfModal) return;
             renamePdfModal.classList.remove('is-open');
@@ -737,12 +775,14 @@
         if (renamePdfSaveBtn) renamePdfSaveBtn.addEventListener('click', () => {
             doRenamePdf();
         });
+
         function openCreateFolderModal() {
             createPdfFolderStatus.textContent = '';
             createPdfFolderNameInput.value = '';
             createPdfFolderModal.classList.add('is-open');
             createPdfFolderModal.setAttribute('aria-hidden', 'false');
         }
+
         function closeCreateFolderModal() {
             createPdfFolderModal.classList.remove('is-open');
             createPdfFolderModal.setAttribute('aria-hidden', 'true');
@@ -784,6 +824,7 @@
         if (createPdfFolderSaveBtn) createPdfFolderSaveBtn.addEventListener('click', () => {
             doCreateFolder();
         });
+
         function ensurePlaceholder(container) {
             if (!container) return null;
             let ph = container.querySelector('.drop-placeholder');
@@ -803,10 +844,12 @@
             if (!ph.parentElement) container.appendChild(ph);
             return ph;
         }
+
         function removePlaceholder(container) {
             const ph = container ? container.querySelector('.drop-placeholder') : null;
             if (ph && ph.parentElement) ph.parentElement.removeChild(ph);
         }
+
         function placePlaceholder(container, index) {
             if (!container) return;
             const tiles = Array.from(container.querySelectorAll('.deck-tile'));
@@ -816,6 +859,7 @@
             if (clamped >= tiles.length) container.appendChild(ph);
             else container.insertBefore(ph, tiles[clamped]);
         }
+
         function indexFromFinger(container, fingerY) {
             const tiles = Array.from(container.querySelectorAll('.deck-tile'));
             for (let i = 0; i < tiles.length; i++) {
@@ -839,6 +883,7 @@
                 });
             } catch (e) {}
         }
+
         function attachPdfDnD(tile, name, scope) {
             tile.setAttribute('draggable', 'true');
             tile.addEventListener('dragstart', (e) => {
@@ -877,6 +922,7 @@
             });
             attachTouchDnD(tile, name, scope);
         }
+
         function attachTouchDnD(tile, name, scope) {
             if (!isCoarsePointer) return;
             let dragging = false;
@@ -885,6 +931,7 @@
             let startY = 0;
             const LONG_PRESS_MS = 2000;
             const MOVE_CANCEL_PX = 10;
+
             function start(y) {
                 startY = y;
                 pressTimer = setTimeout(() => {
@@ -899,8 +946,9 @@
                     placePlaceholder(pdfListEl, idx < 0 ? 0 : idx);
                 }, LONG_PRESS_MS);
             }
+
             function clearPress() {
-            if (pressTimer) {
+                if (pressTimer) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
                 }
@@ -951,14 +999,9 @@
                 commit();
             });
         }
+
         function buildFolderBar() {
             pdfFolderBar.innerHTML = '';
-            const byName = new Map();
-            folderItems.forEach(f => {
-                const nm = f && f.name ? f.name : String(f);
-                if (!nm) return;
-                byName.set(nm, f);
-            });
             const counts = {};
             pdfItems.forEach(p => {
                 const f = p.folder || 'Uncategorized';
@@ -966,8 +1009,7 @@
             });
             const names = Array.from(new Set([
                 'All',
-                ...Object.keys(counts),
-                ...Array.from(byName.keys())
+                ...Object.keys(counts)
             ])).filter(Boolean);
             names.forEach((nm) => {
                 const chip = document.createElement('button');
@@ -1015,12 +1057,14 @@
             });
             pdfFolderBar.appendChild(createBtn);
         }
+
         function buildPdfUrl(item) {
             const file = item.file || '';
             if (!file) return '';
             const key = file.startsWith('/') ? file.slice(1) : file;
             return `/r2/get?key=${encodeURIComponent(key)}`;
         }
+
         function renderPdfList() {
             pdfListEl.innerHTML = '';
             if (!Array.isArray(pdfItems) || !pdfItems.length) return;
@@ -1033,6 +1077,21 @@
                 const tile = document.createElement('div');
                 tile.className = 'deck-tile tile-enter';
                 tile.style.animationDelay = `${i * 40}ms`;
+                const thumbWrap = document.createElement('div');
+                thumbWrap.style.width = '100%';
+                thumbWrap.style.borderRadius = '10px';
+                thumbWrap.style.overflow = 'hidden';
+                thumbWrap.style.background = '#e5e7eb';
+                thumbWrap.style.marginBottom = '8px';
+                const iframe = document.createElement('iframe');
+                const thumbUrl = buildPdfUrl(p);
+                iframe.src = thumbUrl ? thumbUrl + '#page=1&view=FitH' : '';
+                iframe.style.width = '100%';
+                iframe.style.height = '200px';
+                iframe.style.border = '0';
+                iframe.loading = 'lazy';
+                thumbWrap.appendChild(iframe);
+                tile.appendChild(thumbWrap);
                 const title = document.createElement('div');
                 title.className = 'deck-title';
                 title.textContent = p.name;
@@ -1153,6 +1212,7 @@
                 buildFolderBar();
             } catch (e) {}
         }
+
         function init() {
             showLoader();
             Promise.all([loadPdfs(), loadFolders()]).finally(() => {
@@ -1169,4 +1229,3 @@
 </body>
 
 </html>
-
