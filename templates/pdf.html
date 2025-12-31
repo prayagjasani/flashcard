@@ -95,30 +95,6 @@
             flex: 0 0 auto;
         }
         
-        @media (max-width: 640px) {
-            .header__inner {
-                grid-template-columns: 1fr;
-                justify-items: center;
-            }
-            .header__actions {
-                grid-column: 1;
-                justify-content: center;
-                gap: 10px 14px;
-            }
-            .nav__link {
-                font-size: 14px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .header__inner {
-                padding: 10px 12px;
-            }
-            .header__actions {
-                gap: 10px 12px;
-            }
-        }
-        
         .nav__link {
             position: relative;
             display: inline-block;
@@ -169,13 +145,40 @@
             opacity: 1;
         }
         
+        @media (max-width: 640px) {
+            .header__inner {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+            .header__actions {
+                grid-column: 1;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px 14px;
+                overflow-x: visible;
+                white-space: normal;
+            }
+            .nav__link {
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header__inner {
+                padding: 10px 12px;
+            }
+            .header__actions {
+                gap: 10px 12px;
+            }
+        }
+        
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
         
         .page {
             max-width: 1100px;
-            margin: 96px auto 0;
+            margin: 26px auto 0;
             width: 100%;
         }
         
@@ -268,6 +271,9 @@
         }
         
         .kebab-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
             border: 0;
             background: transparent;
             padding: 4px;
@@ -485,6 +491,10 @@
         .pdf-folder-chip.is-active {
             border-color: var(--accent);
             color: var(--accent);
+        }
+        
+        .deck-subtitle {
+            display: none;
         }
     </style>
 </head>
