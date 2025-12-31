@@ -69,6 +69,20 @@ class PdfOrderUpdate(BaseModel):
 class PdfFolderCreate(BaseModel):
     name: str
 
+
+class PdfFolderRename(BaseModel):
+    old_name: str
+    new_name: str
+
+
+class PdfFolderDelete(BaseModel):
+    name: str
+
+
+class PdfFolderMove(BaseModel):
+    source: str
+    target: str | None = None
+
 class CustomStoryRequest(BaseModel):
     topic: str
     story_id: str | None = None

@@ -270,6 +270,18 @@
             gap: 4px;
         }
         
+        .pdf-folder-tile {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .pdf-folder-tile-main {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
         .deck-title {
             font-weight: 500;
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
@@ -307,6 +319,18 @@
             border-radius: 999px;
         }
         
+        .folder-kebab-btn {
+            position: static;
+            top: auto;
+            right: auto;
+            margin-left: 8px;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
         .kebab-menu {
             position: absolute;
             top: 32px;
@@ -337,6 +361,11 @@
         
         .kebab-menu button:hover {
             background: #eef2ff;
+        }
+        
+        .deck-tile.menu-open {
+            z-index: 4000 !important;
+            transform: translateZ(10px);
         }
         
         .modal {
@@ -984,6 +1013,101 @@
             doCreateFolder();
         });
 
+        async function doRenamePdfFolder(oldName, nextName) {
+            const old = (oldName || '').trim();
+            const next = (nextName || '').trim();
+            if (!old || !next || next === old) return;
+            try {
+                const resp = await fetch('/pdf/folder/rename', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        old_name: old,
+                        new_name: next
+                    })
+                });
+                const out = await resp.json().catch(() => ({}));
+                if (!resp.ok || !out.ok) {
+                    alert(out.detail || 'Rename failed');
+                    return;
+                }
+                if (selectedFolder === old) {
+                    selectedFolder = next;
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('folder', next);
+                    window.history.replaceState(null, '', `/pdf?${params.toString()}`);
+                    updatePdfHeader();
+                }
+                await Promise.all([loadFolders(), loadPdfs()]);
+            } catch (e) {
+                alert(String(e && e.message ? e.message : e || 'Rename failed'));
+            }
+        }
+
+        async function doDeletePdfFolder(name) {
+            const safe = (name || '').trim();
+            if (!safe) return;
+            if (safe === 'Uncategorized') {
+                alert('Cannot delete Uncategorized');
+                return;
+            }
+            const ok = confirm(`Delete folder "${safe}"? PDFs inside will move to Uncategorized.`);
+            if (!ok) return;
+            try {
+                const resp = await fetch('/pdf/folder/delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: safe
+                    })
+                });
+                const out = await resp.json().catch(() => ({}));
+                if (!resp.ok || !out.ok) {
+                    alert(out.detail || 'Delete failed');
+                    return;
+                }
+                if (selectedFolder === safe) {
+                    window.location.href = '/pdf';
+                    return;
+                }
+                await Promise.all([loadFolders(), loadPdfs()]);
+            } catch (e) {
+                alert(String(e && e.message ? e.message : e || 'Delete failed'));
+            }
+        }
+
+        async function doMovePdfFolder(name) {
+            const src = (name || '').trim();
+            if (!src) return;
+            const target = prompt('Move all PDFs from this folder to (empty for Uncategorized)', '');
+            if (target === null) return;
+            const trimmed = (target || '').trim();
+            try {
+                const resp = await fetch('/pdf/folder/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        source: src,
+                        target: trimmed || null
+                    })
+                });
+                const out = await resp.json().catch(() => ({}));
+                if (!resp.ok || !out.ok) {
+                    alert(out.detail || 'Move failed');
+                    return;
+                }
+                await Promise.all([loadFolders(), loadPdfs()]);
+            } catch (e) {
+                alert(String(e && e.message ? e.message : e || 'Move failed'));
+            }
+        }
+
         function ensurePlaceholder(container) {
             if (!container) return null;
             let ph = container.querySelector('.drop-placeholder');
@@ -1185,8 +1309,10 @@
             pdfRootFolderGrid.style.display = selectedFolder ? 'none' : 'grid';
             roots.forEach((f, i) => {
                 const tile = document.createElement('div');
-                tile.className = 'deck-tile tile-enter';
+                tile.className = 'deck-tile tile-enter pdf-folder-tile';
                 tile.style.animationDelay = `${i * 40}ms`;
+                const main = document.createElement('div');
+                main.className = 'pdf-folder-tile-main';
                 const title = document.createElement('div');
                 title.className = 'deck-title';
                 title.textContent = f.name;
@@ -1199,9 +1325,65 @@
                 } else {
                     sub.textContent = `${totalPdfs} PDF${totalPdfs === 1 ? '' : 's'}`;
                 }
-                tile.appendChild(title);
-                tile.appendChild(sub);
-                tile.addEventListener('click', () => {
+                main.appendChild(title);
+                main.appendChild(sub);
+                tile.appendChild(main);
+                if (f.name !== 'Uncategorized') {
+                    const kebab = document.createElement('button');
+                    kebab.className = 'kebab-btn folder-kebab-btn';
+                    kebab.type = 'button';
+                    kebab.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>';
+                    const menu = document.createElement('div');
+                    menu.className = 'kebab-menu';
+                    const renameBtn = document.createElement('button');
+                    renameBtn.type = 'button';
+                    renameBtn.textContent = 'Rename folder';
+                    renameBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        menu.classList.remove('is-open');
+                        const next = prompt('New folder name', f.name);
+                        if (next === null) return;
+                        doRenamePdfFolder(f.name, next);
+                    });
+                    const moveBtn = document.createElement('button');
+                    moveBtn.type = 'button';
+                    moveBtn.textContent = 'Move all PDFs...';
+                    moveBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        menu.classList.remove('is-open');
+                        doMovePdfFolder(f.name);
+                    });
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.textContent = 'Delete folder';
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        menu.classList.remove('is-open');
+                        doDeletePdfFolder(f.name);
+                    });
+                    menu.appendChild(renameBtn);
+                    menu.appendChild(moveBtn);
+                    menu.appendChild(deleteBtn);
+                    kebab.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isOpen = menu.classList.contains('is-open');
+                        document.querySelectorAll('.kebab-menu.is-open').forEach(m => {
+                            m.classList.remove('is-open');
+                            const p = m.closest('.deck-tile');
+                            if (p) p.classList.remove('menu-open');
+                        });
+                        if (!isOpen) {
+                            menu.classList.add('is-open');
+                            tile.classList.add('menu-open');
+                        } else {
+                            tile.classList.remove('menu-open');
+                        }
+                    });
+                    tile.appendChild(menu);
+                    tile.appendChild(kebab);
+                }
+                tile.addEventListener('click', (e) => {
+                    if (e.target.closest('.kebab-btn') || e.target.closest('.kebab-menu')) return;
                     window.location.href = `/pdf?folder=${encodeURIComponent(f.name)}`;
                 });
                 pdfRootFolderGrid.appendChild(tile);
@@ -1462,8 +1644,18 @@
                 kebab.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const isOpen = menu.classList.contains('is-open');
-                    document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
-                    if (!isOpen) menu.classList.add('is-open');
+                    document.querySelectorAll('.kebab-menu.is-open').forEach(m => {
+                        m.classList.remove('is-open');
+                        const p = m.closest('.deck-tile');
+                        if (p) p.classList.remove('menu-open');
+                    });
+                    const parentTile = kebab.closest('.deck-tile');
+                    if (!isOpen) {
+                        menu.classList.add('is-open');
+                        if (parentTile) parentTile.classList.add('menu-open');
+                    } else if (parentTile) {
+                        parentTile.classList.remove('menu-open');
+                    }
                 });
                 headerRow.appendChild(title);
                 headerRow.appendChild(kebab);
@@ -1547,7 +1739,11 @@
         window.addEventListener('load', init);
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.kebab-btn') && !e.target.closest('.kebab-menu')) {
-                document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
+                document.querySelectorAll('.kebab-menu.is-open').forEach(m => {
+                    m.classList.remove('is-open');
+                    const p = m.closest('.deck-tile');
+                    if (p) p.classList.remove('menu-open');
+                });
             }
         });
         if (movePdfCancelBtn) movePdfCancelBtn.addEventListener('click', () => {

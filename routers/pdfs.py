@@ -10,7 +10,16 @@ try:
 except Exception:  # pragma: no cover
     pdfium = None
 
-from models import PdfRename, PdfDelete, PdfMove, PdfOrderUpdate, PdfFolderCreate
+from models import (
+    PdfRename,
+    PdfDelete,
+    PdfMove,
+    PdfOrderUpdate,
+    PdfFolderCreate,
+    PdfFolderRename,
+    PdfFolderDelete,
+    PdfFolderMove,
+)
 from services.storage import r2_client, R2_BUCKET_NAME, order_pdfs_key as _order_pdfs_key
 from services.cache import get_cached, set_cached, invalidate_cache
 from utils import safe_deck_name as _safe_name
@@ -136,7 +145,173 @@ def pdf_folder_create(payload: PdfFolderCreate):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    invalidate_cache("pdfs:folders")
     return {"ok": True, "name": name}
+
+
+@router.post("/pdf/folder/rename")
+def pdf_folder_rename(payload: PdfFolderRename):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    old = _safe_name(payload.old_name)
+    new = _safe_name(payload.new_name)
+    if not old or not new:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    key = _pdf_folders_index_key()
+    items: list[str] = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            items = [x for x in parsed if isinstance(x, str)]
+    except Exception:
+        items = []
+    changed = False
+    if old in items:
+        items = [new if x == old else x for x in items]
+        changed = True
+    elif new not in items:
+        items.append(new)
+        changed = True
+    if changed:
+        try:
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(items).encode("utf-8"),
+                ContentType="application/json",
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    index_key = _pdf_index_key()
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            updated = False
+            for d in parsed:
+                if isinstance(d, dict) and (d.get("folder") or "") == old:
+                    d["folder"] = new
+                    updated = True
+            if updated:
+                r2_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=index_key,
+                    Body=json.dumps(parsed).encode("utf-8"),
+                    ContentType="application/json",
+                )
+    except Exception:
+        pass
+    invalidate_cache("pdfs:")
+    return {"ok": True, "old_name": old, "new_name": new}
+
+
+@router.delete("/pdf/folder/delete")
+def pdf_folder_delete(payload: PdfFolderDelete):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    key = _pdf_folders_index_key()
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        items: list[str] = []
+        if isinstance(parsed, list):
+            items = [x for x in parsed if isinstance(x, str) and x != name]
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=json.dumps(items).encode("utf-8"),
+            ContentType="application/json",
+        )
+    except Exception:
+        pass
+    index_key = _pdf_index_key()
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            updated = False
+            for d in parsed:
+                if isinstance(d, dict) and (d.get("folder") or "") == name:
+                    d.pop("folder", None)
+                    updated = True
+            if updated:
+                r2_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=index_key,
+                    Body=json.dumps(parsed).encode("utf-8"),
+                    ContentType="application/json",
+                )
+    except Exception:
+        pass
+    invalidate_cache("pdfs:")
+    return {"ok": True, "deleted": name}
+
+
+@router.post("/pdf/folder/move")
+def pdf_folder_move(payload: PdfFolderMove):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    source = _safe_name(payload.source)
+    if not source:
+        raise HTTPException(status_code=400, detail="Source folder required")
+    target = _safe_name(payload.target) if payload.target else None
+    key = _pdf_folders_index_key()
+    items: list[str] = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            items = [x for x in parsed if isinstance(x, str)]
+    except Exception:
+        items = []
+    changed_index = False
+    if target and target not in items:
+        items.append(target)
+        changed_index = True
+    if changed_index:
+        try:
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(items).encode("utf-8"),
+                ContentType="application/json",
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    index_key = _pdf_index_key()
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=index_key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            updated = False
+            for d in parsed:
+                if isinstance(d, dict) and (d.get("folder") or "") == source:
+                    if target:
+                        d["folder"] = target
+                    else:
+                        d.pop("folder", None)
+                    updated = True
+            if updated:
+                r2_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=index_key,
+                    Body=json.dumps(parsed).encode("utf-8"),
+                    ContentType="application/json",
+                )
+    except Exception:
+        pass
+    invalidate_cache("pdfs:")
+    return {"ok": True, "source": source, "target": target}
 
 
 @router.get("/pdfs")
