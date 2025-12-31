@@ -668,6 +668,10 @@
         const moveDeckCancelBtn = document.getElementById('moveDeckCancelBtn');
         const moveDeckSaveBtn = document.getElementById('moveDeckSaveBtn');
         const moveDeckStatus = document.getElementById('moveDeckStatus');
+        const MOVE_BROWSER_ROOT = '__root__';
+        let moveDeckBrowserCursor = MOVE_BROWSER_ROOT;
+        let moveDeckParentByName = {};
+        let moveDeckChildrenByParent = {};
         const deckSettingsModal = document.getElementById('deckSettingsModal');
         const deckSettingsMoveBtn = document.getElementById('deckSettingsMoveBtn');
         const deckSettingsDeleteBtn = document.getElementById('deckSettingsDeleteBtn');
@@ -1622,52 +1626,115 @@
             }
         });
 
+        function buildMoveDeckBrowserTreeForFolder(raw) {
+            moveDeckParentByName = {};
+            moveDeckChildrenByParent = {};
+            const seen = new Set();
+            raw.forEach((f) => {
+                const nm = (f && f.name) ? f.name : String(f);
+                if (nm === 'Uncategorized') return;
+                if (seen.has(nm)) return;
+                seen.add(nm);
+                const parent = f && f.parent ? f.parent : '';
+                moveDeckParentByName[nm] = parent || '';
+                const key = parent || MOVE_BROWSER_ROOT;
+                if (!moveDeckChildrenByParent[key]) moveDeckChildrenByParent[key] = [];
+                moveDeckChildrenByParent[key].push(nm);
+            });
+            if (!moveDeckChildrenByParent[MOVE_BROWSER_ROOT]) moveDeckChildrenByParent[MOVE_BROWSER_ROOT] = [];
+            if (!moveDeckChildrenByParent[MOVE_BROWSER_ROOT].includes('Uncategorized')) {
+                moveDeckChildrenByParent[MOVE_BROWSER_ROOT].push('Uncategorized');
+                moveDeckParentByName['Uncategorized'] = '';
+            }
+        }
+
+        function getMoveDeckPathForFolder() {
+            const path = [];
+            let current = moveDeckBrowserCursor;
+            const visited = new Set();
+            while (current && current !== MOVE_BROWSER_ROOT && !visited.has(current)) {
+                visited.add(current);
+                path.unshift(current);
+                const parent = moveDeckParentByName[current] || '';
+                if (!parent) break;
+                current = parent;
+            }
+            return path;
+        }
+
+        function renderMoveDeckBrowserForFolder() {
+            if (!moveDeckList) return;
+            moveDeckList.innerHTML = '';
+            const path = getMoveDeckPathForFolder();
+            const headerRow = document.createElement('div');
+            headerRow.className = 'multi-deck-item';
+            const headerSpan = document.createElement('span');
+            headerSpan.style.fontWeight = '600';
+            headerSpan.textContent = path.length ? `Location: Root / ${path.join(' / ')}` : 'Location: Root';
+            headerRow.appendChild(headerSpan);
+            moveDeckList.appendChild(headerRow);
+            if (moveDeckBrowserCursor !== MOVE_BROWSER_ROOT) {
+                const upBtn = document.createElement('button');
+                upBtn.type = 'button';
+                upBtn.className = 'multi-deck-item';
+                upBtn.textContent = 'Up one level';
+                upBtn.addEventListener('click', () => {
+                    const current = moveDeckBrowserCursor;
+                    const parent = moveDeckParentByName[current] || '';
+                    moveDeckBrowserCursor = parent ? parent : MOVE_BROWSER_ROOT;
+                    renderMoveDeckBrowserForFolder();
+                });
+                moveDeckList.appendChild(upBtn);
+            }
+            const key = moveDeckBrowserCursor === MOVE_BROWSER_ROOT ? MOVE_BROWSER_ROOT : moveDeckBrowserCursor;
+            const children = (moveDeckChildrenByParent[key] || []).slice().sort((a, b) => a.localeCompare(b));
+            children.forEach((name) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'multi-deck-item';
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = name;
+                row.appendChild(nameSpan);
+                if (name !== 'Uncategorized') {
+                    const icon = document.createElement('span');
+                    icon.className = 'material-symbols-outlined';
+                    icon.textContent = 'chevron_right';
+                    row.appendChild(icon);
+                }
+                btn.appendChild(row);
+                btn.addEventListener('click', () => {
+                    moveDeckBrowserCursor = name;
+                    renderMoveDeckBrowserForFolder();
+                });
+                moveDeckList.appendChild(btn);
+            });
+            if (moveDeckSaveBtn) moveDeckSaveBtn.disabled = moveDeckBrowserCursor === MOVE_BROWSER_ROOT;
+        }
+
         async function loadFoldersIntoMoveList() {
             moveDeckList.innerHTML = '';
-            try {
-                const resp = await fetch('/folders');
-                const data = await resp.json().catch(() => ({
-                    folders: []
-                }));
-                const raw = Array.isArray(data.folders) ? data.folders : [];
-                const seen = new Set();
-                const ordered = [];
-                raw.forEach((f) => {
-                    const nm = (f && f.name) ? f.name : String(f);
-                    if (nm === folder) return;
-                    if (nm === 'Uncategorized') return;
-                    if (!seen.has(nm)) {
-                        seen.add(nm);
-                        ordered.push({
-                            name: nm,
-                            count: f.count || 0
-                        });
-                    }
-                });
-                ordered.push({
-                    name: 'Uncategorized',
-                    count: 0
-                });
-                ordered.forEach((f) => {
-                    const row = document.createElement('div');
-                    row.className = 'multi-deck-item';
-                    const label = document.createElement('label');
-                    label.style.display = 'flex';
-                    label.style.alignItems = 'center';
-                    label.style.gap = '12px';
-                    const radio = document.createElement('input');
-                    radio.type = 'radio';
-                    radio.name = 'moveFolder';
-                    radio.value = f.name;
-                    radio.className = 'multi-deck-checkbox';
-                    const span = document.createElement('span');
-                    span.textContent = f.name;
-                    label.appendChild(radio);
-                    label.appendChild(span);
-                    row.appendChild(label);
-                    moveDeckList.appendChild(row);
-                });
-            } catch {}
+            let raw = [];
+            if (Array.isArray(allFolders) && allFolders.length) {
+                raw = allFolders.slice();
+            } else {
+                try {
+                    const resp = await fetch('/folders');
+                    const data = await resp.json().catch(() => ({
+                        folders: []
+                    }));
+                    raw = Array.isArray(data.folders) ? data.folders : [];
+                    allFolders = raw.slice();
+                } catch {
+                    raw = [];
+                }
+            }
+            buildMoveDeckBrowserTreeForFolder(raw);
+            moveDeckBrowserCursor = MOVE_BROWSER_ROOT;
+            renderMoveDeckBrowserForFolder();
         }
 
         function openMoveDeckModal() {
@@ -1715,8 +1782,11 @@
         });
         if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
             if (!selectedDeckForAction) return;
-            const picked = document.querySelector('input[name="moveFolder"]:checked');
-            const targetFolder = picked ? picked.value : '';
+            if (!moveDeckBrowserCursor || moveDeckBrowserCursor === MOVE_BROWSER_ROOT) {
+                moveDeckStatus.textContent = 'Choose a folder first';
+                return;
+            }
+            const targetFolder = moveDeckBrowserCursor;
             moveDeckSaveBtn.disabled = true;
             moveDeckSaveBtn.textContent = 'Moving...';
             try {
