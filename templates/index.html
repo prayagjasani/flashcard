@@ -1788,9 +1788,9 @@
                     <span class="link__text link__text--primary">Flashcard</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Flashcard</span>
                 </button>
-                <button class="nav__link nav__link--button" id="editDeckBtn" type="button">
-                    <span class="link__text link__text--primary">Edit</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Edit</span>
+                <button class="nav__link nav__link--button" id="pdfBtn" type="button">
+                    <span class="link__text link__text--primary">PDF</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">PDF</span>
                 </button>
                 <button class="nav__link nav__link--button" id="randomTestBtn" type="button">
                     <span class="link__text link__text--primary">Random</span>
@@ -2635,7 +2635,7 @@
         const deckSelect = document.getElementById('deckSelect');
         const selectedDeckNameEl = document.getElementById('selectedDeckName');
         const englishFrontToggle = document.getElementById('englishFrontToggle');
-        const editDeckBtn = document.getElementById('editDeckBtn');
+        const pdfBtn = document.getElementById('pdfBtn');
 
         function updateSelectedDeckName(names) {
             if (!selectedDeckNameEl) return;
@@ -3763,14 +3763,11 @@
 
 
 
-        // Edit navigation: open dedicated editor page
-        if (editDeckBtn) editDeckBtn.addEventListener('click', () => {
-            let targetDeck = '';
+        if (pdfBtn) pdfBtn.addEventListener('click', () => {
             try {
-                targetDeck = localStorage.getItem('selectedDeck') || '';
+                showLoader();
             } catch {}
-            if (targetDeck) window.location.href = `/edit?deck=${encodeURIComponent(targetDeck)}`;
-            else window.location.href = '/edit';
+            window.location.href = '/pdf';
         });
 
         // Story mode: navigate to story page

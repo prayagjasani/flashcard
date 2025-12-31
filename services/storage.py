@@ -43,6 +43,11 @@ def order_decks_key(scope: str | None) -> str:
     s = safe_deck_name(scope or "root") or "root"
     return f"{R2_BUCKET_NAME}/order/decks/{s}.json"
 
+
+def order_pdfs_key(scope: str | None) -> str:
+    s = safe_deck_name(scope or "root") or "root"
+    return f"{R2_BUCKET_NAME}/order/pdfs/{s}.json"
+
 def lines_key(deck: str) -> str:
     safe = safe_deck_name(deck)
     return f"{R2_BUCKET_NAME}/lines/{safe}.json"

@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PDFs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)">
+    <meta name="msapplication-navbutton-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+         :root {
+            --bg: #f6f7fb;
+            --text: #0f172a;
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb;
+            --shadow: 0 8px 20px rgba(2, 8, 23, 0.06);
+            --accent: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --muted: #64748b;
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            background: radial-gradient(1200px 600px at 50% -200px, #eef2ff 0%, var(--bg) 60%);
+            color: var(--text);
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            padding: 24px;
+        }
+        
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            backdrop-filter: saturate(180%) blur(8px);
+            -webkit-backdrop-filter: saturate(180%) blur(8px);
+            background: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+            transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+        }
+        
+        .site-header.is-solid {
+            background: rgba(255, 255, 255, 0.85);
+            border-bottom-color: rgba(226, 232, 240, 1);
+            box-shadow: 0 6px 20px rgba(2, 8, 23, 0.10);
+        }
+        
+        .header__inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 12px 20px;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header__actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            grid-column: 2;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .header__actions::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .nav__link {
+            position: relative;
+            display: inline-block;
+            height: 20px;
+            overflow: hidden;
+            color: inherit;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .nav__link--button {
+            background: transparent;
+            border: 0;
+            padding: 0;
+            width: auto;
+            color: inherit;
+            box-shadow: none;
+            cursor: pointer;
+            font: inherit;
+            border-radius: 0;
+        }
+        
+        .link__text {
+            display: block;
+            line-height: 20px;
+            transition: transform 220ms ease;
+            will-change: transform;
+        }
+        
+        .link__text--primary {
+            transform: translateY(0%);
+        }
+        
+        .link__text--hover {
+            position: absolute;
+            left: 0;
+            top: 100%;
+            transform: translateY(0%);
+            opacity: 0.9;
+        }
+        
+        .nav__link:hover .link__text--primary {
+            transform: translateY(-100%);
+        }
+        
+        .nav__link:hover .link__text--hover {
+            transform: translateY(-100%);
+            opacity: 1;
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .page {
+            max-width: 1100px;
+            margin: 96px auto 0;
+            width: 100%;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .page-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .icon-button {
+            appearance: none;
+            border: 0;
+            padding: 8px;
+            border-radius: 999px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .icon-button .material-symbols-outlined {
+            font-size: 22px;
+        }
+        
+        .deck-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        @media (min-width: 640px) {
+            .deck-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .deck-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+        
+        .deck-tile {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 16px 16px 14px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            overflow: visible;
+            z-index: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .deck-title {
+            font-weight: 500;
+            font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+        
+        .deck-subtitle {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        
+        .tile-enter {
+            animation: slideDown 280ms ease-out both;
+            will-change: transform, opacity;
+        }
+        
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-6px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .kebab-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            border: 0;
+            background: transparent;
+            padding: 4px;
+            cursor: pointer;
+            border-radius: 999px;
+        }
+        
+        .kebab-menu {
+            position: absolute;
+            top: 32px;
+            right: 8px;
+            min-width: 140px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            padding: 4px 0;
+            display: none;
+            z-index: 20;
+        }
+        
+        .kebab-menu.is-open {
+            display: block;
+        }
+        
+        .kebab-menu button {
+            width: 100%;
+            padding: 6px 12px;
+            border: 0;
+            background: transparent;
+            text-align: left;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .kebab-menu button:hover {
+            background: #eef2ff;
+        }
+        
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .modal.is-open {
+            display: flex;
+        }
+        
+        .modal__backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 8, 23, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        .modal__dialog {
+            position: relative;
+            width: 90%;
+            max-width: 420px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 18px 18px 16px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.20);
+        }
+        
+        .modal__title {
+            margin: 0 0 10px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .modal__field {
+            margin-bottom: 10px;
+        }
+        
+        .modal__field label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        
+        .modal__field input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+            font-size: 0.95rem;
+        }
+        
+        .modal__field input[type="file"] {
+            padding: 4px;
+        }
+        
+        .modal__actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        
+        .btn {
+            appearance: none;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            padding: 6px 14px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            background: var(--card-bg);
+        }
+        
+        .btn--primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #ffffff;
+        }
+        
+        .btn--danger {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #ffffff;
+        }
+        
+        .modal__status {
+            font-size: 0.8rem;
+            margin-top: 6px;
+            min-height: 16px;
+            color: var(--muted);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        
+        .loading-overlay.is-active {
+            display: flex;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 8px;
+            color: #8E8E93;
+        }
+        
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+            animation: dotPulse 1000ms infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 150ms;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 300ms;
+        }
+        
+        @keyframes dotPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+            50% {
+                transform: scale(1.25);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.35;
+            }
+        }
+        
+        .drop-placeholder {
+            height: 48px;
+            margin: 8px 0;
+            border: 2px dashed var(--muted);
+            border-radius: 12px;
+            background: #eef0f4;
+        }
+        
+        .pdf-folder-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 0.82rem;
+            cursor: pointer;
+        }
+        
+        .pdf-folder-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .pdf-folder-chip.is-active {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+    <header class="site-header" role="banner">
+        <div class="header__inner">
+            <div class="header__actions">
+                <button class="nav__link nav__link--button" id="homeBtn" type="button">
+                    <span class="link__text link__text--primary">Home</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Home</span>
+                </button>
+                <button class="nav__link nav__link--button" id="createDeckNavBtn" type="button">
+                    <span class="link__text link__text--primary">Create</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Create</span>
+                </button>
+                <button class="nav__link nav__link--button" id="flashNavBtn" type="button">
+                    <span class="link__text link__text--primary">Flashcard</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Flashcard</span>
+                </button>
+                <button class="nav__link nav__link--button" id="pdfNavBtn" type="button">
+                    <span class="link__text link__text--primary">PDF</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">PDF</span>
+                </button>
+                <button class="nav__link nav__link--button" id="randomNavBtn" type="button">
+                    <span class="link__text link__text--primary">Random</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Random</span>
+                </button>
+                <button class="nav__link nav__link--button" id="storyNavBtn" type="button">
+                    <span class="link__text link__text--primary">Story</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Story</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    <div class="loading-overlay" id="globalLoader">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
+    <main class="page">
+        <div class="page-header">
+            <div class="page-title">PDFs</div>
+            <button class="icon-button" id="uploadPdfBtn" type="button">
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>
+            </button>
+        </div>
+        <div class="pdf-folder-bar" id="pdfFolderBar"></div>
+        <div class="deck-grid" id="pdfList"></div>
+    </main>
+    <div class="modal" id="uploadPdfModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-upload="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="uploadPdfTitle">
+            <h2 id="uploadPdfTitle" class="modal__title">Upload PDF</h2>
+            <div class="modal__field">
+                <label for="uploadPdfNameInput">Name</label>
+                <input id="uploadPdfNameInput" type="text">
+            </div>
+            <div class="modal__field">
+                <label for="uploadPdfFileInput">PDF file</label>
+                <input id="uploadPdfFileInput" type="file" accept="application/pdf">
+            </div>
+            <div class="modal__actions">
+                <button class="btn" id="uploadPdfCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--primary" id="uploadPdfSaveBtn" type="button">Upload</button>
+            </div>
+            <p class="modal__status" id="uploadPdfStatus"></p>
+        </div>
+    </div>
+    <div class="modal" id="renamePdfModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-rename="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="renamePdfTitle">
+            <h2 id="renamePdfTitle" class="modal__title">Rename PDF</h2>
+            <div class="modal__field">
+                <label for="renamePdfNameInput">Name</label>
+                <input id="renamePdfNameInput" type="text">
+            </div>
+            <div class="modal__actions">
+                <button class="btn" id="renamePdfCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--primary" id="renamePdfSaveBtn" type="button">Save</button>
+            </div>
+            <p class="modal__status" id="renamePdfStatus"></p>
+        </div>
+    </div>
+    <div class="modal" id="createPdfFolderModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-create-folder="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="createPdfFolderTitle">
+            <h2 id="createPdfFolderTitle" class="modal__title">Create Folder</h2>
+            <div class="modal__field">
+                <label for="createPdfFolderNameInput">Folder name</label>
+                <input id="createPdfFolderNameInput" type="text">
+            </div>
+            <div class="modal__actions">
+                <button class="btn" id="createPdfFolderCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--primary" id="createPdfFolderSaveBtn" type="button">Create</button>
+            </div>
+            <p class="modal__status" id="createPdfFolderStatus"></p>
+        </div>
+    </div>
+    <script>
+        const globalLoader = document.getElementById('globalLoader');
+        function showLoader() {
+            if (globalLoader) globalLoader.classList.add('is-active');
+        }
+        function hideLoader() {
+            if (globalLoader) globalLoader.classList.remove('is-active');
+        }
+        const homeBtn = document.getElementById('homeBtn');
+        const createDeckNavBtn = document.getElementById('createDeckNavBtn');
+        const flashNavBtn = document.getElementById('flashNavBtn');
+        const pdfNavBtn = document.getElementById('pdfNavBtn');
+        const randomNavBtn = document.getElementById('randomNavBtn');
+        const storyNavBtn = document.getElementById('storyNavBtn');
+        if (homeBtn) homeBtn.addEventListener('click', () => {
+            showLoader();
+            window.location.href = '/';
+        });
+        if (createDeckNavBtn) createDeckNavBtn.addEventListener('click', () => {
+            showLoader();
+            window.location.href = '/create';
+        });
+        if (flashNavBtn) flashNavBtn.addEventListener('click', () => {
+            showLoader();
+            window.location.href = '/?mode=flash';
+        });
+        if (pdfNavBtn) pdfNavBtn.addEventListener('click', () => {
+            showLoader();
+            window.location.href = '/pdf';
+        });
+        if (randomNavBtn) randomNavBtn.addEventListener('click', () => {
+            showLoader();
+            window.location.href = '/';
+        });
+        if (storyNavBtn) storyNavBtn.addEventListener('click', () => {
+            showLoader();
+            window.location.href = '/story';
+        });
+        const uploadPdfBtn = document.getElementById('uploadPdfBtn');
+        const uploadPdfModal = document.getElementById('uploadPdfModal');
+        const uploadPdfNameInput = document.getElementById('uploadPdfNameInput');
+        const uploadPdfFileInput = document.getElementById('uploadPdfFileInput');
+        const uploadPdfCancelBtn = document.getElementById('uploadPdfCancelBtn');
+        const uploadPdfSaveBtn = document.getElementById('uploadPdfSaveBtn');
+        const uploadPdfStatus = document.getElementById('uploadPdfStatus');
+        const renamePdfModal = document.getElementById('renamePdfModal');
+        const renamePdfNameInput = document.getElementById('renamePdfNameInput');
+        const renamePdfCancelBtn = document.getElementById('renamePdfCancelBtn');
+        const renamePdfSaveBtn = document.getElementById('renamePdfSaveBtn');
+        const renamePdfStatus = document.getElementById('renamePdfStatus');
+        const createPdfFolderModal = document.getElementById('createPdfFolderModal');
+        const createPdfFolderNameInput = document.getElementById('createPdfFolderNameInput');
+        const createPdfFolderCancelBtn = document.getElementById('createPdfFolderCancelBtn');
+        const createPdfFolderSaveBtn = document.getElementById('createPdfFolderSaveBtn');
+        const createPdfFolderStatus = document.getElementById('createPdfFolderStatus');
+        const pdfListEl = document.getElementById('pdfList');
+        const pdfFolderBar = document.getElementById('pdfFolderBar');
+        let pdfItems = [];
+        let folderItems = [];
+        let selectedFolder = '';
+        let selectedPdfName = '';
+        let dragTileEl = null;
+        let dragTileHeight = 0;
+        const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
+        function openUploadModal() {
+            if (!uploadPdfModal) return;
+            uploadPdfStatus.textContent = '';
+            uploadPdfNameInput.value = '';
+            uploadPdfFileInput.value = '';
+            uploadPdfModal.classList.add('is-open');
+            uploadPdfModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeUploadModal() {
+            if (!uploadPdfModal) return;
+            uploadPdfModal.classList.remove('is-open');
+            uploadPdfModal.setAttribute('aria-hidden', 'true');
+        }
+        if (uploadPdfBtn) uploadPdfBtn.addEventListener('click', openUploadModal);
+        if (uploadPdfCancelBtn) uploadPdfCancelBtn.addEventListener('click', closeUploadModal);
+        if (uploadPdfModal) uploadPdfModal.addEventListener('click', (e) => {
+            if (e.target && e.target.dataset && e.target.dataset.closeUpload === 'true') {
+                closeUploadModal();
+            }
+        });
+        async function doUploadPdf() {
+            const name = (uploadPdfNameInput.value || '').trim();
+            const file = uploadPdfFileInput.files && uploadPdfFileInput.files[0];
+            if (!name) {
+                uploadPdfStatus.textContent = 'Enter name';
+                return;
+            }
+            if (!file) {
+                uploadPdfStatus.textContent = 'Choose PDF';
+                return;
+            }
+            uploadPdfSaveBtn.disabled = true;
+            uploadPdfSaveBtn.textContent = 'Uploading...';
+            uploadPdfStatus.textContent = '';
+            try {
+                const form = new FormData();
+                form.append('name', name);
+                if (selectedFolder) form.append('folder', selectedFolder);
+                form.append('file', file);
+                const resp = await fetch('/pdf/upload', {
+                    method: 'POST',
+                    body: form
+                });
+                const out = await resp.json().catch(() => ({}));
+                if (!resp.ok || !out.ok) {
+                    throw new Error(out.detail || 'Upload failed');
+                }
+                await loadPdfs();
+                closeUploadModal();
+            } catch (e) {
+                uploadPdfStatus.textContent = String(e && e.message ? e.message : e || 'Upload failed');
+            } finally {
+                uploadPdfSaveBtn.disabled = false;
+                uploadPdfSaveBtn.textContent = 'Upload';
+            }
+        }
+        if (uploadPdfSaveBtn) uploadPdfSaveBtn.addEventListener('click', () => {
+            doUploadPdf();
+        });
+        function openRenameModal(name) {
+            if (!renamePdfModal) return;
+            selectedPdfName = name;
+            renamePdfNameInput.value = name;
+            renamePdfStatus.textContent = '';
+            renamePdfModal.classList.add('is-open');
+            renamePdfModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeRenameModal() {
+            if (!renamePdfModal) return;
+            renamePdfModal.classList.remove('is-open');
+            renamePdfModal.setAttribute('aria-hidden', 'true');
+        }
+        if (renamePdfCancelBtn) renamePdfCancelBtn.addEventListener('click', closeRenameModal);
+        if (renamePdfModal) renamePdfModal.addEventListener('click', (e) => {
+            if (e.target && e.target.dataset && e.target.dataset.closeRename === 'true') closeRenameModal();
+        });
+        async function doRenamePdf() {
+            const next = (renamePdfNameInput.value || '').trim();
+            if (!selectedPdfName) return;
+            if (!next) {
+                renamePdfStatus.textContent = 'Enter name';
+                return;
+            }
+            if (next === selectedPdfName) {
+                closeRenameModal();
+                return;
+            }
+            renamePdfSaveBtn.disabled = true;
+            renamePdfSaveBtn.textContent = 'Saving...';
+            renamePdfStatus.textContent = '';
+            try {
+                const resp = await fetch('/pdf/rename', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        old_name: selectedPdfName,
+                        new_name: next
+                    })
+                });
+                const out = await resp.json().catch(() => ({}));
+                if (!resp.ok || !out.ok) {
+                    throw new Error(out.detail || 'Rename failed');
+                }
+                await loadPdfs();
+                closeRenameModal();
+            } catch (e) {
+                renamePdfStatus.textContent = String(e && e.message ? e.message : e || 'Rename failed');
+            } finally {
+                renamePdfSaveBtn.disabled = false;
+                renamePdfSaveBtn.textContent = 'Save';
+            }
+        }
+        if (renamePdfSaveBtn) renamePdfSaveBtn.addEventListener('click', () => {
+            doRenamePdf();
+        });
+        function openCreateFolderModal() {
+            createPdfFolderStatus.textContent = '';
+            createPdfFolderNameInput.value = '';
+            createPdfFolderModal.classList.add('is-open');
+            createPdfFolderModal.setAttribute('aria-hidden', 'false');
+        }
+        function closeCreateFolderModal() {
+            createPdfFolderModal.classList.remove('is-open');
+            createPdfFolderModal.setAttribute('aria-hidden', 'true');
+        }
+        if (createPdfFolderCancelBtn) createPdfFolderCancelBtn.addEventListener('click', closeCreateFolderModal);
+        if (createPdfFolderModal) createPdfFolderModal.addEventListener('click', (e) => {
+            if (e.target && e.target.dataset && e.target.dataset.closeCreateFolder === 'true') closeCreateFolderModal();
+        });
+        async function doCreateFolder() {
+            const raw = (createPdfFolderNameInput.value || '').trim();
+            if (!raw) {
+                createPdfFolderStatus.textContent = 'Enter folder name';
+                return;
+            }
+            createPdfFolderSaveBtn.disabled = true;
+            createPdfFolderSaveBtn.textContent = 'Creating...';
+            createPdfFolderStatus.textContent = '';
+            try {
+                const resp = await fetch('/folder/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: raw
+                    })
+                });
+                const out = await resp.json().catch(() => ({}));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Create failed');
+                await loadFolders();
+                closeCreateFolderModal();
+            } catch (e) {
+                createPdfFolderStatus.textContent = String(e && e.message ? e.message : e || 'Create failed');
+            } finally {
+                createPdfFolderSaveBtn.disabled = false;
+                createPdfFolderSaveBtn.textContent = 'Create';
+            }
+        }
+        if (createPdfFolderSaveBtn) createPdfFolderSaveBtn.addEventListener('click', () => {
+            doCreateFolder();
+        });
+        function ensurePlaceholder(container) {
+            if (!container) return null;
+            let ph = container.querySelector('.drop-placeholder');
+            if (!ph) {
+                ph = document.createElement('div');
+                ph.className = 'drop-placeholder';
+            }
+            let h = dragTileHeight || 48;
+            if (!h) {
+                const src = container.querySelector('.deck-tile');
+                if (src) {
+                    const r = src.getBoundingClientRect();
+                    h = Math.max(40, Math.round(r.height));
+                }
+            }
+            ph.style.height = h + 'px';
+            if (!ph.parentElement) container.appendChild(ph);
+            return ph;
+        }
+        function removePlaceholder(container) {
+            const ph = container ? container.querySelector('.drop-placeholder') : null;
+            if (ph && ph.parentElement) ph.parentElement.removeChild(ph);
+        }
+        function placePlaceholder(container, index) {
+            if (!container) return;
+            const tiles = Array.from(container.querySelectorAll('.deck-tile'));
+            const ph = ensurePlaceholder(container);
+            if (!tiles.length) return;
+            const clamped = Math.max(0, Math.min(index, tiles.length));
+            if (clamped >= tiles.length) container.appendChild(ph);
+            else container.insertBefore(ph, tiles[clamped]);
+        }
+        function indexFromFinger(container, fingerY) {
+            const tiles = Array.from(container.querySelectorAll('.deck-tile'));
+            for (let i = 0; i < tiles.length; i++) {
+                const r = tiles[i].getBoundingClientRect();
+                const mid = r.top + r.height / 2;
+                if (fingerY < mid) return i;
+            }
+            return tiles.length;
+        }
+        async function writePdfOrder(names, scope) {
+            try {
+                await fetch('/order/pdfs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        scope: scope || 'root',
+                        order: names
+                    })
+                });
+            } catch (e) {}
+        }
+        function attachPdfDnD(tile, name, scope) {
+            tile.setAttribute('draggable', 'true');
+            tile.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                dragTileEl = tile;
+                dragTileHeight = Math.round(tile.getBoundingClientRect().height);
+                tile.classList.add('is-dragging-hidden');
+                const tiles = Array.from(pdfListEl.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(pdfListEl, idx < 0 ? 0 : idx);
+            });
+            tile.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const tiles = Array.from(pdfListEl.querySelectorAll('.deck-tile'));
+                const idx = tiles.indexOf(tile);
+                placePlaceholder(pdfListEl, idx < 0 ? 0 : idx);
+            });
+            tile.addEventListener('drop', async(e) => {
+                e.preventDefault();
+                const ph = pdfListEl.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    pdfListEl.insertBefore(dragTileEl, ph);
+                }
+                removePlaceholder(pdfListEl);
+                tile.classList.remove('is-dragging-hidden');
+                const newOrder = Array.from(pdfListEl.querySelectorAll('.deck-title')).map(el => el.textContent);
+                await writePdfOrder(newOrder, scope || 'root');
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
+            tile.addEventListener('dragend', () => {
+                tile.classList.remove('is-dragging-hidden');
+                removePlaceholder(pdfListEl);
+                dragTileEl = null;
+                dragTileHeight = 0;
+            });
+            attachTouchDnD(tile, name, scope);
+        }
+        function attachTouchDnD(tile, name, scope) {
+            if (!isCoarsePointer) return;
+            let dragging = false;
+            let pressTimer = null;
+            let fingerY = 0;
+            let startY = 0;
+            const LONG_PRESS_MS = 2000;
+            const MOVE_CANCEL_PX = 10;
+            function start(y) {
+                startY = y;
+                pressTimer = setTimeout(() => {
+                    dragging = true;
+                    dragTileEl = tile;
+                    dragTileHeight = Math.round(tile.getBoundingClientRect().height);
+                    tile.classList.add('is-dragging-hidden');
+                    tile.style.touchAction = 'none';
+                    document.body.style.overflow = 'hidden';
+                    const tiles = Array.from(pdfListEl.querySelectorAll('.deck-tile'));
+                    const idx = tiles.indexOf(tile);
+                    placePlaceholder(pdfListEl, idx < 0 ? 0 : idx);
+                }, LONG_PRESS_MS);
+            }
+            function clearPress() {
+            if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            }
+            async function commit() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.overflow = '';
+                const ph = pdfListEl.querySelector('.drop-placeholder');
+                if (ph && dragTileEl) {
+                    pdfListEl.insertBefore(dragTileEl, ph);
+                }
+                removePlaceholder(pdfListEl);
+                tile.classList.remove('is-dragging-hidden');
+                tile.style.touchAction = 'auto';
+                const newOrder = Array.from(pdfListEl.querySelectorAll('.deck-title')).map(el => el.textContent);
+                await writePdfOrder(newOrder, scope || 'root');
+                dragTileEl = null;
+                dragTileHeight = 0;
+            }
+            tile.style.touchAction = 'auto';
+            tile.style.userSelect = 'none';
+            tile.addEventListener('touchstart', (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                start(t.clientY);
+            }, {
+                passive: true
+            });
+            tile.addEventListener('touchmove', (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                fingerY = t.clientY;
+                if (!dragging) {
+                    if (Math.abs((t.clientY) - startY) > MOVE_CANCEL_PX) {
+                        clearPress();
+                    }
+                    return;
+                }
+                e.preventDefault();
+                const idx = indexFromFinger(pdfListEl, fingerY);
+                placePlaceholder(pdfListEl, idx);
+            }, {
+                passive: false
+            });
+            tile.addEventListener('touchend', () => {
+                clearPress();
+                commit();
+            });
+        }
+        function buildFolderBar() {
+            pdfFolderBar.innerHTML = '';
+            const byName = new Map();
+            folderItems.forEach(f => {
+                const nm = f && f.name ? f.name : String(f);
+                if (!nm) return;
+                byName.set(nm, f);
+            });
+            const counts = {};
+            pdfItems.forEach(p => {
+                const f = p.folder || 'Uncategorized';
+                counts[f] = (counts[f] || 0) + 1;
+            });
+            const names = Array.from(new Set([
+                'All',
+                ...Object.keys(counts),
+                ...Array.from(byName.keys())
+            ])).filter(Boolean);
+            names.forEach((nm) => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'pdf-folder-chip' + ((selectedFolder === '' && nm === 'All') || (selectedFolder === nm) ? ' is-active' : '');
+                const label = nm === 'All' ? 'All' : nm;
+                const span = document.createElement('span');
+                span.textContent = label;
+                chip.appendChild(span);
+                if (nm === 'All') {
+                    chip.addEventListener('click', () => {
+                        selectedFolder = '';
+                        buildFolderBar();
+                        renderPdfList();
+                    });
+                } else {
+                    const count = counts[nm] || 0;
+                    if (count) {
+                        const badge = document.createElement('span');
+                        badge.textContent = String(count);
+                        badge.style.fontSize = '0.78rem';
+                        badge.style.opacity = '0.75';
+                        chip.appendChild(badge);
+                    }
+                    chip.addEventListener('click', () => {
+                        selectedFolder = nm;
+                        buildFolderBar();
+                        renderPdfList();
+                    });
+                }
+                pdfFolderBar.appendChild(chip);
+            });
+            const createBtn = document.createElement('button');
+            createBtn.type = 'button';
+            createBtn.className = 'pdf-folder-chip';
+            const plus = document.createElement('span');
+            plus.className = 'material-symbols-outlined';
+            plus.textContent = 'add';
+            createBtn.appendChild(plus);
+            const txt = document.createElement('span');
+            txt.textContent = 'Folder';
+            createBtn.appendChild(txt);
+            createBtn.addEventListener('click', () => {
+                openCreateFolderModal();
+            });
+            pdfFolderBar.appendChild(createBtn);
+        }
+        function buildPdfUrl(item) {
+            const file = item.file || '';
+            if (!file) return '';
+            const key = file.startsWith('/') ? file.slice(1) : file;
+            return `/r2/get?key=${encodeURIComponent(key)}`;
+        }
+        function renderPdfList() {
+            pdfListEl.innerHTML = '';
+            if (!Array.isArray(pdfItems) || !pdfItems.length) return;
+            let base = pdfItems.slice();
+            if (selectedFolder) {
+                base = base.filter(p => (p.folder || 'Uncategorized') === selectedFolder);
+            }
+            const scope = selectedFolder || 'root';
+            base.forEach((p, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'deck-tile tile-enter';
+                tile.style.animationDelay = `${i * 40}ms`;
+                const title = document.createElement('div');
+                title.className = 'deck-title';
+                title.textContent = p.name;
+                const subtitle = document.createElement('div');
+                subtitle.className = 'deck-subtitle';
+                subtitle.textContent = p.folder ? p.folder : 'Uncategorized';
+                tile.appendChild(title);
+                tile.appendChild(subtitle);
+                const kebab = document.createElement('button');
+                kebab.type = 'button';
+                kebab.className = 'kebab-btn';
+                kebab.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>';
+                const menu = document.createElement('div');
+                menu.className = 'kebab-menu';
+                const renameBtn = document.createElement('button');
+                renameBtn.type = 'button';
+                renameBtn.textContent = 'Rename';
+                renameBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    menu.classList.remove('is-open');
+                    openRenameModal(p.name);
+                });
+                const moveBtn = document.createElement('button');
+                moveBtn.type = 'button';
+                moveBtn.textContent = 'Move to folder';
+                moveBtn.addEventListener('click', async(e) => {
+                    e.stopPropagation();
+                    menu.classList.remove('is-open');
+                    const target = prompt('Move to folder (empty for Uncategorized)', p.folder || '');
+                    if (target === null) return;
+                    const trimmed = (target || '').trim();
+                    try {
+                        const resp = await fetch('/pdf/move', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                name: p.name,
+                                folder: trimmed || null
+                            })
+                        });
+                        const out = await resp.json().catch(() => ({}));
+                        if (!resp.ok || !out.ok) {
+                            alert(out.detail || 'Move failed');
+                            return;
+                        }
+                        await loadPdfs();
+                    } catch (err) {
+                        alert(String(err && err.message ? err.message : err || 'Move failed'));
+                    }
+                });
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', async(e) => {
+                    e.stopPropagation();
+                    menu.classList.remove('is-open');
+                    const ok = confirm(`Delete PDF "${p.name}"?`);
+                    if (!ok) return;
+                    try {
+                        const resp = await fetch('/pdf/delete', {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                name: p.name
+                            })
+                        });
+                        const out = await resp.json().catch(() => ({}));
+                        if (!resp.ok || !out.ok) {
+                            alert(out.detail || 'Delete failed');
+                            return;
+                        }
+                        await loadPdfs();
+                    } catch (err) {
+                        alert(String(err && err.message ? err.message : err || 'Delete failed'));
+                    }
+                });
+                menu.appendChild(renameBtn);
+                menu.appendChild(moveBtn);
+                menu.appendChild(deleteBtn);
+                kebab.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = menu.classList.contains('is-open');
+                    document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
+                    if (!isOpen) menu.classList.add('is-open');
+                });
+                tile.appendChild(kebab);
+                tile.appendChild(menu);
+                tile.addEventListener('click', () => {
+                    const url = buildPdfUrl(p);
+                    if (url) {
+                        window.open(url, '_blank');
+                    }
+                });
+                pdfListEl.appendChild(tile);
+                attachPdfDnD(tile, p.name, scope);
+            });
+        }
+        async function loadPdfs() {
+            try {
+                const resp = await fetch('/pdfs');
+                const data = await resp.json().catch(() => []);
+                pdfItems = Array.isArray(data) ? data : [];
+                renderPdfList();
+                buildFolderBar();
+            } catch (e) {}
+        }
+        async function loadFolders() {
+            try {
+                const resp = await fetch('/folders');
+                const data = await resp.json().catch(() => ({
+                    folders: []
+                }));
+                folderItems = Array.isArray(data.folders) ? data.folders : [];
+                buildFolderBar();
+            } catch (e) {}
+        }
+        function init() {
+            showLoader();
+            Promise.all([loadPdfs(), loadFolders()]).finally(() => {
+                hideLoader();
+            });
+        }
+        window.addEventListener('load', init);
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.kebab-btn') && !e.target.closest('.kebab-menu')) {
+                document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
+            }
+        });
+    </script>
+</body>
+
+</html>
+

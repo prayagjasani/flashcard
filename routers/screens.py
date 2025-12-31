@@ -35,6 +35,10 @@ def folder_screen():
 def edit_screen():
     return FileResponse('templates/edit.html')
 
+@router.get("/pdf")
+def pdf_screen():
+    return FileResponse('templates/pdf.html')
+
 @router.get("/create")
 def create_screen():
     return FileResponse('templates/create.html')

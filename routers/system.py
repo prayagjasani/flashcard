@@ -29,6 +29,7 @@ ALLOWED_KEY_PREFIXES = [
     "stories/",
     "order/",
     "folders/",
+    "pdf/",
 ]
 
 def _safe_tts_key(text: str, lang: str = "de") -> str:

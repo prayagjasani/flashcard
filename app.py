@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from services.storage import r2_client, R2_BUCKET_NAME
 from services.executor import shutdown_executor
-from routers import screens, decks, folders, stories, cards, system
+from routers import screens, decks, folders, stories, cards, system, pdfs
 
 # Load env
 load_dotenv(override=True)
@@ -51,6 +51,7 @@ app.include_router(folders.router)
 app.include_router(stories.router)
 app.include_router(cards.router)
 app.include_router(system.router)
+app.include_router(pdfs.router)
 
 # Mount Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -59,4 +60,3 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host=host, port=port)
-

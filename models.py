@@ -46,6 +46,25 @@ class DeckOrderUpdate(BaseModel):
     scope: str | None = None
     order: list[str]
 
+
+class PdfRename(BaseModel):
+    old_name: str
+    new_name: str
+
+
+class PdfDelete(BaseModel):
+    name: str
+
+
+class PdfMove(BaseModel):
+    name: str
+    folder: str | None = None
+
+
+class PdfOrderUpdate(BaseModel):
+    scope: str | None = None
+    order: list[str]
+
 class CustomStoryRequest(BaseModel):
     topic: str
     story_id: str | None = None
