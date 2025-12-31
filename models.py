@@ -65,6 +65,10 @@ class PdfOrderUpdate(BaseModel):
     scope: str | None = None
     order: list[str]
 
+
+class PdfFolderCreate(BaseModel):
+    name: str
+
 class CustomStoryRequest(BaseModel):
     topic: str
     story_id: str | None = None

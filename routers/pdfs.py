@@ -10,7 +10,7 @@ try:
 except Exception:  # pragma: no cover
     pdfium = None
 
-from models import PdfRename, PdfDelete, PdfMove, PdfOrderUpdate
+from models import PdfRename, PdfDelete, PdfMove, PdfOrderUpdate, PdfFolderCreate
 from services.storage import r2_client, R2_BUCKET_NAME, order_pdfs_key as _order_pdfs_key
 from services.cache import get_cached, set_cached, invalidate_cache
 from utils import safe_deck_name as _safe_name
@@ -23,6 +23,10 @@ PDF_ORDER_CACHE_TTL = 30
 
 def _pdf_index_key() -> str:
     return f"{R2_BUCKET_NAME}/pdf/index.json"
+
+
+def _pdf_folders_index_key() -> str:
+    return f"{R2_BUCKET_NAME}/pdf/folders/index.json"
 
 
 def _thumb_key(name: str) -> str:
@@ -54,6 +58,85 @@ def _build_thumb(content: bytes, safe_name: str) -> str | None:
         return key
     except Exception:
         return None
+
+
+@router.get("/pdf/folders")
+def get_pdf_folders():
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    pdf_index: list[dict] = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_pdf_index_key())
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            pdf_index = [d for d in parsed if isinstance(d, dict)]
+    except Exception:
+        pdf_index = []
+    counts: dict[str, int] = {}
+    folders_from_pdfs: set[str] = set()
+    for d in pdf_index:
+        f = d.get("folder") or "Uncategorized"
+        if not isinstance(f, str):
+            continue
+        folders_from_pdfs.add(f)
+        counts[f] = counts.get(f, 0) + 1
+    index_names: list[str] = []
+    key = _pdf_folders_index_key()
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            index_names = [x for x in parsed if isinstance(x, str)]
+    except Exception:
+        index_names = []
+    ordered: list[dict] = []
+    seen: set[str] = set()
+    for name in index_names:
+        if name in seen:
+            continue
+        ordered.append({"name": name, "count": counts.get(name, 0), "parent": None})
+        seen.add(name)
+    for name in sorted(folders_from_pdfs):
+        if name in seen:
+            continue
+        ordered.append({"name": name, "count": counts.get(name, 0), "parent": None})
+        seen.add(name)
+    if "Uncategorized" not in seen:
+        ordered.append({"name": "Uncategorized", "count": counts.get("Uncategorized", 0), "parent": None})
+    return {"folders": ordered}
+
+
+@router.post("/pdf/folder/create")
+def pdf_folder_create(payload: PdfFolderCreate):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    name = _safe_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    key = _pdf_folders_index_key()
+    items: list[str] = []
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        parsed = json.loads(data)
+        if isinstance(parsed, list):
+            items = [x for x in parsed if isinstance(x, str)]
+    except Exception:
+        items = []
+    if name not in items:
+        items.append(name)
+    try:
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=json.dumps(items).encode("utf-8"),
+            ContentType="application/json",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "name": name}
 
 
 @router.get("/pdfs")

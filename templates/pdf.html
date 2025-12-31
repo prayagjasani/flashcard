@@ -187,11 +187,37 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 16px;
+            gap: 8px;
         }
         
         .page-title {
             font-size: 1.1rem;
             font-weight: 600;
+        }
+        
+        .page-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .back-button {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            border-radius: 999px;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--muted);
+        }
+        
+        .back-button:hover {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text);
         }
         
         .icon-button {
@@ -350,6 +376,79 @@
             font-weight: 600;
         }
         
+        .modal--multi .modal__dialog {
+            max-width: 460px;
+        }
+        
+        .multi-deck-list {
+            max-height: 280px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
+            background: #f9fafb;
+        }
+        
+        .multi-deck-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px 12px;
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: #ffffff;
+            cursor: pointer;
+            transition: background 140ms ease, transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            margin-bottom: 6px;
+        }
+        
+        .multi-deck-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .multi-deck-item:hover {
+            background: #eef2ff;
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+            transform: translateY(-1px);
+        }
+        
+        .multi-deck-item:first-child {
+            padding: 4px 8px 10px;
+            margin-bottom: 8px;
+            cursor: default;
+            border-color: transparent;
+            background: transparent;
+            box-shadow: none;
+        }
+        
+        .multi-deck-item:first-child:hover {
+            background: transparent;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .multi-deck-item-icon {
+            margin-right: 10px;
+            font-size: 18px;
+            color: var(--muted);
+        }
+        
+        .multi-deck-item-label {
+            flex: 1;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+        
+        .multi-deck-item-chevron {
+            margin-left: 10px;
+            font-size: 18px;
+            color: var(--muted);
+        }
+        
         .modal__field {
             margin-bottom: 10px;
         }
@@ -469,31 +568,31 @@
             background: #eef0f4;
         }
         
-        .pdf-folder-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            border: 1px solid var(--card-border);
-            background: rgba(255, 255, 255, 0.9);
-            font-size: 0.82rem;
-            cursor: pointer;
-        }
-        
-        .pdf-folder-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+        .pdf-root-grid {
             margin-bottom: 10px;
         }
         
-        .pdf-folder-chip.is-active {
-            border-color: var(--accent);
-            color: var(--accent);
+        .create-tile {
+            background: transparent;
+            border: 1px dashed var(--card-border);
+            box-shadow: none;
         }
         
-        .deck-subtitle {
+        .create-tile:hover {
+            box-shadow: none;
+            background: rgba(2, 8, 23, 0.02);
+        }
+        
+        .create-tile__icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--muted);
+            height: 24px;
+        }
+        
+        .pdf-card-subtitle {
             display: none;
         }
     </style>
@@ -535,12 +634,17 @@
     </div>
     <main class="page">
         <div class="page-header">
-            <div class="page-title">PDFs</div>
+            <div class="page-header-left">
+                <button class="back-button" id="pdfBackBtn" type="button" aria-label="Back to all PDF folders" style="display:none;">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                </button>
+                <div class="page-title" id="pdfPageTitle">PDFs</div>
+            </div>
             <button class="icon-button" id="uploadPdfBtn" type="button">
                 <span class="material-symbols-outlined" aria-hidden="true">add</span>
             </button>
         </div>
-        <div class="pdf-folder-bar" id="pdfFolderBar"></div>
+        <div class="deck-grid pdf-root-grid" id="pdfRootFolderGrid"></div>
         <div class="deck-grid" id="pdfList"></div>
     </main>
     <div class="modal" id="uploadPdfModal" aria-hidden="true">
@@ -590,6 +694,18 @@
                 <button class="btn btn--primary" id="createPdfFolderSaveBtn" type="button">Create</button>
             </div>
             <p class="modal__status" id="createPdfFolderStatus"></p>
+        </div>
+    </div>
+    <div class="modal modal--multi" id="movePdfModal" aria-hidden="true">
+        <div class="modal__backdrop" data-close-move-pdf="true"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="movePdfTitle">
+            <h2 id="movePdfTitle" class="modal__title">Move to Folder</h2>
+            <div class="multi-deck-list" id="movePdfList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="movePdfCancelBtn" type="button">Cancel</button>
+                <button class="btn btn--primary" id="movePdfSaveBtn" type="button">Move</button>
+            </div>
+            <p class="modal__status" id="movePdfStatus"></p>
         </div>
     </div>
     <script>
@@ -650,14 +766,48 @@
         const createPdfFolderSaveBtn = document.getElementById('createPdfFolderSaveBtn');
         const createPdfFolderStatus = document.getElementById('createPdfFolderStatus');
         const pdfListEl = document.getElementById('pdfList');
-        const pdfFolderBar = document.getElementById('pdfFolderBar');
+        const pdfRootFolderGrid = document.getElementById('pdfRootFolderGrid');
+        const pdfBackBtn = document.getElementById('pdfBackBtn');
+        const pdfPageTitleEl = document.getElementById('pdfPageTitle');
+        const movePdfModal = document.getElementById('movePdfModal');
+        const movePdfList = document.getElementById('movePdfList');
+        const movePdfCancelBtn = document.getElementById('movePdfCancelBtn');
+        const movePdfSaveBtn = document.getElementById('movePdfSaveBtn');
+        const movePdfStatus = document.getElementById('movePdfStatus');
+        const MOVE_PDF_BROWSER_ROOT = '__root__';
+        const urlFolderParam = new URLSearchParams(window.location.search).get('folder') || '';
         let pdfItems = [];
         let folderItems = [];
-        let selectedFolder = '';
+        let selectedFolder = urlFolderParam || '';
         let selectedPdfName = '';
+        let selectedPdfForMove = '';
+        let movePdfBrowserCursor = MOVE_PDF_BROWSER_ROOT;
+        let movePdfParentByName = {};
+        let movePdfChildrenByParent = {};
         let dragTileEl = null;
         let dragTileHeight = 0;
         const isCoarsePointer = ("ontouchstart" in window) || window.matchMedia('(pointer: coarse)').matches;
+
+        function updatePdfHeader() {
+            const isFolderView = !!selectedFolder;
+            if (pdfBackBtn) {
+                pdfBackBtn.style.display = isFolderView ? 'inline-flex' : 'none';
+            }
+            if (pdfPageTitleEl) {
+                if (isFolderView) {
+                    pdfPageTitleEl.textContent = selectedFolder;
+                } else {
+                    pdfPageTitleEl.textContent = 'PDFs';
+                }
+            }
+            if (pdfRootFolderGrid) {
+                if (isFolderView) {
+                    pdfRootFolderGrid.style.display = 'none';
+                } else {
+                    pdfRootFolderGrid.style.display = 'grid';
+                }
+            }
+        }
 
         function openUploadModal() {
             if (!uploadPdfModal) return;
@@ -672,6 +822,11 @@
             if (!uploadPdfModal) return;
             uploadPdfModal.classList.remove('is-open');
             uploadPdfModal.setAttribute('aria-hidden', 'true');
+        }
+        if (pdfBackBtn) {
+            pdfBackBtn.addEventListener('click', () => {
+                window.location.href = '/pdf';
+            });
         }
         if (uploadPdfBtn) uploadPdfBtn.addEventListener('click', openUploadModal);
         if (uploadPdfCancelBtn) uploadPdfCancelBtn.addEventListener('click', closeUploadModal);
@@ -805,7 +960,7 @@
             createPdfFolderSaveBtn.textContent = 'Creating...';
             createPdfFolderStatus.textContent = '';
             try {
-                const resp = await fetch('/folder/create', {
+                const resp = await fetch('/pdf/folder/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1004,62 +1159,191 @@
             });
         }
 
-        function buildFolderBar() {
-            pdfFolderBar.innerHTML = '';
-            const counts = {};
+        function buildRootFolderGrid() {
+            if (!pdfRootFolderGrid) return;
+            pdfRootFolderGrid.innerHTML = '';
+            const allFolders = Array.isArray(folderItems) ? folderItems.slice() : [];
+            const roots = allFolders.filter(f => !f.parent);
+            if (!roots.length) {
+                pdfRootFolderGrid.style.display = selectedFolder ? 'none' : 'grid';
+                return;
+            }
+            const pdfCounts = {};
             pdfItems.forEach(p => {
                 const f = p.folder || 'Uncategorized';
-                counts[f] = (counts[f] || 0) + 1;
+                pdfCounts[f] = (pdfCounts[f] || 0) + 1;
             });
-            const names = Array.from(new Set([
-                'All',
-                ...Object.keys(counts)
-            ])).filter(Boolean);
-            names.forEach((nm) => {
-                const chip = document.createElement('button');
-                chip.type = 'button';
-                chip.className = 'pdf-folder-chip' + ((selectedFolder === '' && nm === 'All') || (selectedFolder === nm) ? ' is-active' : '');
-                const label = nm === 'All' ? 'All' : nm;
-                const span = document.createElement('span');
-                span.textContent = label;
-                chip.appendChild(span);
-                if (nm === 'All') {
-                    chip.addEventListener('click', () => {
-                        selectedFolder = '';
-                        buildFolderBar();
-                        renderPdfList();
-                    });
+
+            function getTotalPdfCount(folderName) {
+                let total = pdfCounts[folderName] || 0;
+                const children = allFolders.filter(f => f.parent === folderName);
+                children.forEach(child => {
+                    total += getTotalPdfCount(child.name);
+                });
+                return total;
+            }
+            pdfRootFolderGrid.style.display = selectedFolder ? 'none' : 'grid';
+            roots.forEach((f, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'deck-tile tile-enter';
+                tile.style.animationDelay = `${i * 40}ms`;
+                const title = document.createElement('div');
+                title.className = 'deck-title';
+                title.textContent = f.name;
+                const sub = document.createElement('div');
+                sub.className = 'deck-subtitle';
+                const subFolderCount = allFolders.filter(x => x.parent === f.name).length;
+                const totalPdfs = getTotalPdfCount(f.name);
+                if (subFolderCount > 0) {
+                    sub.textContent = `${subFolderCount} folder${subFolderCount === 1 ? '' : 's'} · ${totalPdfs} PDF${totalPdfs === 1 ? '' : 's'}`;
                 } else {
-                    const count = counts[nm] || 0;
-                    if (count) {
-                        const badge = document.createElement('span');
-                        badge.textContent = String(count);
-                        badge.style.fontSize = '0.78rem';
-                        badge.style.opacity = '0.75';
-                        chip.appendChild(badge);
-                    }
-                    chip.addEventListener('click', () => {
-                        selectedFolder = nm;
-                        buildFolderBar();
-                        renderPdfList();
-                    });
+                    sub.textContent = `${totalPdfs} PDF${totalPdfs === 1 ? '' : 's'}`;
                 }
-                pdfFolderBar.appendChild(chip);
+                tile.appendChild(title);
+                tile.appendChild(sub);
+                tile.addEventListener('click', () => {
+                    window.location.href = `/pdf?folder=${encodeURIComponent(f.name)}`;
+                });
+                pdfRootFolderGrid.appendChild(tile);
             });
-            const createBtn = document.createElement('button');
-            createBtn.type = 'button';
-            createBtn.className = 'pdf-folder-chip';
-            const plus = document.createElement('span');
-            plus.className = 'material-symbols-outlined';
-            plus.textContent = 'add';
-            createBtn.appendChild(plus);
-            const txt = document.createElement('span');
-            txt.textContent = 'Folder';
-            createBtn.appendChild(txt);
-            createBtn.addEventListener('click', () => {
+            const createTile = document.createElement('div');
+            createTile.className = 'deck-tile tile-enter create-tile';
+            createTile.style.animationDelay = `${roots.length * 40}ms`;
+            const plus = document.createElement('div');
+            plus.className = 'create-tile__icon';
+            plus.textContent = '+';
+            createTile.appendChild(plus);
+            createTile.addEventListener('click', () => {
                 openCreateFolderModal();
             });
-            pdfFolderBar.appendChild(createBtn);
+            pdfRootFolderGrid.appendChild(createTile);
+        }
+
+        function buildMovePdfBrowserTree() {
+            movePdfParentByName = {};
+            movePdfChildrenByParent = {};
+            const raw = Array.isArray(folderItems) ? folderItems.slice() : [];
+            const seen = new Set();
+            raw.forEach((f) => {
+                const nm = (f && f.name) ? f.name : String(f);
+                if (nm === 'Uncategorized') return;
+                if (seen.has(nm)) return;
+                seen.add(nm);
+                const parent = f && f.parent ? f.parent : '';
+                movePdfParentByName[nm] = parent || '';
+                const key = parent || MOVE_PDF_BROWSER_ROOT;
+                if (!movePdfChildrenByParent[key]) movePdfChildrenByParent[key] = [];
+                movePdfChildrenByParent[key].push(nm);
+            });
+            if (!movePdfChildrenByParent[MOVE_PDF_BROWSER_ROOT]) movePdfChildrenByParent[MOVE_PDF_BROWSER_ROOT] = [];
+            if (!movePdfChildrenByParent[MOVE_PDF_BROWSER_ROOT].includes('Uncategorized')) {
+                movePdfChildrenByParent[MOVE_PDF_BROWSER_ROOT].push('Uncategorized');
+                movePdfParentByName['Uncategorized'] = '';
+            }
+        }
+
+        function getMovePdfPath() {
+            const path = [];
+            let current = movePdfBrowserCursor;
+            const visited = new Set();
+            while (current && current !== MOVE_PDF_BROWSER_ROOT && !visited.has(current)) {
+                visited.add(current);
+                path.unshift(current);
+                const parent = movePdfParentByName[current] || '';
+                if (!parent) break;
+                current = parent;
+            }
+            return path;
+        }
+
+        function renderMovePdfBrowser() {
+            if (!movePdfList) return;
+            movePdfList.innerHTML = '';
+            const path = getMovePdfPath();
+            const headerRow = document.createElement('div');
+            headerRow.className = 'multi-deck-item';
+            const headerSpan = document.createElement('span');
+            headerSpan.style.fontWeight = '600';
+            headerSpan.textContent = path.length ? `Location: Root / ${path.join(' / ')}` : 'Location: Root';
+            headerRow.appendChild(headerSpan);
+            movePdfList.appendChild(headerRow);
+            if (movePdfBrowserCursor !== MOVE_PDF_BROWSER_ROOT) {
+                const upBtn = document.createElement('button');
+                upBtn.type = 'button';
+                upBtn.className = 'multi-deck-item';
+                upBtn.textContent = 'Up one level';
+                upBtn.addEventListener('click', () => {
+                    const current = movePdfBrowserCursor;
+                    const parent = movePdfParentByName[current] || '';
+                    movePdfBrowserCursor = parent ? parent : MOVE_PDF_BROWSER_ROOT;
+                    renderMovePdfBrowser();
+                });
+                movePdfList.appendChild(upBtn);
+            }
+            const key = movePdfBrowserCursor === MOVE_PDF_BROWSER_ROOT ? MOVE_PDF_BROWSER_ROOT : movePdfBrowserCursor;
+            const children = (movePdfChildrenByParent[key] || []).slice().sort((a, b) => a.localeCompare(b));
+            children.forEach((name) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'multi-deck-item';
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+                const icon = document.createElement('span');
+                icon.className = 'material-symbols-outlined multi-deck-item-icon';
+                icon.textContent = name === 'Uncategorized' ? 'category' : 'folder';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'multi-deck-item-label';
+                nameSpan.textContent = name;
+                row.appendChild(icon);
+                row.appendChild(nameSpan);
+                if (name !== 'Uncategorized') {
+                    const icon = document.createElement('span');
+                    icon.className = 'material-symbols-outlined multi-deck-item-chevron';
+                    icon.textContent = 'chevron_right';
+                    row.appendChild(icon);
+                }
+                btn.appendChild(row);
+                btn.addEventListener('click', () => {
+                    movePdfBrowserCursor = name;
+                    renderMovePdfBrowser();
+                });
+                movePdfList.appendChild(btn);
+            });
+            if (movePdfSaveBtn) movePdfSaveBtn.disabled = movePdfBrowserCursor === MOVE_PDF_BROWSER_ROOT;
+        }
+
+        async function loadPdfFoldersIntoMoveList() {
+            if (!movePdfList) return;
+            movePdfList.innerHTML = '';
+            let raw = [];
+            if (Array.isArray(folderItems) && folderItems.length) {
+                raw = folderItems.slice();
+            } else {
+                try {
+                    const resp = await fetch('/pdf/folders');
+                    const data = await resp.json().catch(() => ({
+                        folders: []
+                    }));
+                    raw = Array.isArray(data.folders) ? data.folders : [];
+                    folderItems = raw.slice();
+                } catch {
+                    raw = [];
+                }
+            }
+            buildMovePdfBrowserTree();
+            movePdfBrowserCursor = MOVE_PDF_BROWSER_ROOT;
+            renderMovePdfBrowser();
+        }
+
+        function openMovePdfModal() {
+            if (!selectedPdfForMove) return;
+            if (!movePdfModal) return;
+            movePdfStatus.textContent = '';
+            loadPdfFoldersIntoMoveList();
+            movePdfModal.classList.add('is-open');
+            movePdfModal.setAttribute('aria-hidden', 'false');
         }
 
         function buildPdfUrl(item) {
@@ -1078,7 +1362,15 @@
 
         function renderPdfList() {
             pdfListEl.innerHTML = '';
-            if (!Array.isArray(pdfItems) || !pdfItems.length) return;
+            if (!selectedFolder) {
+                if (pdfListEl) pdfListEl.style.display = 'none';
+                return;
+            }
+            if (!Array.isArray(pdfItems) || !pdfItems.length) {
+                if (pdfListEl) pdfListEl.style.display = 'none';
+                return;
+            }
+            if (pdfListEl) pdfListEl.style.display = 'grid';
             let base = pdfItems.slice();
             if (selectedFolder) {
                 base = base.filter(p => (p.folder || 'Uncategorized') === selectedFolder);
@@ -1111,7 +1403,7 @@
                 title.className = 'deck-title';
                 title.textContent = p.name;
                 const subtitle = document.createElement('div');
-                subtitle.className = 'deck-subtitle';
+                subtitle.className = 'deck-subtitle pdf-card-subtitle';
                 subtitle.textContent = p.folder ? p.folder : 'Uncategorized';
                 const kebab = document.createElement('button');
                 kebab.type = 'button';
@@ -1130,32 +1422,11 @@
                 const moveBtn = document.createElement('button');
                 moveBtn.type = 'button';
                 moveBtn.textContent = 'Move to folder';
-                moveBtn.addEventListener('click', async(e) => {
+                moveBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     menu.classList.remove('is-open');
-                    const target = prompt('Move to folder (empty for Uncategorized)', p.folder || '');
-                    if (target === null) return;
-                    const trimmed = (target || '').trim();
-                    try {
-                        const resp = await fetch('/pdf/move', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                name: p.name,
-                                folder: trimmed || null
-                            })
-                        });
-                        const out = await resp.json().catch(() => ({}));
-                        if (!resp.ok || !out.ok) {
-                            alert(out.detail || 'Move failed');
-                            return;
-                        }
-                        await loadPdfs();
-                    } catch (err) {
-                        alert(String(err && err.message ? err.message : err || 'Move failed'));
-                    }
+                    selectedPdfForMove = p.name;
+                    openMovePdfModal();
                 });
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
@@ -1215,23 +1486,61 @@
                 const data = await resp.json().catch(() => []);
                 pdfItems = Array.isArray(data) ? data : [];
                 renderPdfList();
-                buildFolderBar();
+                buildRootFolderGrid();
             } catch (e) {}
         }
         async function loadFolders() {
             try {
-                const resp = await fetch('/folders');
+                const resp = await fetch('/pdf/folders');
                 const data = await resp.json().catch(() => ({
                     folders: []
                 }));
                 folderItems = Array.isArray(data.folders) ? data.folders : [];
-                buildFolderBar();
+                buildRootFolderGrid();
             } catch (e) {}
+        }
+
+        async function doMovePdf() {
+            if (!selectedPdfForMove) return;
+            if (!movePdfBrowserCursor || movePdfBrowserCursor === MOVE_PDF_BROWSER_ROOT) {
+                movePdfStatus.textContent = 'Choose a folder first';
+                return;
+            }
+            const targetFolder = movePdfBrowserCursor;
+            movePdfSaveBtn.disabled = true;
+            movePdfSaveBtn.textContent = 'Moving...';
+            movePdfStatus.textContent = '';
+            try {
+                const resp = await fetch('/pdf/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: selectedPdfForMove,
+                        folder: targetFolder === 'Uncategorized' ? null : targetFolder
+                    })
+                });
+                const out = await resp.json().catch(() => ({
+                    ok: false
+                }));
+                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
+                movePdfStatus.textContent = 'Moved';
+                await loadPdfs();
+                movePdfModal.classList.remove('is-open');
+                movePdfModal.setAttribute('aria-hidden', 'true');
+            } catch (err) {
+                movePdfStatus.textContent = String(err.message || err);
+            } finally {
+                movePdfSaveBtn.disabled = false;
+                movePdfSaveBtn.textContent = 'Move';
+            }
         }
 
         function init() {
             showLoader();
             Promise.all([loadPdfs(), loadFolders()]).finally(() => {
+                updatePdfHeader();
                 hideLoader();
             });
         }
@@ -1240,6 +1549,20 @@
             if (!e.target.closest('.kebab-btn') && !e.target.closest('.kebab-menu')) {
                 document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
             }
+        });
+        if (movePdfCancelBtn) movePdfCancelBtn.addEventListener('click', () => {
+            if (!movePdfModal) return;
+            movePdfModal.classList.remove('is-open');
+            movePdfModal.setAttribute('aria-hidden', 'true');
+        });
+        if (movePdfModal) movePdfModal.addEventListener('click', (e) => {
+            if (e.target && e.target.dataset && e.target.dataset.closeMovePdf === 'true') {
+                movePdfModal.classList.remove('is-open');
+                movePdfModal.setAttribute('aria-hidden', 'true');
+            }
+        });
+        if (movePdfSaveBtn) movePdfSaveBtn.addEventListener('click', () => {
+            doMovePdf();
         });
     </script>
 </body>
