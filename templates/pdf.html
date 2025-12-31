@@ -638,6 +638,23 @@
             height: 24px;
         }
         
+        .pdf-thumb-wrap {
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #e5e7eb;
+            margin-bottom: 8px;
+            aspect-ratio: 4 / 3;
+        }
+        
+        .pdf-thumb-img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: top center;
+        }
+        
         .pdf-card-subtitle {
             display: none;
         }
@@ -1607,17 +1624,12 @@
                 tile.className = 'deck-tile tile-enter';
                 tile.style.animationDelay = `${i * 40}ms`;
                 const thumbWrap = document.createElement('div');
-                thumbWrap.style.width = '100%';
-                thumbWrap.style.borderRadius = '10px';
-                thumbWrap.style.overflow = 'hidden';
-                thumbWrap.style.background = '#e5e7eb';
-                thumbWrap.style.marginBottom = '8px';
+                thumbWrap.className = 'pdf-thumb-wrap';
                 const img = document.createElement('img');
                 const thumbUrl = buildPdfThumbUrl(p);
                 img.src = thumbUrl || '';
                 img.alt = p.name || 'PDF';
-                img.style.width = '100%';
-                img.style.display = 'block';
+                img.className = 'pdf-thumb-img';
                 img.loading = 'lazy';
                 thumbWrap.appendChild(img);
                 tile.appendChild(thumbWrap);
