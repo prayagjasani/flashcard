@@ -102,11 +102,8 @@
             }
             .header__actions {
                 grid-column: 1;
-                flex-wrap: wrap;
                 justify-content: center;
                 gap: 10px 14px;
-                overflow-x: visible;
-                white-space: normal;
             }
             .nav__link {
                 font-size: 14px;
@@ -271,9 +268,6 @@
         }
         
         .kebab-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
             border: 0;
             background: transparent;
             padding: 4px;
@@ -1065,6 +1059,13 @@
             return `/r2/get?key=${encodeURIComponent(key)}`;
         }
 
+        function buildPdfThumbUrl(item) {
+            const t = item.thumb || '';
+            if (!t) return '';
+            const key = t.startsWith('/') ? t.slice(1) : t;
+            return `/r2/get?key=${encodeURIComponent(key)}`;
+        }
+
         function renderPdfList() {
             pdfListEl.innerHTML = '';
             if (!Array.isArray(pdfItems) || !pdfItems.length) return;
@@ -1083,23 +1084,25 @@
                 thumbWrap.style.overflow = 'hidden';
                 thumbWrap.style.background = '#e5e7eb';
                 thumbWrap.style.marginBottom = '8px';
-                const iframe = document.createElement('iframe');
-                const thumbUrl = buildPdfUrl(p);
-                iframe.src = thumbUrl ? thumbUrl + '#page=1&view=FitH' : '';
-                iframe.style.width = '100%';
-                iframe.style.height = '200px';
-                iframe.style.border = '0';
-                iframe.loading = 'lazy';
-                thumbWrap.appendChild(iframe);
+                const img = document.createElement('img');
+                const thumbUrl = buildPdfThumbUrl(p);
+                img.src = thumbUrl || '';
+                img.alt = p.name || 'PDF';
+                img.style.width = '100%';
+                img.style.display = 'block';
+                img.loading = 'lazy';
+                thumbWrap.appendChild(img);
                 tile.appendChild(thumbWrap);
+                const headerRow = document.createElement('div');
+                headerRow.style.display = 'flex';
+                headerRow.style.alignItems = 'center';
+                headerRow.style.justifyContent = 'space-between';
                 const title = document.createElement('div');
                 title.className = 'deck-title';
                 title.textContent = p.name;
                 const subtitle = document.createElement('div');
                 subtitle.className = 'deck-subtitle';
                 subtitle.textContent = p.folder ? p.folder : 'Uncategorized';
-                tile.appendChild(title);
-                tile.appendChild(subtitle);
                 const kebab = document.createElement('button');
                 kebab.type = 'button';
                 kebab.className = 'kebab-btn';
@@ -1181,7 +1184,10 @@
                     document.querySelectorAll('.kebab-menu.is-open').forEach(m => m.classList.remove('is-open'));
                     if (!isOpen) menu.classList.add('is-open');
                 });
-                tile.appendChild(kebab);
+                headerRow.appendChild(title);
+                headerRow.appendChild(kebab);
+                tile.appendChild(headerRow);
+                tile.appendChild(subtitle);
                 tile.appendChild(menu);
                 tile.addEventListener('click', () => {
                     const url = buildPdfUrl(p);

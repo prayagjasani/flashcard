@@ -1,8 +1,14 @@
 import json
 from datetime import datetime, timezone
+from io import BytesIO
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from botocore.exceptions import ClientError
+from PIL import Image
+try:
+    import pypdfium2 as pdfium
+except Exception:  # pragma: no cover
+    pdfium = None
 
 from models import PdfRename, PdfDelete, PdfMove, PdfOrderUpdate
 from services.storage import r2_client, R2_BUCKET_NAME, order_pdfs_key as _order_pdfs_key
@@ -17,6 +23,37 @@ PDF_ORDER_CACHE_TTL = 30
 
 def _pdf_index_key() -> str:
     return f"{R2_BUCKET_NAME}/pdf/index.json"
+
+
+def _thumb_key(name: str) -> str:
+    return f"{R2_BUCKET_NAME}/pdf/thumbs/{name}.jpg"
+
+
+def _build_thumb(content: bytes, safe_name: str) -> str | None:
+    if not r2_client or not R2_BUCKET_NAME or pdfium is None:
+        return None
+    if not content:
+        return None
+    try:
+        doc = pdfium.PdfDocument(BytesIO(content))
+        if len(doc) == 0:
+            return None
+        page = doc[0]
+        image = page.render(scale=0.5).to_pil()
+        image.thumbnail((480, 480), Image.LANCZOS)
+        buf = BytesIO()
+        image.save(buf, format="JPEG", quality=70)
+        data = buf.getvalue()
+        key = _thumb_key(safe_name)
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=data,
+            ContentType="image/jpeg",
+        )
+        return key
+    except Exception:
+        return None
 
 
 @router.get("/pdfs")
@@ -35,6 +72,7 @@ def list_pdfs():
                     file = d.get("file")
                     folder = d.get("folder")
                     lm = d.get("last_modified")
+                    thumb = d.get("thumb")
                     if name and file and file.lower().endswith(".pdf"):
                         items.append(
                             {
@@ -42,6 +80,7 @@ def list_pdfs():
                                 "file": file,
                                 "folder": folder,
                                 "last_modified": lm,
+                                "thumb": thumb,
                             }
                         )
             try:
@@ -93,6 +132,7 @@ async def upload_pdf(
     if not content:
         raise HTTPException(status_code=400, detail="Empty PDF")
     key = f"{R2_BUCKET_NAME}/pdf/{safe_name}.pdf"
+    thumb_key = _build_thumb(content, safe_name)
     try:
         r2_client.put_object(
             Bucket=R2_BUCKET_NAME,
@@ -122,6 +162,8 @@ async def upload_pdf(
     for d in items:
         if isinstance(d, dict) and d.get("name") == safe_name:
             d["file"] = key
+            if thumb_key:
+                d["thumb"] = thumb_key
             if safe_folder:
                 d["folder"] = safe_folder
             elif "folder" in d:
@@ -131,6 +173,8 @@ async def upload_pdf(
             break
     if not updated:
         entry = {"name": safe_name, "file": key, "last_modified": now_iso}
+        if thumb_key:
+            entry["thumb"] = thumb_key
         if safe_folder:
             entry["folder"] = safe_folder
         items.append(entry)
@@ -196,6 +240,21 @@ def rename_pdf(payload: PdfRename):
         if isinstance(d, dict) and d.get("name") == old:
             d["name"] = new
             d["file"] = new_key
+            if "thumb" in d and d["thumb"]:
+                old_thumb = d["thumb"]
+                try:
+                    obj_t = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=old_thumb)
+                    tcontent = obj_t["Body"].read()
+                    new_thumb_key = _thumb_key(new)
+                    r2_client.put_object(
+                        Bucket=R2_BUCKET_NAME,
+                        Key=new_thumb_key,
+                        Body=tcontent,
+                        ContentType="image/jpeg",
+                    )
+                    d["thumb"] = new_thumb_key
+                except Exception:
+                    d.pop("thumb", None)
             d["last_modified"] = now_iso
             if d.get("folder"):
                 folders.add(_safe_name(d.get("folder")))
@@ -221,8 +280,13 @@ def delete_pdf(payload: PdfDelete):
     if not name:
         raise HTTPException(status_code=400, detail="PDF name required")
     key = f"{R2_BUCKET_NAME}/pdf/{name}.pdf"
+    thumb_key = _thumb_key(name)
     try:
         r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=key)
+        try:
+            r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=thumb_key)
+        except ClientError:
+            pass
     except ClientError as e:
         code = e.response.get("Error", {}).get("Code")
         if code not in ("404", "NoSuchKey", "NotFound"):
@@ -399,4 +463,3 @@ def order_pdfs_set(payload: PdfOrderUpdate):
         return {"ok": True, "scope": scope, "order": names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

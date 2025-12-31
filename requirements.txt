@@ -4,3 +4,5 @@ gTTS>=2.4.0
 boto3>=1.33.0
 python-dotenv>=1.0.0
 python-multipart>=0.0.9
+Pillow>=10.0.0
+pypdfium2>=4.27.0
