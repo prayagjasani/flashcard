@@ -1655,6 +1655,7 @@
                 renameBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     menu.classList.remove('is-open');
+                    tile.classList.remove('menu-open');
                     openRenameModal(p.name);
                 });
                 const moveBtn = document.createElement('button');
@@ -1663,6 +1664,7 @@
                 moveBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     menu.classList.remove('is-open');
+                    tile.classList.remove('menu-open');
                     selectedPdfForMove = p.name;
                     openMovePdfModal();
                 });
@@ -1672,6 +1674,7 @@
                 deleteBtn.addEventListener('click', async(e) => {
                     e.stopPropagation();
                     menu.classList.remove('is-open');
+                    tile.classList.remove('menu-open');
                     const ok = confirm(`Delete PDF "${p.name}"?`);
                     if (!ok) return;
                     try {
