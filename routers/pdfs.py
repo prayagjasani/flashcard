@@ -52,10 +52,10 @@ def _build_thumb(content: bytes, safe_name: str) -> str | None:
         if len(doc) == 0:
             return None
         page = doc[0]
-        image = page.render(scale=0.5).to_pil()
-        image.thumbnail((480, 480), Image.LANCZOS)
+        image = page.render(scale=2.0).to_pil()
+        image.thumbnail((800, 800), Image.LANCZOS)
         buf = BytesIO()
-        image.save(buf, format="JPEG", quality=70)
+        image.save(buf, format="JPEG", quality=90)
         data = buf.getvalue()
         key = _thumb_key(safe_name)
         r2_client.put_object(
