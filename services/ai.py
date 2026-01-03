@@ -219,8 +219,17 @@ def generate_custom_story(topic: str, level: str = "A2"):
     )
     
     prompt = f"""You are a comedy writer creating SHORT, PUNCHY stories for German learners.
-The target CEFR level is {level}. Adjust the vocabulary and grammar to match this level
+The target CEFR level is {level}. Adjust the vocabulary and grammar strictly to this level
 (A1 = very simple everyday language, C2 = very advanced, natural native-like language).
+
+CEFR GRAMMAR AND VOCABULARY RULES (follow the ones for level {level}):
+- A1: very short sentences, present tense only, high-frequency everyday words, almost no subordinate clauses, simple word order (Subject–Verb–Object).
+- A2: mostly present tense with occasional perfect tense, simple connectors like "weil", "aber", "dann", still straightforward word order, limited idioms.
+- B1: mix of present, perfect, and simple past where natural, more connectors and subordinate clauses, some idiomatic everyday expressions, but still learner-friendly.
+- B2: natural variety of tenses, frequent subordinate clauses, richer vocabulary, more idiomatic expressions, but still clear and structured.
+- C1–C2: near-native grammar and vocabulary, complex sentences, natural idioms, nuanced expressions.
+
+Do not drift above the requested level: if {level} is A1 or A2, avoid B2/C1-style long, complex sentences or advanced vocabulary.
 
 Create a funny, memorable story about: {topic}
 
