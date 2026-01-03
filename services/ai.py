@@ -148,11 +148,24 @@ AVOID:
 
 Use simple German (A1-B1), but make it DRAMATIC, FUNNY, and MEMORABLE!
 
+In addition to the story segments, also build a VOCABULARY MAP that covers
+as many useful words as possible from the whole story.
+- Include EVERY German word or short phrase that you highlight in any segment.
+- Also include other important content words that appear in text_de (nouns,
+  main verbs, adjectives, adverbs, prepositions, short phrases).
+- Keys must be the exact German word/phrase as it appears in text_de.
+- Values must be a short, simple English translation.
+
 Output ONLY a JSON object with this exact structure:
 {{
   "title_de": "Catchy German title",
   "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
+  "vocabulary": {{
+    "German word or phrase": "simple English translation",
+    "Flughafen": "airport",
+    "lange Schlange": "long line"
+  }},
   "segments": [
     {{
       "type": "narration" or "dialogue",
@@ -264,11 +277,24 @@ AVOID:
 
 Use German that is mostly at level {level}, but make it DRAMATIC, FUNNY, and MEMORABLE!
 
+In addition to the story segments, also build a VOCABULARY MAP that covers
+as many useful words as possible from the whole story.
+- Include EVERY German word or short phrase that you highlight in any segment.
+- Also include other important content words that appear in text_de (nouns,
+  main verbs, adjectives, adverbs, prepositions, short phrases).
+- Keys must be the exact German word/phrase as it appears in text_de.
+- Values must be a short, simple English translation.
+
 Output ONLY a JSON object with this exact structure:
 {{
   "title_de": "Catchy German title",
   "title_en": "Catchy English title",
   "characters": ["Name1", "Name2"],
+  "vocabulary": {{
+    "German word or phrase": "simple English translation",
+    "Flughafen": "airport",
+    "lange Schlange": "long line"
+  }},
   "segments": [
     {{
       "type": "narration" or "dialogue",

@@ -4482,38 +4482,46 @@
             if (multiDeckModalTitle) multiDeckModalTitle.textContent = 'Select Folder';
             updateMultiDeckBackBtn(false);
 
-            // Build folder list from cached decks
-            const folderCounts = {};
-            cachedDeckList.forEach(d => {
-                const f = d.folder || 'Uncategorized';
-                folderCounts[f] = (folderCounts[f] || 0) + 1;
-            });
+            const allFolders = Array.isArray(cachedFolderList) ? cachedFolderList.slice() : [];
 
-            const folderList = Object.keys(folderCounts).map(name => ({
-                name,
-                count: folderCounts[name]
-            }));
-
-            if (!folderList.length) {
+            if (!allFolders.length && !cachedDeckList.length) {
                 multiDeckList.innerHTML = '<p style="padding:14px;color:var(--muted);text-align:center;">No folders available.</p>';
                 return;
             }
 
-            // Apply same order as home screen
-            const orderedFolders = applyOrder(folderList, 'folder');
+            let rootFolders = allFolders.filter(f => !f.parent);
 
-            orderedFolders.forEach((folder, index) => {
+            if (!rootFolders.length) {
+                const folderCounts = {};
+                cachedDeckList.forEach(d => {
+                    const f = d.folder || 'Uncategorized';
+                    folderCounts[f] = (folderCounts[f] || 0) + 1;
+                });
+                rootFolders = Object.keys(folderCounts).map(name => ({
+                    name,
+                    count: folderCounts[name]
+                }));
+            }
+
+            if (!rootFolders.length) {
+                multiDeckList.innerHTML = '<p style="padding:14px;color:var(--muted);text-align:center;">No folders available.</p>';
+                return;
+            }
+
+            const ordered = applyOrder(rootFolders, 'folder');
+
+            ordered.forEach((folder, index) => {
+                const name = folder.name || folder;
                 const row = document.createElement('div');
                 row.className = 'multi-deck-folder';
 
-                // Check if any deck in this folder is selected
-                const decksInFolder = cachedDeckList.filter(d => (d.folder || 'Uncategorized') === folder.name);
+                const decksInFolder = cachedDeckList.filter(d => (d.folder || 'Uncategorized') === name);
                 const hasSelectedDeck = decksInFolder.some(d => multiDeckSelectedNames.has(d.name));
                 if (hasSelectedDeck) row.classList.add('is-selected');
 
                 const label = document.createElement('span');
                 label.className = 'folder-label';
-                label.textContent = `${folder.name} (${folder.count} deck${folder.count === 1 ? '' : 's'})`;
+                label.textContent = name;
 
                 const arrow = document.createElement('span');
                 arrow.className = 'folder-arrow material-symbols-outlined';
@@ -4522,21 +4530,67 @@
                 row.appendChild(label);
                 row.appendChild(arrow);
                 row.addEventListener('click', () => {
-                    // Add transition animation
                     multiDeckList.classList.add('is-transitioning');
                     setTimeout(() => {
-                        populateMultiDeckDecks(folder.name);
+                        populateMultiDeckFolderLevel(name);
                         multiDeckList.classList.remove('is-transitioning');
                     }, 150);
                 });
                 multiDeckList.appendChild(row);
 
-                // Add divider except after last item
-                if (index < orderedFolders.length - 1) {
+                if (index < ordered.length - 1) {
                     const divider = document.createElement('hr');
                     divider.className = 'multi-deck-divider';
                     multiDeckList.appendChild(divider);
                 }
+            });
+
+            updateMultiDeckSelectedNames();
+        }
+
+        function populateMultiDeckFolderLevel(parentName) {
+            multiDeckList.innerHTML = '';
+            multiDeckSelectedFolder = parentName;
+            if (multiDeckModalTitle) multiDeckModalTitle.textContent = parentName;
+            updateMultiDeckBackBtn(true);
+
+            const allFolders = Array.isArray(cachedFolderList) ? cachedFolderList.slice() : [];
+            const children = allFolders.filter(f => f.parent === parentName);
+
+            if (!children.length) {
+                populateMultiDeckDecks(parentName);
+                return;
+            }
+
+            const ordered = applyOrder(children, 'folder');
+
+            ordered.forEach(child => {
+                const name = child.name || child;
+                const row = document.createElement('div');
+                row.className = 'multi-deck-folder';
+
+                const decksInFolder = cachedDeckList.filter(d => (d.folder || 'Uncategorized') === name);
+                const hasSelectedDeck = decksInFolder.some(d => multiDeckSelectedNames.has(d.name));
+                if (hasSelectedDeck) row.classList.add('is-selected');
+
+                const label = document.createElement('span');
+                label.className = 'folder-label';
+                label.textContent = name;
+
+                const arrow = document.createElement('span');
+                arrow.className = 'folder-arrow material-symbols-outlined';
+                arrow.textContent = hasSelectedDeck ? 'check_circle' : 'arrow_forward_ios';
+
+                row.appendChild(label);
+                row.appendChild(arrow);
+                row.addEventListener('click', () => {
+                    multiDeckList.classList.add('is-transitioning');
+                    setTimeout(() => {
+                        populateMultiDeckDecks(name);
+                        multiDeckList.classList.remove('is-transitioning');
+                    }, 150);
+                });
+                multiDeckList.appendChild(row);
             });
 
             updateMultiDeckSelectedNames();
