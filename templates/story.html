@@ -1853,31 +1853,35 @@
 
             let meaning = vocabulary[cleanWord] || vocabulary[word.toLowerCase()] || commonWords[cleanWord];
 
-            if (!meaning) {
-                const segmentEl = tappable.closest('.story-segment');
-                if (segmentEl && story && Array.isArray(story.segments)) {
-                    const idx = parseInt(segmentEl.dataset.index, 10);
-                    const segment = story.segments[idx];
-                    if (segment && Array.isArray(segment.highlight_pairs)) {
-                        const classes = (tappable.className || '').split(/\s+/);
-                        const colorClass = classes.find(c => c.startsWith('highlight-'));
-                        if (colorClass) {
-                            const colorIndex = parseInt(colorClass.replace('highlight-', ''), 10);
-                            const pair = segment.highlight_pairs.find(p => {
-                                if (!p) return false;
-                                const c = typeof p.color === 'number' ? p.color : parseInt(p.color, 10);
-                                return c === colorIndex;
-                            });
-                            if (pair && pair.en) {
-                                meaning = pair.en;
-                            }
-                        }
+            const segmentEl = tappable.closest('.story-segment');
+            let segment = null;
+            if (segmentEl && story && Array.isArray(story.segments)) {
+                const idx = parseInt(segmentEl.dataset.index, 10);
+                segment = story.segments[idx];
+            }
+
+            if (!meaning && segment && Array.isArray(segment.highlight_pairs)) {
+                const classes = (tappable.className || '').split(/\s+/);
+                const colorClass = classes.find(c => c.startsWith('highlight-'));
+                if (colorClass) {
+                    const colorIndex = parseInt(colorClass.replace('highlight-', ''), 10);
+                    const pair = segment.highlight_pairs.find(p => {
+                        if (!p) return false;
+                        const c = typeof p.color === 'number' ? p.color : parseInt(p.color, 10);
+                        return c === colorIndex;
+                    });
+                    if (pair && pair.en) {
+                        meaning = pair.en;
                     }
                 }
             }
 
+            if (!meaning && segment && segment.text_en) {
+                meaning = segment.text_en;
+            }
+
             if (!meaning) {
-                meaning = word;
+                meaning = '';
             }
 
             showTooltip(tappable, meaning);
