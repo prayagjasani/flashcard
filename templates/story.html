@@ -1845,13 +1845,42 @@
 
         segmentsContainer.addEventListener('click', (e) => {
             const tappable = e.target.closest('.tappable-word');
-            if (tappable) {
-                e.stopPropagation();
-                const word = tappable.dataset.word;
-                const cleanWord = word.toLowerCase().replace(/[.,!?;:'"„"»«()]/g, '');
-                const meaning = vocabulary[cleanWord] || vocabulary[word.toLowerCase()] || commonWords[cleanWord] || 'No translation available';
-                showTooltip(tappable, meaning);
+            if (!tappable) return;
+
+            e.stopPropagation();
+            const word = tappable.dataset.word;
+            const cleanWord = word.toLowerCase().replace(/[.,!?;:'"„"»«()]/g, '');
+
+            let meaning = vocabulary[cleanWord] || vocabulary[word.toLowerCase()] || commonWords[cleanWord];
+
+            if (!meaning) {
+                const segmentEl = tappable.closest('.story-segment');
+                if (segmentEl && story && Array.isArray(story.segments)) {
+                    const idx = parseInt(segmentEl.dataset.index, 10);
+                    const segment = story.segments[idx];
+                    if (segment && Array.isArray(segment.highlight_pairs)) {
+                        const classes = (tappable.className || '').split(/\s+/);
+                        const colorClass = classes.find(c => c.startsWith('highlight-'));
+                        if (colorClass) {
+                            const colorIndex = parseInt(colorClass.replace('highlight-', ''), 10);
+                            const pair = segment.highlight_pairs.find(p => {
+                                if (!p) return false;
+                                const c = typeof p.color === 'number' ? p.color : parseInt(p.color, 10);
+                                return c === colorIndex;
+                            });
+                            if (pair && pair.en) {
+                                meaning = pair.en;
+                            }
+                        }
+                    }
+                }
             }
+
+            if (!meaning) {
+                meaning = word;
+            }
+
+            showTooltip(tappable, meaning);
         });
 
         // Hide tooltip when clicking anywhere else
