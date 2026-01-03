@@ -167,16 +167,17 @@ Output ONLY a JSON object with this exact structure:
   ]
 }}
 
-IMPORTANT: Each segment MUST include "highlight_pairs" array with vocabulary word pairs.
-- "de": The exact German word as it appears in text_de
-- "en": The exact English word as it appears in text_en  
+IMPORTANT: Each segment MUST include a "highlight_pairs" array with vocabulary word pairs.
+- "de": The exact German word or SHORT PHRASE as it appears in text_de (same case, same form)
+- "en": The exact English word or SHORT PHRASE as it appears in text_en (same case, same form)
 - "color": SEQUENTIAL number starting from 0. First word pair = 0, second = 1, third = 2, etc. Each word pair in the segment MUST have a unique color number (0-15).
 
-CRITICAL: Highlight EVERY word in the sentence EXCEPT these common words: der, die, das, ein, eine, und, oder.
-Include ALL other words: verbs (bin, ist, war, habe, gehe, etc.), pronouns (ich, du, er, sie, wir, etc.), 
-nouns, adjectives, adverbs, prepositions (in, auf, mit, zu, etc.), and ALL other vocabulary.
-Do NOT skip words just because they seem simple - learners need to see ALL translations.
-Make sure the German and English words are EXACTLY as they appear in the text (same case, same form).
+HIGHLIGHTING STRATEGY (YOU decide what is most useful for A2–B1 learners):
+- Focus on meaningful vocabulary and chunks: verbs, nouns, adjectives, adverbs, prepositions, and short phrases that carry real meaning.
+- DO NOT highlight extremely basic function words such as articles (der, die, das, ein, eine), conjunctions (und, oder, aber), or very common pronouns (ich, du, er, sie, wir, ihr, Sie, es).
+- Also avoid highlighting very basic helper verbs like "sein", "haben", "werden" and modal verbs in their most frequent forms, unless they are part of an interesting phrase.
+- Aim for roughly 6–14 highlighted items per segment (fewer for short sentences, more for long ones). It is OK if not every word is highlighted.
+- Ensure that every "de" and "en" value actually appears in the corresponding text.
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
@@ -274,16 +275,17 @@ Output ONLY a JSON object with this exact structure:
   ]
 }}
 
-IMPORTANT: Each segment MUST include "highlight_pairs" array with vocabulary word pairs.
-- "de": The exact German word as it appears in text_de (same case, same form)
-- "en": The exact English word as it appears in text_en (same case, same form)
+IMPORTANT: Each segment MUST include a "highlight_pairs" array with vocabulary word pairs.
+- "de": The exact German word or SHORT PHRASE as it appears in text_de (same case, same form)
+- "en": The exact English word or SHORT PHRASE as it appears in text_en (same case, same form)
 - "color": SEQUENTIAL number starting from 0. First word pair = 0, second = 1, third = 2, etc. Each word pair in the segment MUST have a unique color number (0-15).
 
-CRITICAL: Highlight EVERY word in the sentence EXCEPT these common words: der, die, das, ein, eine, und, oder.
-Include ALL other words: verbs (bin, ist, war, habe, gehe, etc.), pronouns (ich, du, er, sie, wir, etc.), 
-nouns, adjectives, adverbs, prepositions (in, auf, mit, zu, etc.), and ALL other vocabulary.
-Do NOT skip words just because they seem simple - learners need to see ALL translations.
-This creates visual links between German words and their English translations with matching colors.
+HIGHLIGHTING STRATEGY (ADAPT TO CEFR LEVEL {level}):
+- A1: highlight the most important content words (nouns, main verbs, adjectives, useful adverbs and prepositions). It is fine to highlight simpler words if they are central to understanding the story.
+- A2–B1: treat basic A1 vocabulary as already known. DO NOT highlight very frequent function words or pronouns (ich, du, er, sie, wir, ihr, Sie, es) or helper verbs like "sein", "haben", "werden", "können", "müssen", "wollen" unless they are part of an interesting phrase. Focus on slightly more complex or topic-specific words and short phrases.
+- B2–C2: focus on advanced, nuanced vocabulary, idiomatic expressions, and less common phrases. Avoid highlighting simple A1/A2 words.
+- In all levels, aim for a reasonable number of highlights (roughly 5–15 per segment depending on length) and make them feel intentional, not random.
+- Ensure every highlighted "de" and "en" actually appears in the corresponding text.
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 

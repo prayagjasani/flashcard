@@ -1614,8 +1614,8 @@
 
                 // Only include pairs where BOTH German and English words exist in their texts
                 highlightPairs.forEach(pair => {
-                    const deWord = (pair.de || '').toLowerCase();
-                    const enWord = (pair.en || '').toLowerCase();
+                    const deWord = (pair.de || '').toLowerCase().trim();
+                    const enWord = (pair.en || '').toLowerCase().trim();
 
                     // Check if both words actually appear in their respective texts
                     const deExists = deWord && textDeLower.includes(deWord);
