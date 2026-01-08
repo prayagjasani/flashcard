@@ -216,6 +216,24 @@
             color: var(--text);
         }
         
+        .srt-upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-family: inherit;
+            color: var(--muted);
+        }
+        
+        .srt-upload-btn input[type="file"] {
+            display: none;
+        }
+        
         .story-item {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -523,6 +541,11 @@
             justify-content: space-between;
             gap: 12px;
             margin-bottom: 4px;
+        }
+        
+        #segmentSlider {
+            width: 100%;
+            margin: 8px 0 0;
         }
         
         .story-title {
@@ -920,7 +943,14 @@
 
         <!-- Story list -->
         <div id="storyListView" style="display: none;">
-
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+                <span style="font-size:0.9rem; color: var(--muted);">Stories</span>
+                <label class="srt-upload-btn">
+                    <span class="material-symbols-outlined" style="font-size:16px;">upload</span>
+                    <span style="white-space: nowrap;">Use .srt subtitles</span>
+                    <input type="file" id="srtFileInput" accept=".srt">
+                </label>
+            </div>
             <div id="storyList"></div>
         </div>
 
@@ -933,6 +963,9 @@
                         <span class="story-level-badge" id="storyLevelBadge" style="display: none;"></span>
                     </div>
                     <p class="story-subtitle" id="storySubtitle"></p>
+                </div>
+                <div style="padding: 12px 20px 0 20px;">
+                    <input type="range" id="segmentSlider" min="0" max="0" value="0" step="1">
                 </div>
                 <div id="segmentsContainer"></div>
                 <div class="tap-hint" id="tapHint">
@@ -1062,6 +1095,8 @@
         const randomStoryBtn = document.getElementById('randomStoryBtn');
         const tooltip = document.getElementById('tooltip');
         const storyLevelBadge = document.getElementById('storyLevelBadge');
+        const srtFileInput = document.getElementById('srtFileInput');
+        const segmentSlider = document.getElementById('segmentSlider');
 
         // State
         const params = new URLSearchParams(location.search);
@@ -1580,6 +1615,73 @@
             }
         }
 
+        async function loadStoryFromSrt(file) {
+            if (!file) return;
+
+            audioCache.forEach(url => {
+                if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+            });
+            audioCache.clear();
+            vocabulary = {};
+
+            loadingState.style.display = 'flex';
+            loadingText.textContent = 'Loading subtitles...';
+            storyListView.style.display = 'none';
+            storyContent.style.display = 'none';
+            completedState.style.display = 'none';
+            continueContainer.style.display = 'none';
+
+            headerTitle.style.display = 'none';
+            createStoryBtn.style.display = 'none';
+            progressContainer.style.display = 'block';
+            progressText.style.display = 'block';
+            mainContent.classList.add('with-continue');
+            isReadingMode = true;
+
+            try {
+                const form = new FormData();
+                form.append('file', file);
+
+                const resp = await fetch('/story/upload_srt', {
+                    method: 'POST',
+                    body: form
+                });
+                const data = await resp.json();
+
+                if (!resp.ok) throw new Error(data.detail || 'Failed to load subtitles');
+
+                story = data.story;
+                currentDeck = data.story_id || 'srt_' + Date.now();
+                characters = story.characters || [];
+
+                vocabulary = {};
+                if (story.vocabulary && Object.keys(story.vocabulary).length > 0) {
+                    Object.entries(story.vocabulary).forEach(([de, en]) => {
+                        addToVocabulary(de, en);
+                    });
+                }
+
+                if (!story.segments || story.segments.length === 0) {
+                    throw new Error('Story has no content');
+                }
+
+                currentSegmentIndex = 0;
+                showStory();
+            } catch (error) {
+                console.error('Failed to load subtitles:', error);
+                loadingState.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state__emoji">😕</div>
+                        <h3 class="empty-state__title">Failed to load subtitles</h3>
+                        <p class="empty-state__text">${error.message}</p>
+                        <button class="btn-secondary" onclick="loadStoryList()">Back to Stories</button>
+                    </div>
+                `;
+            } finally {
+                if (srtFileInput) srtFileInput.value = '';
+            }
+        }
+
         async function prefetchAllAudio() {
             if (!story || !story.segments) return;
 
@@ -1627,7 +1729,14 @@
 
             segmentsContainer.innerHTML = '';
             continueBtn.textContent = 'Continue';
-            renderSegment(0);
+            showSegmentAt(0);
+        }
+
+        function showSegmentAt(index) {
+            if (!story || !story.segments || index < 0 || index >= story.segments.length) return;
+            currentSegmentIndex = index;
+            segmentsContainer.innerHTML = '';
+            renderSegment(index);
             updateProgress();
         }
 
@@ -1768,11 +1877,18 @@
         }
 
         function updateProgress() {
+            if (!story || !story.segments || !story.segments.length) return;
             const total = story.segments.length;
             const current = currentSegmentIndex + 1;
             const progress = (current / total) * 100;
             progressBar.style.width = `${progress}%`;
             progressText.textContent = `${current}/${total}`;
+            if (segmentSlider) {
+                segmentSlider.min = 0;
+                segmentSlider.max = total - 1;
+                segmentSlider.step = 1;
+                segmentSlider.value = currentSegmentIndex;
+            }
         }
 
         function showCompleted() {
@@ -1780,6 +1896,24 @@
             continueContainer.style.display = 'none';
             completedState.style.display = 'block';
             progressBar.style.width = '100%';
+        }
+
+        if (srtFileInput) {
+            srtFileInput.addEventListener('change', (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    loadStoryFromSrt(file);
+                }
+            });
+        }
+
+        if (segmentSlider) {
+            segmentSlider.addEventListener('input', (e) => {
+                if (!story || !story.segments || !story.segments.length) return;
+                const value = parseInt(e.target.value, 10);
+                if (Number.isNaN(value)) return;
+                showSegmentAt(value);
+            });
         }
 
         async function playAudio(text) {
@@ -1970,19 +2104,19 @@
         deleteStoryBtn.addEventListener('click', deleteSelectedStory);
 
         continueBtn.addEventListener('click', () => {
-            currentSegmentIndex++;
-            if (currentSegmentIndex >= story.segments.length) {
+            if (!story || !story.segments || !story.segments.length) return;
+            const next = currentSegmentIndex + 1;
+            if (next >= story.segments.length) {
                 showCompleted();
             } else {
-                renderSegment(currentSegmentIndex);
-                updateProgress();
+                showSegmentAt(next);
             }
         });
 
         restartBtn.addEventListener('click', () => {
             currentSegmentIndex = 0;
             segmentsContainer.innerHTML = '';
-            showStory();
+            showSegmentAt(0);
         });
 
         backToListBtn.addEventListener('click', () => {

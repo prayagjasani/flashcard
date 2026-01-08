@@ -5,7 +5,7 @@ import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from gtts import gTTS
 from botocore.exceptions import ClientError
@@ -411,3 +411,67 @@ def get_story_audio(deck: str, text: str):
         return StreamingResponse(io.BytesIO(audio_data), media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _parse_srt(content: str):
+    blocks = []
+    current_lines = []
+    for line in content.splitlines():
+        line = line.strip("\ufeff")
+        if line.strip() == "":
+            if current_lines:
+                blocks.append(current_lines)
+                current_lines = []
+            continue
+        current_lines.append(line)
+    if current_lines:
+        blocks.append(current_lines)
+
+    subtitles = []
+    for block in blocks:
+        if len(block) >= 3:
+            text_lines = block[2:]
+        elif len(block) >= 1:
+            text_lines = block[1:]
+        else:
+            continue
+        text = " ".join(text_lines).strip()
+        if text:
+            subtitles.append(text)
+    return subtitles
+
+
+@router.post("/story/upload_srt")
+async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
+    try:
+        raw = await file.read()
+        try:
+            content = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            content = raw.decode("latin-1", errors="ignore")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not read subtitle file")
+
+    subtitles = _parse_srt(content)
+    if not subtitles:
+        raise HTTPException(status_code=400, detail="Subtitle file is empty or invalid")
+
+    story = {
+        "title_de": file.filename or "Untertitel",
+        "title_en": "Subtitles",
+        "characters": [],
+        "level": level.upper() if level else "A2",
+        "vocabulary": {},
+        "segments": [
+            {
+                "type": "narration",
+                "speaker": "narrator",
+                "text_de": text,
+                "text_en": "",
+                "highlight_pairs": []
+            }
+            for text in subtitles
+        ]
+    }
+
+    return {"story": story, "story_id": None}
