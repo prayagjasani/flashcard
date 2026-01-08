@@ -500,13 +500,17 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
     norm_level = (level or "A2").upper()
 
     lines = [s["text"] for s in subtitles]
-    story = _gemini_generate_subtitle_story(lines, level=norm_level) or {
-        "title_de": file.filename or "Untertitel",
-        "title_en": "Subtitles",
-        "characters": [],
-        "level": norm_level,
-        "vocabulary": {},
-        "segments": [
+    story = _gemini_generate_subtitle_story(lines, level=norm_level)
+    if not isinstance(story, dict):
+        story = {}
+    story.setdefault("title_de", file.filename or "Untertitel")
+    story.setdefault("title_en", "Subtitles")
+    story.setdefault("characters", [])
+    story.setdefault("level", norm_level)
+    story.setdefault("vocabulary", {})
+    story.setdefault(
+        "segments",
+        [
             {
                 "type": "narration",
                 "speaker": "narrator",
@@ -516,13 +520,25 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
             }
             for text in lines
         ],
-    }
+    )
 
     segments = story.get("segments") or []
     count = min(len(segments), len(subtitles))
     segments = segments[:count]
     subtitles = subtitles[:count]
-    story["segments"] = segments
+    # Clean up segments: ensure required fields exist
+    cleaned_segments = []
+    for idx, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            seg = {}
+        text_de = subtitles[idx]["text"]
+        seg.setdefault("type", "narration")
+        seg.setdefault("speaker", "narrator")
+        seg.setdefault("text_de", text_de)
+        seg.setdefault("text_en", "")
+        seg.setdefault("highlight_pairs", [])
+        cleaned_segments.append(seg)
+    story["segments"] = cleaned_segments
 
     duration_ms = 0
     for idx, seg in enumerate(segments):

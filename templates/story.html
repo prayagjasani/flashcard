@@ -1200,6 +1200,8 @@
         let currentSegmentIndex = 0;
         let audioPlayer = new Audio();
         let audioCache = new Map();
+        const AUDIO_PREFETCH_BATCH = 25;
+        let audioPrefetchEnd = 0;
         let characters = [];
         let allDecks = [];
         let allStories = [];
@@ -1468,6 +1470,7 @@
                 if (url.startsWith('blob:')) URL.revokeObjectURL(url);
             });
             audioCache.clear();
+            audioPrefetchEnd = 0;
             vocabulary = {};
 
             loadingState.style.display = 'flex';
@@ -1517,9 +1520,6 @@
                 // Start story immediately, prefetch audio in background
                 showStory();
 
-                // Prefetch all audio in background (non-blocking)
-                prefetchAllAudio();
-
             } catch (error) {
                 console.error('Failed to load story:', error);
                 loadingState.innerHTML = `
@@ -1544,6 +1544,7 @@
                 if (url.startsWith('blob:')) URL.revokeObjectURL(url);
             });
             audioCache.clear();
+            audioPrefetchEnd = 0;
             vocabulary = {};
 
             loadingState.style.display = 'flex';
@@ -1597,9 +1598,6 @@
                 // Start story immediately, prefetch audio in background
                 showStory();
 
-                // Prefetch all audio in background (non-blocking)
-                prefetchAllAudio();
-
                 // Reload story list in background to show the new story
                 fetch('/stories/list').then(r => r.json()).then(data => {
                     allStories = data.stories || [];
@@ -1626,6 +1624,7 @@
                 if (url.startsWith('blob:')) URL.revokeObjectURL(url);
             });
             audioCache.clear();
+            audioPrefetchEnd = 0;
             vocabulary = {};
 
             loadingState.style.display = 'flex';
@@ -1687,16 +1686,21 @@
             }
         }
 
-        async function prefetchAllAudio() {
+        async function prefetchAudioFrom(startIndex) {
             if (!story || !story.segments) return;
+            const totalSegments = story.segments.length;
+            if (startIndex >= totalSegments) return;
 
+            const end = Math.min(startIndex + AUDIO_PREFETCH_BATCH, totalSegments);
             const texts = new Set();
-            story.segments.forEach(seg => {
+            for (let i = startIndex; i < end; i++) {
+                const seg = story.segments[i];
                 const text = (seg.text_de || '').trim();
-                if (text) texts.add(text);
-            });
+                if (text && !audioCache.has(text)) {
+                    texts.add(text);
+                }
+            }
 
-            // Prefetch all audio files in parallel
             const promises = Array.from(texts).map(async (text) => {
                 try {
                     const url = `/story/audio?deck=${encodeURIComponent(currentDeck)}&text=${encodeURIComponent(text)}`;
@@ -1712,7 +1716,20 @@
             });
 
             await Promise.allSettled(promises);
-            console.log(`Prefetched ${audioCache.size} audio files`);
+            audioPrefetchEnd = end;
+        }
+
+        function ensureAudioPrefetchAround(index) {
+            if (!story || !story.segments) return;
+            const total = story.segments.length;
+            if (total === 0) return;
+            if (audioPrefetchEnd === 0) {
+                prefetchAudioFrom(0);
+                return;
+            }
+            if (index >= audioPrefetchEnd - 2 && audioPrefetchEnd < total) {
+                prefetchAudioFrom(audioPrefetchEnd);
+            }
         }
 
         function showStory() {
@@ -1735,6 +1752,7 @@
             segmentsContainer.innerHTML = '';
             continueBtn.textContent = 'Continue';
             showSegmentAt(0);
+            ensureAudioPrefetchAround(0);
         }
 
         function showSegmentAt(index) {
@@ -1743,6 +1761,7 @@
             segmentsContainer.innerHTML = '';
             renderSegment(index);
             updateProgress();
+            ensureAudioPrefetchAround(index);
         }
 
         function renderSegment(index) {
