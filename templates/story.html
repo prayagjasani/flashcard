@@ -966,6 +966,9 @@
                 </div>
                 <div style="padding: 12px 20px 0 20px;">
                     <input type="range" id="segmentSlider" min="0" max="0" value="0" step="1">
+                    <div style="display:flex; justify-content:flex-end; margin-top:4px;">
+                        <span id="segmentTimeLabel" style="font-size:0.75rem; color: var(--muted);"></span>
+                    </div>
                 </div>
                 <div id="segmentsContainer"></div>
                 <div class="tap-hint" id="tapHint">
@@ -1097,6 +1100,7 @@
         const storyLevelBadge = document.getElementById('storyLevelBadge');
         const srtFileInput = document.getElementById('srtFileInput');
         const segmentSlider = document.getElementById('segmentSlider');
+        const segmentTimeLabel = document.getElementById('segmentTimeLabel');
 
         // State
         const params = new URLSearchParams(location.search);
@@ -1667,6 +1671,7 @@
 
                 currentSegmentIndex = 0;
                 showStory();
+                prefetchAllAudio();
             } catch (error) {
                 console.error('Failed to load subtitles:', error);
                 loadingState.innerHTML = `
@@ -1876,6 +1881,41 @@
             return result;
         }
 
+        function getCurrentTimeMs() {
+            if (!story || !story.segments || !story.segments.length) return 0;
+            const seg = story.segments[currentSegmentIndex] || {};
+            const start = typeof seg.start_ms === 'number' ? seg.start_ms : 0;
+            return start;
+        }
+
+        function getTotalDurationMs() {
+            if (!story) return 0;
+            if (typeof story.duration_ms === 'number') return story.duration_ms;
+            if (!story.segments || !story.segments.length) return 0;
+            const last = story.segments[story.segments.length - 1];
+            if (last && typeof last.end_ms === 'number') return last.end_ms;
+            return 0;
+        }
+
+        function formatTime(ms) {
+            if (!ms || ms < 0) ms = 0;
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateTimeLabel() {
+            if (!segmentTimeLabel) return;
+            const totalMs = getTotalDurationMs();
+            if (!totalMs) {
+                segmentTimeLabel.textContent = '';
+                return;
+            }
+            const currentMs = getCurrentTimeMs();
+            segmentTimeLabel.textContent = `${formatTime(currentMs)} / ${formatTime(totalMs)}`;
+        }
+
         function updateProgress() {
             if (!story || !story.segments || !story.segments.length) return;
             const total = story.segments.length;
@@ -1889,6 +1929,7 @@
                 segmentSlider.step = 1;
                 segmentSlider.value = currentSegmentIndex;
             }
+            updateTimeLabel();
         }
 
         function showCompleted() {

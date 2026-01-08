@@ -351,3 +351,92 @@ Remember: The best language learning happens when students are entertained and w
     except Exception as e:
         print(f"[AI] Error generating custom story: {e}")
         return None
+
+
+def generate_subtitle_story(lines: list[str], level: str = "A2"):
+    """Generate translations + vocabulary for a list of subtitle lines."""
+    if not GEMINI_API_KEY:
+        return None
+
+    model = "gemini-2.5-flash"
+    endpoint = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={GEMINI_API_KEY}"
+    )
+
+    payload = {
+        "level": level,
+        "german_lines": lines,
+    }
+
+    prompt = f"""You are helping German learners understand a TV episode with subtitles.
+The target CEFR level is {level}. Keep English simple and clear.
+
+You receive a JSON object called payload with all subtitle lines:
+{json.dumps(payload, ensure_ascii=False)}
+
+CRITICAL RULES:
+- DO NOT add, remove, merge, or split lines.
+- Keep the order exactly the same.
+- For each input line in payload["german_lines"], create exactly ONE segment.
+- In each segment, set text_de to be EXACTLY that German line (unchanged).
+- Provide a natural English translation in text_en.
+- Build highlight_pairs for useful words or short phrases that appear in BOTH
+  the German and English sentences.
+- Also build a global vocabulary map that covers useful words/phrases across
+  all lines.
+
+Output ONLY a JSON object with this structure:
+{{
+  "title_de": "Short German title for the episode",
+  "title_en": "Short English title",
+  "vocabulary": {{
+    "German word or phrase": "simple English translation"
+  }},
+  "segments": [
+    {{
+      "type": "narration",
+      "speaker": "narrator",
+      "text_de": "exact German line from input",
+      "text_en": "English translation of that line",
+      "highlight_pairs": [
+        {{"de": "Wort", "en": "word", "color": 0}}
+      ]
+    }}
+  ]
+}}
+
+IMPORTANT:
+- segments.length MUST equal payload["german_lines"].length.
+- segments[i].text_de MUST be exactly payload["german_lines"][i].
+- Use color indices 0..15 per segment, unique within that segment.
+- Only include highlight_pairs where 'de' and 'en' actually appear in
+  text_de/text_en."""
+
+    body = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"response_mime_type": "application/json"},
+    }
+
+    try:
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode("utf-8")
+        parsed = json.loads(raw)
+        candidates = parsed.get("candidates") or []
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                p0 = parts[0]
+                if isinstance(p0, dict) and "text" in p0:
+                    return json.loads(p0["text"])
+        print(f"[AI] No valid response from Gemini for subtitles: {parsed}")
+        return None
+    except Exception as e:
+        print(f"[AI] Error generating subtitle story: {e}")
+        return None

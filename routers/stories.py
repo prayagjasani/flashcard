@@ -2,6 +2,8 @@ import json
 import io
 import csv
 import threading
+import re
+import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -23,7 +25,8 @@ from services.storage import (
 )
 from services.ai import (
     generate_story as _gemini_generate_story, 
-    generate_custom_story as _gemini_generate_custom_story
+    generate_custom_story as _gemini_generate_custom_story,
+    generate_subtitle_story as _gemini_generate_subtitle_story,
 )
 from services.audio import generate_story_audio_background
 from services.cache import get_cached, set_cached, invalidate_cache
@@ -413,6 +416,32 @@ def get_story_audio(deck: str, text: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _timestamp_to_ms(ts: str) -> int | None:
+    m = re.match(r"(\\d{2}):(\\d{2}):(\\d{2}),(\\d{3})", ts.strip())
+    if not m:
+        return None
+    h, m_, s, ms = map(int, m.groups())
+    return ((h * 60 + m_) * 60 + s) * 1000 + ms
+
+
+def _normalize_subtitle_text(text: str) -> str:
+    text = text.strip()
+    letters = [ch for ch in text if ch.isalpha()]
+    if not letters:
+        return text
+    upper = sum(1 for ch in letters if ch.isupper())
+    # If most letters are uppercase, treat as "all caps" subtitles and normalize
+    if upper / len(letters) < 0.6:
+        return text
+    lowered = text.lower()
+    chars = list(lowered)
+    for idx, ch in enumerate(chars):
+        if ch.isalpha():
+            chars[idx] = ch.upper()
+            break
+    return "".join(chars).strip()
+
+
 def _parse_srt(content: str):
     blocks = []
     current_lines = []
@@ -429,15 +458,28 @@ def _parse_srt(content: str):
 
     subtitles = []
     for block in blocks:
-        if len(block) >= 3:
+        start_ms = None
+        end_ms = None
+        text_lines = []
+
+        if len(block) >= 2 and "-->" in block[1]:
+            parts = block[1].split("-->")
+            if len(parts) == 2:
+                start_ms = _timestamp_to_ms(parts[0])
+                end_ms = _timestamp_to_ms(parts[1])
             text_lines = block[2:]
         elif len(block) >= 1:
             text_lines = block[1:]
-        else:
-            continue
+
         text = " ".join(text_lines).strip()
         if text:
-            subtitles.append(text)
+            subtitles.append(
+                {
+                    "text": _normalize_subtitle_text(text),
+                    "start_ms": start_ms,
+                    "end_ms": end_ms,
+                }
+            )
     return subtitles
 
 
@@ -455,12 +497,14 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
     subtitles = _parse_srt(content)
     if not subtitles:
         raise HTTPException(status_code=400, detail="Subtitle file is empty or invalid")
+    norm_level = (level or "A2").upper()
 
-    story = {
+    lines = [s["text"] for s in subtitles]
+    story = _gemini_generate_subtitle_story(lines, level=norm_level) or {
         "title_de": file.filename or "Untertitel",
         "title_en": "Subtitles",
         "characters": [],
-        "level": level.upper() if level else "A2",
+        "level": norm_level,
         "vocabulary": {},
         "segments": [
             {
@@ -468,10 +512,70 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
                 "speaker": "narrator",
                 "text_de": text,
                 "text_en": "",
-                "highlight_pairs": []
+                "highlight_pairs": [],
             }
-            for text in subtitles
-        ]
+            for text in lines
+        ],
     }
 
-    return {"story": story, "story_id": None}
+    segments = story.get("segments") or []
+    count = min(len(segments), len(subtitles))
+    segments = segments[:count]
+    subtitles = subtitles[:count]
+    story["segments"] = segments
+
+    duration_ms = 0
+    for idx, seg in enumerate(segments):
+        info = subtitles[idx]
+        start_ms = info.get("start_ms")
+        end_ms = info.get("end_ms")
+        if start_ms is not None:
+            seg["start_ms"] = start_ms
+        if end_ms is not None:
+            seg["end_ms"] = end_ms
+            if end_ms > duration_ms:
+                duration_ms = end_ms
+        # Ensure text_de exactly matches our normalized subtitle text
+        seg["text_de"] = info["text"]
+
+    if duration_ms > 0:
+        story["duration_ms"] = duration_ms
+
+    story.setdefault("title_de", file.filename or "Untertitel")
+    story.setdefault("title_en", "Subtitles")
+    story.setdefault("level", norm_level)
+
+    story_id_raw = (file.filename or "episode").rsplit("/", 1)[-1]
+    story_id_base = _safe_deck_name(story_id_raw.rsplit(".", 1)[0]) or "episode"
+    story_id = f"{story_id_base}_{int(time.time())}"
+
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            key = _story_key(story_id)
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(story).encode("utf-8"),
+                ContentType="application/json",
+            )
+            meta = {
+                "key": key,
+                "deck": story_id,
+                "last_modified": datetime.now().isoformat(),
+                "title_de": story.get("title_de"),
+                "title_en": story.get("title_en"),
+                "level": story.get("level"),
+            }
+            update_stories_index(meta)
+        except Exception:
+            pass
+
+        if story.get("segments"):
+            thread = threading.Thread(
+                target=generate_story_audio_background,
+                args=(story_id, story["segments"]),
+                daemon=True,
+            )
+            thread.start()
+
+    return {"story": story, "story_id": story_id}
