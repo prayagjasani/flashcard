@@ -410,7 +410,7 @@
             width: 90%;
             max-width: 420px;
             background: var(--card-bg);
-            border: 1px solid var(--card-border);
+            border: 1px solid #e5e5f0;
             border-radius: 18px;
             padding: 18px 18px 16px;
             box-shadow: 0 20px 45px rgba(15, 23, 42, 0.20);
@@ -418,8 +418,9 @@
         
         .modal__title {
             margin: 0 0 10px;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
+            text-align: center;
         }
         
         .modal--multi .modal__dialog {
@@ -495,33 +496,107 @@
             color: var(--muted);
         }
         
+        .modal__subtitle {
+            margin: -4px 0 14px;
+            font-size: 0.8rem;
+            text-align: center;
+            color: var(--muted);
+        }
+        
         .modal__field {
             margin-bottom: 10px;
         }
         
-        .modal__field label {
+        .modal__field-label {
             display: block;
-            font-size: 0.85rem;
-            margin-bottom: 4px;
+            font-size: 0.72rem;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
         }
         
         .modal__field input {
             width: 100%;
-            padding: 8px 10px;
-            border-radius: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
             border: 1px solid var(--card-border);
             font-size: 0.95rem;
         }
         
-        .modal__field input[type="file"] {
-            padding: 4px;
+        .modal__field input[type="file"],
+        #uploadPdfFileInput {
+            display: none;
+        }
+        
+        .upload-modal-label {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin: 12px 0 6px;
+        }
+        
+        .upload-dropzone {
+            width: 100%;
+            border-radius: 18px;
+            border: 1.5px dashed #d3d7e6;
+            background: #f9fafb;
+            padding: 22px 16px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        .upload-dropzone:focus-visible {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+            border-color: rgba(59, 130, 246, 0.6);
+        }
+        
+        .upload-dropzone-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+            color: var(--accent);
+        }
+        
+        .upload-dropzone-icon .material-symbols-outlined {
+            font-size: 26px;
+        }
+        
+        .upload-dropzone-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .upload-dropzone-subtitle {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+        
+        .upload-dropzone-filename {
+            font-size: 0.78rem;
+            color: var(--muted);
+            max-width: 100%;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
         }
         
         .modal__actions {
             display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 6px;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 14px;
+            align-items: stretch;
         }
         
         .btn {
@@ -547,10 +622,41 @@
             color: #ffffff;
         }
         
+        .btn--upload-primary {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: #ffffff;
+            padding-block: 10px;
+            font-weight: 600;
+        }
+        
+        .btn--upload-primary .material-symbols-outlined {
+            font-size: 18px;
+            vertical-align: middle;
+        }
+        
+        .btn--text-muted {
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-size: 0.8rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+        
         .modal__status {
             font-size: 0.8rem;
             margin-top: 6px;
             min-height: 16px;
+            color: var(--muted);
+        }
+        
+        .upload-max-hint {
+            margin: 10px 0 0;
+            font-size: 0.73rem;
+            text-align: center;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
             color: var(--muted);
         }
         
@@ -737,20 +843,29 @@
     <div class="modal" id="uploadPdfModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-upload="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="uploadPdfTitle">
-            <h2 id="uploadPdfTitle" class="modal__title">Upload PDF</h2>
+            <h2 id="uploadPdfTitle" class="modal__title">Upload your File!</h2>
+            <p class="modal__subtitle">Let’s get this learning started</p>
             <div class="modal__field">
-                <label for="uploadPdfNameInput">Name</label>
-                <input id="uploadPdfNameInput" type="text">
+                <span class="modal__field-label">Name your document</span>
+                <input id="uploadPdfNameInput" type="text" placeholder="e.g., French Homework...">
             </div>
-            <div class="modal__field">
-                <label for="uploadPdfFileInput">PDF file</label>
-                <input id="uploadPdfFileInput" type="file" accept="application/pdf">
-            </div>
+            <div class="upload-modal-label">Attachment</div>
+            <button class="upload-dropzone" id="uploadPdfChooseBtn" type="button">
+                <div class="upload-dropzone-icon">
+                    <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                </div>
+                <div class="upload-dropzone-title">Tap to choose a PDF</div>
+                <div class="upload-dropzone-subtitle">Max file size 25MB</div>
+                <div class="upload-dropzone-filename" id="uploadPdfFileName">No file chosen</div>
+            </button>
+            <input id="uploadPdfFileInput" type="file" accept="application/pdf">
             <div class="modal__actions">
-                <button class="btn" id="uploadPdfCancelBtn" type="button">Cancel</button>
-                <button class="btn btn--primary" id="uploadPdfSaveBtn" type="button">Upload</button>
+                <button class="btn btn--upload-primary" id="uploadPdfSaveBtn" type="button">
+                    Upload PDF
+                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                </button>
+                <button class="btn btn--text-muted" id="uploadPdfCancelBtn" type="button">No thanks</button>
             </div>
-            <p class="modal__status" id="uploadPdfStatus"></p>
         </div>
     </div>
     <div class="modal" id="renamePdfModal" aria-hidden="true">
@@ -839,9 +954,10 @@
         const uploadPdfModal = document.getElementById('uploadPdfModal');
         const uploadPdfNameInput = document.getElementById('uploadPdfNameInput');
         const uploadPdfFileInput = document.getElementById('uploadPdfFileInput');
+        const uploadPdfChooseBtn = document.getElementById('uploadPdfChooseBtn');
+        const uploadPdfFileName = document.getElementById('uploadPdfFileName');
         const uploadPdfCancelBtn = document.getElementById('uploadPdfCancelBtn');
         const uploadPdfSaveBtn = document.getElementById('uploadPdfSaveBtn');
-        const uploadPdfStatus = document.getElementById('uploadPdfStatus');
         const renamePdfModal = document.getElementById('renamePdfModal');
         const renamePdfNameInput = document.getElementById('renamePdfNameInput');
         const renamePdfCancelBtn = document.getElementById('renamePdfCancelBtn');
@@ -898,9 +1014,9 @@
 
         function openUploadModal() {
             if (!uploadPdfModal) return;
-            uploadPdfStatus.textContent = '';
             uploadPdfNameInput.value = '';
             uploadPdfFileInput.value = '';
+            if (uploadPdfFileName) uploadPdfFileName.textContent = 'No file chosen';
             uploadPdfModal.classList.add('is-open');
             uploadPdfModal.setAttribute('aria-hidden', 'false');
         }
@@ -922,20 +1038,28 @@
                 closeUploadModal();
             }
         });
+        if (uploadPdfChooseBtn && uploadPdfFileInput) {
+            uploadPdfChooseBtn.addEventListener('click', () => {
+                uploadPdfFileInput.click();
+            });
+        }
+        if (uploadPdfFileInput && uploadPdfFileName) {
+            uploadPdfFileInput.addEventListener('change', () => {
+                const file = uploadPdfFileInput.files && uploadPdfFileInput.files[0];
+                uploadPdfFileName.textContent = file ? file.name : 'No file chosen';
+            });
+        }
         async function doUploadPdf() {
             const name = (uploadPdfNameInput.value || '').trim();
             const file = uploadPdfFileInput.files && uploadPdfFileInput.files[0];
             if (!name) {
-                uploadPdfStatus.textContent = 'Enter name';
                 return;
             }
             if (!file) {
-                uploadPdfStatus.textContent = 'Choose PDF';
                 return;
             }
             uploadPdfSaveBtn.disabled = true;
             uploadPdfSaveBtn.textContent = 'Uploading...';
-            uploadPdfStatus.textContent = '';
             try {
                 const form = new FormData();
                 form.append('name', name);
@@ -951,9 +1075,7 @@
                 }
                 await loadPdfs();
                 closeUploadModal();
-            } catch (e) {
-                uploadPdfStatus.textContent = String(e && e.message ? e.message : e || 'Upload failed');
-            } finally {
+            } catch (e) {} finally {
                 uploadPdfSaveBtn.disabled = false;
                 uploadPdfSaveBtn.textContent = 'Upload';
             }
