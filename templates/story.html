@@ -1146,6 +1146,7 @@
         let currentDeck = params.get('deck') || '';
         let story = null;
         let vocabulary = {};
+        let sentenceUnits = [];
 
         // Common German words fallback dictionary
         const commonWords = {
@@ -1505,6 +1506,55 @@
             }).catch(err => console.warn('Background delete failed:', err));
         }
 
+        function splitTextIntoSentences(text) {
+            const result = [];
+            if (!text) return result;
+            let current = '';
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                current += ch;
+                if (ch === '.' || ch === '!' || ch === '?') {
+                    let j = i + 1;
+                    while (j < text.length && /\s/.test(text[j])) {
+                        j++;
+                    }
+                    result.push(current.trim());
+                    current = '';
+                    i = j - 1;
+                }
+            }
+            if (current.trim()) {
+                result.push(current.trim());
+            }
+            return result;
+        }
+
+        function rebuildSentenceUnits() {
+            sentenceUnits = [];
+            if (!story || !Array.isArray(story.segments)) return;
+            for (let segIndex = 0; segIndex < story.segments.length; segIndex++) {
+                const seg = story.segments[segIndex] || {};
+                const textDe = (seg.text_de || '').trim();
+                const textEn = (seg.text_en || '').trim();
+                if (!textDe) continue;
+                const deParts = splitTextIntoSentences(textDe);
+                const enParts = textEn ? splitTextIntoSentences(textEn) : [];
+                deParts.forEach((deSentence, idx) => {
+                    sentenceUnits.push({
+                        segmentIndex: segIndex,
+                        sentenceIndex: idx,
+                        text_de: deSentence,
+                        text_en: enParts[idx] || textEn,
+                        type: seg.type || 'narration',
+                        speaker: seg.speaker || 'narrator',
+                        highlight_pairs: seg.highlight_pairs || [],
+                        highlight_words: seg.highlight_words || [],
+                        full_vocabulary: seg.full_vocabulary || null
+                    });
+                });
+            }
+        }
+
         async function loadStory(deck, refresh = false) {
             currentDeck = deck;
 
@@ -1556,6 +1606,11 @@
                 }
 
                 if (!story.segments || story.segments.length === 0) {
+                    throw new Error('Story has no content');
+                }
+
+                rebuildSentenceUnits();
+                if (!sentenceUnits.length) {
                     throw new Error('Story has no content');
                 }
 
@@ -1635,6 +1690,11 @@
                 }
 
                 if (!story.segments || story.segments.length === 0) {
+                    throw new Error('Story has no content');
+                }
+
+                rebuildSentenceUnits();
+                if (!sentenceUnits.length) {
                     throw new Error('Story has no content');
                 }
 
@@ -1719,9 +1779,14 @@
                     throw new Error('Story has no content');
                 }
 
+                rebuildSentenceUnits();
+                if (!sentenceUnits.length) {
+                    throw new Error('Story has no content');
+                }
+
                 currentSegmentIndex = 0;
                 showStory();
-                prefetchAllAudio();
+                ensureAudioPrefetchAround(0);
             } catch (error) {
                 console.error('Failed to process story:', error);
                 loadingState.innerHTML = `
@@ -1787,9 +1852,14 @@
                     throw new Error('Story has no content');
                 }
 
+                rebuildSentenceUnits();
+                if (!sentenceUnits.length) {
+                    throw new Error('Story has no content');
+                }
+
                 currentSegmentIndex = 0;
                 showStory();
-                prefetchAllAudio();
+                ensureAudioPrefetchAround(0);
             } catch (error) {
                 console.error('Failed to load subtitles:', error);
                 loadingState.innerHTML = `
@@ -1806,15 +1876,15 @@
         }
 
         async function prefetchAudioFrom(startIndex) {
-            if (!story || !story.segments) return;
-            const totalSegments = story.segments.length;
-            if (startIndex >= totalSegments) return;
+            if (!sentenceUnits || !sentenceUnits.length) return;
+            const totalUnits = sentenceUnits.length;
+            if (startIndex >= totalUnits) return;
 
-            const end = Math.min(startIndex + AUDIO_PREFETCH_BATCH, totalSegments);
+            const end = Math.min(startIndex + AUDIO_PREFETCH_BATCH, totalUnits);
             const texts = new Set();
             for (let i = startIndex; i < end; i++) {
-                const seg = story.segments[i];
-                const text = (seg.text_de || '').trim();
+                const unit = sentenceUnits[i];
+                const text = (unit.text_de || '').trim();
                 if (text && !audioCache.has(text)) {
                     texts.add(text);
                 }
@@ -1839,8 +1909,8 @@
         }
 
         function ensureAudioPrefetchAround(index) {
-            if (!story || !story.segments) return;
-            const total = story.segments.length;
+            if (!sentenceUnits || !sentenceUnits.length) return;
+            const total = sentenceUnits.length;
             if (total === 0) return;
             if (audioPrefetchEnd === 0) {
                 prefetchAudioFrom(0);
@@ -1872,11 +1942,13 @@
             renderedSegmentCount = 0;
             continueBtn.textContent = 'Continue';
             continueBtn.disabled = true;
-            showSegmentAt(0);
+            if (sentenceUnits.length > 0) {
+                showSegmentAt(0);
+            }
         }
 
         function showSegmentAt(index) {
-            if (!story || !story.segments || index < 0 || index >= story.segments.length) return;
+            if (!sentenceUnits || index < 0 || index >= sentenceUnits.length) return;
             if (!Number.isInteger(renderedSegmentCount) || renderedSegmentCount < 0) {
                 renderedSegmentCount = 0;
             }
@@ -1895,22 +1967,24 @@
         }
 
         function renderSegment(index, shouldAutoPlay) {
-            const segment = story.segments[index];
-            if (!segment) return;
+            const unit = sentenceUnits[index];
+            if (!unit) return;
+            const segment = story && story.segments ? (story.segments[unit.segmentIndex] || {}) : {};
 
             const div = document.createElement('div');
-            div.className = `story-segment story-segment-enter segment-${segment.type || 'narration'}`;
+            div.className = `story-segment story-segment-enter segment-${unit.type || segment.type || 'narration'}`;
             div.dataset.index = index;
 
             let html = '';
-            const isDialogueWithSpeaker = segment.type === 'dialogue' && segment.speaker && segment.speaker !== 'narrator';
+            const speakerName = unit.speaker || segment.speaker;
+            const isDialogueWithSpeaker = (unit.type || segment.type) === 'dialogue' && speakerName && speakerName !== 'narrator';
 
             if (isDialogueWithSpeaker) {
                 html += `
                     <div class="segment-speaker">
-                        <div class="speaker-avatar ${getAvatarClass(segment.speaker)}">${getInitial(segment.speaker)}</div>
-                        <span class="speaker-name">${segment.speaker}</span>
-                        <button class="audio-btn" data-text="${(segment.text_de || '').replace(/"/g, '&quot;')}">
+                        <div class="speaker-avatar ${getAvatarClass(speakerName)}">${getInitial(speakerName)}</div>
+                        <span class="speaker-name">${speakerName}</span>
+                        <button class="audio-btn" data-text="${(unit.text_de || '').replace(/"/g, '&quot;')}">
                             <span class="material-symbols-outlined">volume_up</span>
                         </button>
                     </div>
@@ -1951,10 +2025,12 @@
             segment._colorMapEn = colorMapEn;
             }
 
-            const cachedDe = segment._highlightedTextDe;
-            const cachedEn = segment._highlightedTextEn;
-            const textDe = cachedDe || (segment._highlightedTextDe = highlightWordsInText(segment.text_de || '', colorMapDe).replace(/\n/g, '<br>'));
-            const textEn = cachedEn || (segment._highlightedTextEn = highlightWordsInText(segment.text_en || '', colorMapEn).replace(/\n/g, '<br>'));
+            const cachedDe = unit._highlightedTextDe;
+            const cachedEn = unit._highlightedTextEn;
+            const baseTextDe = unit.text_de || '';
+            const baseTextEn = unit.text_en || '';
+            const textDe = cachedDe || (unit._highlightedTextDe = highlightWordsInText(baseTextDe, colorMapDe));
+            const textEn = cachedEn || (unit._highlightedTextEn = highlightWordsInText(baseTextEn, colorMapEn));
 
             if (isDialogueWithSpeaker) {
                 html += `
@@ -1968,7 +2044,7 @@
             } else {
                 html += `
                     <div class="segment-content">
-                        <button class="audio-btn" data-text="${(segment.text_de || '').replace(/"/g, '&quot;')}">
+                        <button class="audio-btn" data-text="${(unit.text_de || '').replace(/"/g, '&quot;')}">
                             <span class="material-symbols-outlined">volume_up</span>
                         </button>
                         <div>
@@ -1992,7 +2068,7 @@
             });
 
             if (shouldAutoPlay) {
-                setTimeout(() => playAudio(segment.text_de), 300);
+                setTimeout(() => playAudio(unit.text_de), 300);
             }
 
             continueBtn.textContent = 'Continue';
@@ -2055,8 +2131,8 @@
         }
 
         function updateProgress() {
-            if (!story || !story.segments || !story.segments.length) return;
-            const total = story.segments.length;
+            if (!sentenceUnits || !sentenceUnits.length) return;
+            const total = sentenceUnits.length;
             const current = currentSegmentIndex + 1;
             const progress = (current / total) * 100;
             progressBar.style.width = `${progress}%`;
@@ -2180,9 +2256,12 @@
 
             const segmentEl = tappable.closest('.story-segment');
             let segment = null;
-            if (segmentEl && story && Array.isArray(story.segments)) {
+            if (segmentEl && sentenceUnits && Array.isArray(sentenceUnits) && story && Array.isArray(story.segments)) {
                 const idx = parseInt(segmentEl.dataset.index, 10);
-                segment = story.segments[idx];
+                const unit = sentenceUnits[idx];
+                if (unit && typeof unit.segmentIndex === 'number') {
+                    segment = story.segments[unit.segmentIndex];
+                }
             }
 
             let meaning = '';
@@ -2300,9 +2379,9 @@
         deleteStoryBtn.addEventListener('click', deleteSelectedStory);
 
         continueBtn.addEventListener('click', () => {
-            if (!story || !story.segments || !story.segments.length) return;
+            if (!sentenceUnits || !sentenceUnits.length) return;
             const next = currentSegmentIndex + 1;
-            if (next >= story.segments.length) {
+            if (next >= sentenceUnits.length) {
                 showCompleted();
             } else {
                 showSegmentAt(next);
@@ -2311,6 +2390,7 @@
 
         restartBtn.addEventListener('click', () => {
             currentSegmentIndex = 0;
+            renderedSegmentCount = 0;
             segmentsContainer.innerHTML = '';
             showSegmentAt(0);
         });
