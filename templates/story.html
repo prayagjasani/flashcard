@@ -1782,39 +1782,42 @@
                 `;
             }
 
-            // Build vocabulary color mapping from AI-provided highlight_pairs
-            const highlightPairs = segment.highlight_pairs || [];
-            const colorMapDe = {};
-            const colorMapEn = {};
+            let colorMapDe = segment._colorMapDe;
+            let colorMapEn = segment._colorMapEn;
 
-            if (highlightPairs.length > 0) {
-                const textDeLower = (segment.text_de || '').toLowerCase();
-                const textEnLower = (segment.text_en || '').toLowerCase();
+            if (!colorMapDe || !colorMapEn) {
+                const highlightPairs = segment.highlight_pairs || [];
+                colorMapDe = {};
+                colorMapEn = {};
 
-                // Only include pairs where BOTH German and English words exist in their texts
-                highlightPairs.forEach(pair => {
-                    const deWord = (pair.de || '').toLowerCase().trim();
-                    const enWord = (pair.en || '').toLowerCase().trim();
+                if (highlightPairs.length > 0) {
+                    const textDeLower = (segment.text_de || '').toLowerCase();
+                    const textEnLower = (segment.text_en || '').toLowerCase();
 
-                    // Check if both words actually appear in their respective texts
-                    const deExists = deWord && textDeLower.includes(deWord);
-                    const enExists = enWord && textEnLower.includes(enWord);
+                    highlightPairs.forEach(pair => {
+                        const deWord = (pair.de || '').toLowerCase().trim();
+                        const enWord = (pair.en || '').toLowerCase().trim();
 
-                    if (deExists && enExists) {
-                        colorMapDe[deWord] = pair.color;
-                        colorMapEn[enWord] = pair.color;
-                    }
-                });
-            } else if (segment.highlight_words && segment.highlight_words.length > 0) {
-                // Old format fallback: generate colors for highlight_words
-                segment.highlight_words.forEach((word, idx) => {
-                    colorMapDe[word.toLowerCase()] = idx % 16;
-                });
-                // For old format, no English highlighting (we don't have the mapping)
+                        const deExists = deWord && textDeLower.includes(deWord);
+                        const enExists = enWord && textEnLower.includes(enWord);
+
+                        if (deExists && enExists) {
+                            colorMapDe[deWord] = pair.color;
+                            colorMapEn[enWord] = pair.color;
+                        }
+                    });
+                } else if (segment.highlight_words && segment.highlight_words.length > 0) {
+                    segment.highlight_words.forEach((word, idx) => {
+                        colorMapDe[word.toLowerCase()] = idx % 16;
+                    });
+                }
+
+                segment._colorMapDe = colorMapDe;
+                segment._colorMapEn = colorMapEn;
             }
 
-            const textDe = highlightWordsInText(segment.text_de || '', colorMapDe);
-            const textEn = highlightWordsInText(segment.text_en || '', colorMapEn);
+            const textDe = segment._highlightedTextDe || (segment._highlightedTextDe = highlightWordsInText(segment.text_de || '', colorMapDe));
+            const textEn = segment._highlightedTextEn || (segment._highlightedTextEn = highlightWordsInText(segment.text_en || '', colorMapEn));
 
             html += `
                 <div class="segment-content">
