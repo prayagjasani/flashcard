@@ -549,6 +549,12 @@
             margin: 0;
         }
         
+        .story-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .story-subtitle {
             font-size: 0.9rem;
             opacity: 0.9;
@@ -565,47 +571,29 @@
             text-transform: uppercase;
             white-space: nowrap;
         }
-        /* Story segment */
         
-        .now-line {
-            padding: 16px 24px 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.75rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--muted);
-            border-bottom: 1px solid var(--card-border);
-            opacity: 0;
-        }
-        
-        .now-line::before {
-            content: '';
-            width: 6px;
-            height: 6px;
+        .audio-toggle-btn {
+            width: 32px;
+            height: 32px;
             border-radius: 999px;
-            background: var(--accent);
+            border: none;
+            background: rgba(15, 23, 42, 0.06);
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
         
-        .now-line-visible {
-            animation: nowLineFadeIn 0.5s ease-in forwards;
+        .audio-toggle-btn-icon {
+            font-size: 20px;
         }
         
-        @keyframes nowLineFadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
+        .audio-toggle-btn.audio-off {
+            background: rgba(148, 163, 184, 0.25);
+            color: #6b7280;
         }
-        
-        @supports not (animation: nowLineFadeIn 0.5s ease-in forwards) {
-            .now-line {
-                opacity: 1;
-            }
-        }
+        /* Story segment */
         
         .story-segment {
             padding: 24px;
@@ -640,6 +628,14 @@
             align-items: center;
             gap: 10px;
             margin-bottom: 12px;
+            position: relative;
+        }
+        
+        .segment-speaker .audio-btn {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
         }
         
         .speaker-avatar {
@@ -674,6 +670,7 @@
         .speaker-name {
             font-weight: 600;
             color: var(--text);
+            flex: 1;
         }
         
         .segment-content {
@@ -683,8 +680,8 @@
         }
         
         .audio-btn {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border: none;
             background: rgba(59, 130, 246, 0.1);
             color: var(--accent);
@@ -711,6 +708,13 @@
             color: var(--text);
             flex: 1;
             margin: 0;
+        }
+        
+        .segment-translation {
+            margin-top: 4px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--muted);
         }
         
         .word-highlight {
@@ -825,7 +829,7 @@
             padding-top: 4px;
             border-top: 1px dotted var(--card-border);
             font-size: 0.9rem;
-            color: var(--text);
+            color: var(--muted);
         }
         
         .tap-hint {
@@ -951,17 +955,18 @@
                 <span class="material-symbols-outlined">arrow_back</span>
             </button>
 
-            <!-- For story list view -->
             <span class="header-title" id="headerTitle">Stories</span>
             <div class="story-list-header">
                 <button class="create-story-btn" id="createStoryBtn">+</button>
             </div>
 
-            <!-- For reading view (hidden by default) -->
             <div class="progress-container" id="progressContainer" style="display: none;">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
             <span class="progress-text" id="progressText" style="display: none;">0/0</span>
+            <button class="audio-toggle-btn" id="audioToggleBtn" type="button" style="display:none;">
+                <span class="material-symbols-outlined audio-toggle-btn-icon" id="audioToggleIcon">volume_up</span>
+            </button>
         </div>
     </header>
 
@@ -993,7 +998,9 @@
                 <div class="story-header">
                     <div class="story-header-top">
                         <h1 class="story-title" id="storyTitle"></h1>
-                        <span class="story-level-badge" id="storyLevelBadge" style="display: none;"></span>
+                        <div class="story-header-right">
+                            <span class="story-level-badge" id="storyLevelBadge" style="display: none;"></span>
+                        </div>
                     </div>
                     <p class="story-subtitle" id="storySubtitle"></p>
                 </div>
@@ -1126,6 +1133,8 @@
         const tooltip = document.getElementById('tooltip');
         const storyLevelBadge = document.getElementById('storyLevelBadge');
         const srtFileInput = document.getElementById('srtFileInput');
+        const audioToggleBtn = document.getElementById('audioToggleBtn');
+        const audioToggleIcon = document.getElementById('audioToggleIcon');
 
         // State
         const params = new URLSearchParams(location.search);
@@ -1235,6 +1244,7 @@
         let selectedStoryForAction = null;
         let longPressTimer = null;
         const LONG_PRESS_DURATION = 500;
+        let isAudioEnabled = true;
 
         const avatarClasses = ['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4'];
 
@@ -1291,6 +1301,7 @@
                     createStoryBtn.style.display = 'flex';
                     progressContainer.style.display = 'none';
                     progressText.style.display = 'none';
+                    if (audioToggleBtn) audioToggleBtn.style.display = 'none';
                     mainContent.classList.remove('with-continue');
                     isReadingMode = false;
 
@@ -1308,6 +1319,7 @@
                     createStoryBtn.style.display = 'flex';
                     progressContainer.style.display = 'none';
                     progressText.style.display = 'none';
+                    if (audioToggleBtn) audioToggleBtn.style.display = 'none';
                     mainContent.classList.remove('with-continue');
                     isReadingMode = false;
                 }
@@ -1511,6 +1523,7 @@
             createStoryBtn.style.display = 'none';
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
+            if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1585,6 +1598,7 @@
             createStoryBtn.style.display = 'none';
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
+            if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1664,6 +1678,7 @@
             createStoryBtn.style.display = 'none';
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
+            if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1757,22 +1772,7 @@
                 prefetchAudioFrom(audioPrefetchEnd);
             }
         }
-
-        function startStoryWithNowLine() {
-            const nowLine = document.createElement('div');
-            nowLine.className = 'now-line';
-            nowLine.textContent = 'Now';
-            segmentsContainer.appendChild(nowLine);
-
-            requestAnimationFrame(() => {
-                nowLine.classList.add('now-line-visible');
-            });
-
-            setTimeout(() => {
-                showSegmentAt(0);
-            }, 500);
-        }
-
+        
         function showStory() {
             loadingState.style.display = 'none';
             storyContent.style.display = 'block';
@@ -1794,7 +1794,7 @@
             renderedSegmentCount = 0;
             continueBtn.textContent = 'Continue';
             continueBtn.disabled = true;
-            startStoryWithNowLine();
+            showSegmentAt(0);
         }
 
         function showSegmentAt(index) {
@@ -1825,12 +1825,16 @@
             div.dataset.index = index;
 
             let html = '';
+            const isDialogueWithSpeaker = segment.type === 'dialogue' && segment.speaker && segment.speaker !== 'narrator';
 
-            if (segment.type === 'dialogue' && segment.speaker && segment.speaker !== 'narrator') {
+            if (isDialogueWithSpeaker) {
                 html += `
                     <div class="segment-speaker">
                         <div class="speaker-avatar ${getAvatarClass(segment.speaker)}">${getInitial(segment.speaker)}</div>
                         <span class="speaker-name">${segment.speaker}</span>
+                        <button class="audio-btn" data-text="${(segment.text_de || '').replace(/"/g, '&quot;')}">
+                            <span class="material-symbols-outlined">volume_up</span>
+                        </button>
                     </div>
                 `;
             }
@@ -1874,17 +1878,28 @@
             const textDe = cachedDe || (segment._highlightedTextDe = highlightWordsInText(segment.text_de || '', colorMapDe).replace(/\n/g, '<br>'));
             const textEn = cachedEn || (segment._highlightedTextEn = highlightWordsInText(segment.text_en || '', colorMapEn).replace(/\n/g, '<br>'));
 
-            html += `
-                <div class="segment-content">
-                    <button class="audio-btn" data-text="${(segment.text_de || '').replace(/"/g, '&quot;')}">
-                        <span class="material-symbols-outlined">volume_up</span>
-                    </button>
-                    <div>
-                        <p class="segment-text">${textDe}</p>
-                        <p class="segment-translation visible">${textEn}</p>
+            if (isDialogueWithSpeaker) {
+                html += `
+                    <div class="segment-content">
+                        <div>
+                            <p class="segment-text">${textDe}</p>
+                            <p class="segment-translation visible">${textEn}</p>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                html += `
+                    <div class="segment-content">
+                        <button class="audio-btn" data-text="${(segment.text_de || '').replace(/"/g, '&quot;')}">
+                            <span class="material-symbols-outlined">volume_up</span>
+                        </button>
+                        <div>
+                            <p class="segment-text">${textDe}</p>
+                            <p class="segment-translation visible">${textEn}</p>
+                        </div>
+                    </div>
+                `;
+            }
 
             div.innerHTML = html;
             segmentsContainer.appendChild(div);
@@ -1986,9 +2001,31 @@
             });
         }
 
+        function updateAudioToggleUI() {
+            if (!audioToggleBtn || !audioToggleIcon) return;
+            if (isAudioEnabled) {
+                audioToggleBtn.classList.remove('audio-off');
+                audioToggleIcon.textContent = 'volume_up';
+            } else {
+                audioToggleBtn.classList.add('audio-off');
+                audioToggleIcon.textContent = 'volume_off';
+            }
+        }
+
+        if (audioToggleBtn) {
+            audioToggleBtn.addEventListener('click', () => {
+                isAudioEnabled = !isAudioEnabled;
+                if (!isAudioEnabled) {
+                    audioPlayer.pause();
+                }
+                updateAudioToggleUI();
+            });
+            updateAudioToggleUI();
+        }
+
 
         async function playAudio(text) {
-            if (!text) return;
+            if (!text || !isAudioEnabled) return;
             try {
                 audioPlayer.pause();
                 audioPlayer.currentTime = 0;
