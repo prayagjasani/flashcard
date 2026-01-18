@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from gtts import gTTS
 from botocore.exceptions import ClientError
 
-from models import CustomStoryRequest
+from models import CustomStoryRequest, TextStoryRequest
 from services.storage import (
     r2_client, R2_BUCKET_NAME, 
     story_key as _story_key, 
@@ -313,6 +313,94 @@ def generate_custom_story(payload: CustomStoryRequest):
         )
         thread.start()
     
+    return {"story": story, "story_id": safe_id}
+
+
+@router.post("/story/from_text")
+def story_from_text(payload: TextStoryRequest):
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    level = (payload.level or "A2").upper()
+    valid_levels = {"A1", "A2", "B1", "B2", "C1", "C2"}
+    if level not in valid_levels:
+        level = "A2"
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        raise HTTPException(status_code=400, detail="Text has no content")
+
+    story = _gemini_generate_subtitle_story(lines, level=level)
+    if not isinstance(story, dict):
+        story = {}
+    story.setdefault("title_de", "Eigene Geschichte")
+    story.setdefault("title_en", "Custom Story");
+    story.setdefault("characters", [])
+    story.setdefault("level", level)
+    story.setdefault("vocabulary", {})
+    story.setdefault(
+        "segments",
+        [
+            {
+                "type": "narration",
+                "speaker": "narrator",
+                "text_de": text_line,
+                "text_en": "",
+                "highlight_pairs": [],
+            }
+            for text_line in lines
+        ],
+    )
+
+    segments = story.get("segments") or []
+    count = min(len(segments), len(lines))
+    segments = segments[:count]
+    cleaned_segments = []
+    for idx, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            seg = {}
+        text_de = lines[idx]
+        seg.setdefault("type", "narration")
+        seg.setdefault("speaker", "narrator")
+        seg.setdefault("text_de", text_de)
+        seg.setdefault("text_en", "")
+        seg.setdefault("highlight_pairs", [])
+        cleaned_segments.append(seg)
+    story["segments"] = cleaned_segments
+
+    raw_id = payload.story_id or f"text_{int(time.time())}"
+    safe_id = _safe_deck_name(raw_id)
+
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            key = _story_key(safe_id)
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(story).encode("utf-8"),
+                ContentType="application/json",
+            )
+            meta = {
+                "key": key,
+                "deck": safe_id,
+                "last_modified": datetime.now().isoformat(),
+                "title_de": story.get("title_de"),
+                "title_en": story.get("title_en"),
+                "level": story.get("level"),
+            }
+            update_stories_index(meta)
+        except Exception:
+            pass
+
+        if story.get("segments"):
+            thread = threading.Thread(
+                target=generate_story_audio_background,
+                args=(safe_id, story["segments"]),
+                daemon=True,
+            )
+            thread.start()
+
     return {"story": story, "story_id": safe_id}
 
 @router.delete("/story/delete")

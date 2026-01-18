@@ -1062,6 +1062,10 @@
                     What kind of story would you like to read?
                 </p>
                 <input type="text" id="storyTopicInput" placeholder="e.g., a trip to the airport, ordering food at a café..." style="width: 100%; padding: 14px 16px; border: 1px solid var(--card-border); border-radius: 12px; font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;">
+                <p style="color: var(--muted); font-size: 0.85rem; margin: 12px 0 8px 0;">
+                    Or paste your own German story below
+                </p>
+                <textarea id="storyTextInput" placeholder="Paste your German story here..." style="width: 100%; min-height: 120px; padding: 12px 14px; border: 1px solid var(--card-border); border-radius: 12px; font-size: 0.95rem; font-family: inherit; outline: none; resize: vertical; box-sizing: border-box;"></textarea>
                 <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
                     <label for="storyLevelSelect" style="font-size: 0.85rem; color: var(--muted);">
                         German level
@@ -1127,6 +1131,7 @@
         const createModalBackdrop = document.getElementById('createModalBackdrop');
         const createModalClose = document.getElementById('createModalClose');
         const storyTopicInput = document.getElementById('storyTopicInput');
+        const storyTextInput = document.getElementById('storyTextInput');
         const storyLevelSelect = document.getElementById('storyLevelSelect');
         const createStorySubmit = document.getElementById('createStorySubmit');
         const randomStoryBtn = document.getElementById('randomStoryBtn');
@@ -1657,6 +1662,79 @@
             }
         }
 
+        async function loadStoryFromText(text, level) {
+            const storyId = 'text_' + Date.now();
+            currentDeck = storyId;
+
+            audioCache.forEach(url => {
+                if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+            });
+            audioCache.clear();
+            audioPrefetchEnd = 0;
+            vocabulary = {};
+
+            loadingState.style.display = 'flex';
+            loadingText.textContent = 'Processing your story...';
+            storyListView.style.display = 'none';
+            storyContent.style.display = 'none';
+            completedState.style.display = 'none';
+            continueContainer.style.display = 'none';
+
+            headerTitle.style.display = 'none';
+            createStoryBtn.style.display = 'none';
+            progressContainer.style.display = 'block';
+            progressText.style.display = 'block';
+            if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
+            mainContent.classList.add('with-continue');
+            isReadingMode = true;
+
+            try {
+                const resp = await fetch('/story/from_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, story_id: storyId, level: level || 'A2' })
+                });
+                const data = await resp.json();
+
+                if (!resp.ok) throw new Error(data.detail || 'Failed to process story');
+
+                story = data.story;
+                currentDeck = data.story_id || storyId;
+                characters = story.characters || [];
+
+                vocabulary = {};
+                if (story.vocabulary && Object.keys(story.vocabulary).length > 0) {
+                    Object.entries(story.vocabulary).forEach(([de, en]) => {
+                        addToVocabulary(de, en);
+                    });
+                } else if (story.segments) {
+                    story.segments.forEach(seg => {
+                        (seg.highlight_pairs || []).forEach(pair => {
+                            addToVocabulary(pair.de, pair.en);
+                        });
+                    });
+                }
+
+                if (!story.segments || story.segments.length === 0) {
+                    throw new Error('Story has no content');
+                }
+
+                currentSegmentIndex = 0;
+                showStory();
+                prefetchAllAudio();
+            } catch (error) {
+                console.error('Failed to process story:', error);
+                loadingState.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state__emoji">😕</div>
+                        <h3 class="empty-state__title">Failed to process story</h3>
+                        <p class="empty-state__text">${error.message}</p>
+                        <button class="btn-secondary" onclick="loadStoryList()">Back to Stories</button>
+                    </div>
+                `;
+            }
+        }
+
         async function loadStoryFromSrt(file) {
             if (!file) return;
 
@@ -2046,6 +2124,7 @@
         // Create story modal
         function openCreateModal() {
             storyTopicInput.value = '';
+            if (storyTextInput) storyTextInput.value = '';
             storyLevelSelect.value = 'A2';
             createModal.classList.add('visible');
             setTimeout(() => storyTopicInput.focus(), 100);
@@ -2059,6 +2138,12 @@
             closeCreateModal();
             const level = storyLevelSelect.value || 'A2';
             await loadStoryWithTopic(topic, level);
+        }
+
+        async function createStoryFromText(text) {
+            closeCreateModal();
+            const level = storyLevelSelect.value || 'A2';
+            await loadStoryFromText(text, level);
         }
 
         async function createRandomStory() {
@@ -2189,8 +2274,11 @@
         createModalBackdrop.addEventListener('click', closeCreateModal);
         createModalClose.addEventListener('click', closeCreateModal);
         createStorySubmit.addEventListener('click', () => {
+            const pasted = storyTextInput ? storyTextInput.value.trim() : '';
             const topic = storyTopicInput.value.trim();
-            if (topic) {
+            if (pasted) {
+                createStoryFromText(pasted);
+            } else if (topic) {
                 createStoryWithTopic(topic);
             } else {
                 storyTopicInput.focus();

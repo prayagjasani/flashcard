@@ -89,6 +89,12 @@ class CustomStoryRequest(BaseModel):
     level: str | None = "A2"
 
 
+class TextStoryRequest(BaseModel):
+    text: str
+    story_id: str | None = None
+    level: str | None = "A2"
+
+
 # AI Response Models for validation
 class StorySegment(BaseModel):
     """A single segment of a story (dialogue or narration)."""
