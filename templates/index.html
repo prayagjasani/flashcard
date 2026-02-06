@@ -770,6 +770,17 @@
             border-bottom: none;
         }
         
+        .word-list-en-cell {
+            position: relative;
+            cursor: pointer;
+            transition: filter 0.2s ease;
+        }
+        
+        .word-list-en-blurred {
+            filter: blur(6px);
+            user-select: none;
+        }
+        
         .word-list-empty {
             padding: 20px;
             text-align: center;
@@ -2015,6 +2026,7 @@
 
         // Track practiced words
         let practicedWords = [];
+        const wordRevealTimers = new WeakMap();
         const spellingBtn = document.getElementById('spellingBtn');
         const homeBtn = document.getElementById('homeBtn');
         const deckGrid = document.getElementById('deckGrid');
@@ -4038,13 +4050,14 @@
         function renderWordList() {
             if (!wordListGrid) return;
 
-            // Update count
+            const wrongItems = practicedWords.filter(item => item && item.isWrong);
+
             if (practicedCountEl) {
-                practicedCountEl.textContent = practicedWords.length;
+                practicedCountEl.textContent = wrongItems.length;
             }
 
-            if (!practicedWords.length) {
-                wordListGrid.innerHTML = '<div class="word-list-empty">Practice words to see them here</div>';
+            if (!wrongItems.length) {
+                wordListGrid.innerHTML = '<div class="word-list-empty">Wrong words will appear here</div>';
                 return;
             }
 
@@ -4053,8 +4066,7 @@
             const tbody = document.createElement('tbody');
             table.appendChild(tbody);
 
-            // Show practiced words (newest first - they're added to front)
-            practicedWords.forEach((item, idx) => {
+            wrongItems.forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 tr.dataset.text = item.word.de || '';
                 tr.className = item.isWrong ? 'is-wrong' : 'is-right';
@@ -4064,15 +4076,29 @@
 
                 const tdEn = document.createElement('td');
                 tdEn.textContent = item.word.en || '';
+                tdEn.className = 'word-list-en-cell word-list-en-blurred';
 
                 tr.appendChild(tdDe);
                 tr.appendChild(tdEn);
 
-                // Click to speak
-                tr.addEventListener('click', () => {
+                tdDe.addEventListener('click', () => {
                     if (item.word.de) {
                         speakText(item.word.de);
                     }
+                });
+
+                tdEn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    tdEn.classList.remove('word-list-en-blurred');
+                    const existing = wordRevealTimers.get(tdEn);
+                    if (existing) {
+                        clearTimeout(existing);
+                    }
+                    const timerId = setTimeout(() => {
+                        tdEn.classList.add('word-list-en-blurred');
+                        wordRevealTimers.delete(tdEn);
+                    }, 5000);
+                    wordRevealTimers.set(tdEn, timerId);
                 });
 
                 tbody.appendChild(tr);
