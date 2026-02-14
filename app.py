@@ -3,6 +3,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
@@ -55,6 +56,10 @@ app.include_router(pdfs.router)
 
 # Mount Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/sw.js")
+async def sw():
+    return FileResponse("static/sw.js", media_type="application/javascript")
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")

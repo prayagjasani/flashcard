@@ -1405,16 +1405,33 @@
             } catch {}
         }
 
-        // Cross-page cache keys
+        // Cross-page cache keys (shared with home screen)
         const CACHE_FOLDERS = 'flashcard_folders_cache';
         const CACHE_DECKS = 'flashcard_decks_cache';
+        const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
         function saveCache(key, data) {
-            return;
+            try {
+                const payload = {
+                    data,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem(key, JSON.stringify(payload));
+            } catch {}
         }
 
         function getCache(key) {
-            return null;
+            try {
+                const raw = sessionStorage.getItem(key);
+                if (!raw) return null;
+                const payload = JSON.parse(raw);
+                if (!payload || typeof payload !== 'object') return null;
+                const ts = payload.timestamp;
+                if (!ts || (Date.now() - ts) > CACHE_EXPIRY) return null;
+                return payload;
+            } catch {
+                return null;
+            }
         }
 
         async function loadDecks() {

@@ -1,118 +1,80 @@
-// Service Worker for Flashcard App - Enables offline support
-
-const CACHE_NAME = 'flashcard-v2';
-const STATIC_ASSETS = [
-    '/',
-    '/static/manifest.json',
+const CACHE_NAME = 'flashcard-v1';
+const ASSETS_TO_CACHE = [
+  '/',
+  '/static/favicon.png',
+  '/static/css/style.css', // Assuming you have a style.css, checking later
+  '/static/manifest.json' // If exists
 ];
 
-// API routes to cache (matches pathname prefix)
-const API_CACHE_NAME = 'flashcard-api-v1';
-const CACHEABLE_APIS = [
-    '/order/folders',
-    '/order/decks',
-];
-
-// Install Service Worker
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
-        })
-    );
-    self.skipWaiting();
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      // We don't want to fail installation if some assets are missing, so we add them individually
+      // or use addAll but catch errors if you prefer strict caching.
+      // For now, let's cache what we know exists or critical paths.
+      return cache.addAll(['/']); 
+    })
+  );
 });
 
-// Activate and clean old caches
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.filter((name) => {
-                    return name.startsWith('flashcard-') && name !== CACHE_NAME && name !== API_CACHE_NAME;
-                }).map((name) => caches.delete(name))
-            );
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
         })
-    );
-    self.clients.claim();
+      );
+    })
+  );
+  self.clients.claim();
 });
 
-// Fetch handler - Network first, fallback to cache
 self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
+  const url = new URL(event.request.url);
 
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') return;
-
-    // Handle API requests with network-first strategy
-    if (CACHEABLE_APIS.some(api => url.pathname === api || url.pathname.startsWith(api))) {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    // Clone and cache successful responses
-                    if (response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(API_CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Network failed - try cache
-                    return caches.match(event.request);
-                })
-        );
-        return;
-    }
-
-    // Handle page navigation requests
-    if (event.request.mode === 'navigate') {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    // Cache successful page loads
-                    if (response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Offline - serve from cache
-                    return caches.match(event.request).then((cached) => {
-                        if (cached) return cached;
-                        // Fallback to homepage
-                        return caches.match('/');
-                    });
-                })
-        );
-        return;
-    }
-
-    // For other assets (CSS, JS, images) - cache first, network fallback
+  // Strategy for API calls: Network First, falling back to Cache (if we decide to cache APIs)
+  // Or Stale-While-Revalidate.
+  // For the logs showing repeated requests, Stale-While-Revalidate is good for /folders and /decks
+  // if we want to reduce server hit but keep freshness.
+  
+  // However, the user wants SPEED.
+  // Cache First for static assets.
+  
+  if (url.pathname.startsWith('/static/')) {
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            return fetch(event.request).then((response) => {
-                // Cache successful fetches
-                if (response.ok && url.origin === self.location.origin) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return response;
-            });
-        })
+      caches.match(event.request).then((response) => {
+        return response || fetch(event.request);
+      })
     );
-});
+    return;
+  }
 
-// Listen for messages from the app
-self.addEventListener('message', (event) => {
-    if (event.data === 'skipWaiting') {
-        self.skipWaiting();
-    }
+  // API Caching
+  if (url.pathname === '/folders' || url.pathname === '/decks' || url.pathname.startsWith('/order/')) {
+     event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((response) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse.ok) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          });
+          return response || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // Default: Network First
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });

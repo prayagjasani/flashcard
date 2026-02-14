@@ -2123,6 +2123,16 @@
             folders: [],
             decks: {}
         };
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => {
+                    console.log('SW registration failed:', err);
+                });
+            });
+        }
+
         // Helper to clear Service Worker API cache
         async function clearSwApiCache() {
             if ('caches' in window) {
@@ -2833,11 +2843,27 @@
         const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
         function saveToCache(key, data) {
-            return;
+            try {
+                const payload = {
+                    data,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem(key, JSON.stringify(payload));
+            } catch {}
         }
 
         function getFromCache(key) {
-            return null;
+            try {
+                const raw = sessionStorage.getItem(key);
+                if (!raw) return null;
+                const payload = JSON.parse(raw);
+                if (!payload || typeof payload !== 'object') return null;
+                const ts = payload.timestamp;
+                if (!ts || (Date.now() - ts) > CACHE_EXPIRY) return null;
+                return payload.data;
+            } catch {
+                return null;
+            }
         }
 
         function clearCache() {
@@ -2968,6 +2994,23 @@
                 if (needsRerender) {
                     renderFolderGrid();
                     renderDeckGrid();
+                }
+
+                // Preload all scope orders for instant navigation
+                if (cachedFolderList && cachedFolderList.length > 0) {
+                    // Collect all unique scopes (folders)
+                    const scopes = new Set(cachedFolderList.map(f => f.name));
+                    scopes.add('Uncategorized');
+
+                    // Fetch orders for all scopes in parallel (low priority)
+                    setTimeout(() => {
+                        scopes.forEach(scope => {
+                            fetch(`/order/decks?scope=${encodeURIComponent(scope)}`)
+                                .then(r => r.json())
+                                .catch(() => []);
+                            // The Service Worker will cache these responses automatically
+                        });
+                    }, 2000);
                 }
             } catch {}
         }
