@@ -308,64 +308,87 @@ Remember: The best language learning happens when students are entertained and w
 
 
 def generate_subtitle_story(lines: list[str], level: str = "A2"):
-    """Generate translations + vocabulary for a list of subtitle lines."""
-    if not GEMINI_API_KEY:
+    """Translate subtitle lines with highlights, processed in batches to ensure 1:1 mapping."""
+    if not GEMINI_API_KEY or not lines:
         return None
 
-    payload = {
-        "level": level,
-        "german_lines": lines,
+    BATCH = 20  # Small batches so AI can't lose track of line counts
+
+    def translate_batch(batch: list[str], batch_idx: int) -> list[dict]:
+        """Translate a single batch of lines. Returns exactly len(batch) segments."""
+        numbered = {str(i): line for i, line in enumerate(batch)}
+        prompt = f"""Translate each German subtitle line to English for a learner at level {level}.
+
+Input (JSON object, keys = line index 0..{len(batch)-1}):
+{json.dumps(numbered, ensure_ascii=False)}
+
+STRICT RULES:
+1. Output a JSON ARRAY with EXACTLY {len(batch)} objects — one per input line, in order.
+2. Each object: {{"idx": <same key as input>, "text_de": "<exact input line>", "text_en": "<natural English>", "highlight_pairs": [{{"de": "word", "en": "word", "color": 0}}]}}
+3. text_de MUST be copied EXACTLY from the input — do NOT change, split, or merge lines.
+4. highlight_pairs: tag useful German words/phrases that also appear in text_en. Use color 0..15. Skip very basic words (articles, pronouns).
+5. Output ONLY the raw JSON array, nothing else."""
+
+        raw = _generate(prompt, timeout=60)
+        if not raw:
+            return []
+        try:
+            segs = json.loads(raw)
+            if not isinstance(segs, list):
+                return []
+            # Enforce 1:1: match by idx or position, fill gaps
+            result = []
+            seg_by_idx = {}
+            for s in segs:
+                if isinstance(s, dict):
+                    try:
+                        seg_by_idx[int(s.get("idx", -1))] = s
+                    except (TypeError, ValueError):
+                        pass
+            for i, line in enumerate(batch):
+                seg = seg_by_idx.get(i) or (segs[i] if i < len(segs) and isinstance(segs[i], dict) else {})
+                result.append({
+                    "type": "narration",
+                    "speaker": "narrator",
+                    "text_de": line,  # Always use original input, never trust AI
+                    "text_en": (seg.get("text_en") or "").strip(),
+                    "highlight_pairs": seg.get("highlight_pairs") or [],
+                })
+            return result
+        except Exception as e:
+            print(f"[AI] subtitle batch {batch_idx} parse error: {e}")
+            return []
+
+    # Process all batches
+    all_segments: list[dict] = []
+    for batch_start in range(0, len(lines), BATCH):
+        batch = lines[batch_start: batch_start + BATCH]
+        segs = translate_batch(batch, batch_start // BATCH)
+        # Fill with blank translations if AI failed
+        if len(segs) < len(batch):
+            for j in range(len(segs), len(batch)):
+                segs.append({
+                    "type": "narration",
+                    "speaker": "narrator",
+                    "text_de": batch[j],
+                    "text_en": "",
+                    "highlight_pairs": [],
+                })
+        all_segments.extend(segs[:len(batch)])  # Never exceed batch size
+
+    # Collect vocabulary from all highlight_pairs
+    vocab: dict[str, str] = {}
+    for seg in all_segments:
+        for pair in seg.get("highlight_pairs") or []:
+            de = (pair.get("de") or "").strip()
+            en = (pair.get("en") or "").strip()
+            if de and en:
+                vocab[de] = en
+
+    return {
+        "title_de": "Episode",
+        "title_en": "Episode",
+        "characters": [],
+        "vocabulary": vocab,
+        "segments": all_segments,
     }
-
-    prompt = f"""You are helping German learners understand a TV episode with subtitles.
-The target CEFR level is {level}. Keep English simple and clear.
-
-You receive a JSON object called payload with all subtitle lines:
-{json.dumps(payload, ensure_ascii=False)}
-
-CRITICAL RULES:
-- DO NOT add, remove, merge, or split lines.
-- Keep the order exactly the same.
-- For each input line in payload["german_lines"], create exactly ONE segment.
-- In each segment, set text_de to be EXACTLY that German line (unchanged).
-- Provide a natural English translation in text_en.
-- Build highlight_pairs for useful words or short phrases that appear in BOTH
-  the German and English sentences.
-- Also build a global vocabulary map that covers useful words/phrases across
-  all lines.
-
-Output ONLY a JSON object with this structure:
-{{
-  "title_de": "Short German title for the episode",
-  "title_en": "Short English title",
-  "vocabulary": {{
-    "German word or phrase": "simple English translation"
-  }},
-  "segments": [
-    {{
-      "type": "narration",
-      "speaker": "narrator",
-      "text_de": "exact German line from input",
-      "text_en": "English translation of that line",
-      "highlight_pairs": [
-        {{"de": "Wort", "en": "word", "color": 0}}
-      ]
-    }}
-  ]
-}}
-
-IMPORTANT:
-- segments.length MUST equal payload["german_lines"].length.
-- segments[i].text_de MUST be exactly payload["german_lines"][i].
-- Use color indices 0..15 per segment, unique within that segment.
-- Only include highlight_pairs where 'de' and 'en' actually appear in
-  text_de/text_en."""
-
-    raw = _generate(prompt, timeout=120)
-    if not raw:
-        return None
-    try:
-        return json.loads(raw)
-    except Exception as e:
-        print(f"[AI] Error parsing subtitle story: {e}")
-        return None

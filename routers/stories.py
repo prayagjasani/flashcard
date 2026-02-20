@@ -616,40 +616,28 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
         ],
     )
 
-    segments = story.get("segments") or []
-    count = min(len(segments), len(subtitles))
-    segments = segments[:count]
-    subtitles = subtitles[:count]
-    # Clean up segments: ensure required fields exist
-    cleaned_segments = []
-    for idx, seg in enumerate(segments):
-        if not isinstance(seg, dict):
+    # generate_subtitle_story now returns exactly one segment per input line,
+    # with text_de already set to the original. Just ensure every subtitle is
+    # represented, padding with empty translations if the AI missed any.
+    ai_segments = (story.get("segments") or [])
+    final_segments = []
+    for idx, sub in enumerate(subtitles):
+        if idx < len(ai_segments) and isinstance(ai_segments[idx], dict):
+            seg = dict(ai_segments[idx])
+        else:
             seg = {}
-        text_de = subtitles[idx]["text"]
-        seg.setdefault("type", "narration")
-        seg.setdefault("speaker", "narrator")
-        seg.setdefault("text_de", text_de)
-        seg.setdefault("text_en", "")
-        seg.setdefault("highlight_pairs", [])
-        cleaned_segments.append(seg)
-    story["segments"] = cleaned_segments
+        seg["type"] = seg.get("type") or "narration"
+        seg["speaker"] = seg.get("speaker") or "narrator"
+        seg["text_de"] = sub["text"]          # always the original SRT text
+        seg["text_en"] = seg.get("text_en") or ""
+        seg["highlight_pairs"] = seg.get("highlight_pairs") or []
+        if sub.get("start_ms") is not None:
+            seg["start_ms"] = sub["start_ms"]
+        if sub.get("end_ms") is not None:
+            seg["end_ms"] = sub["end_ms"]
+        final_segments.append(seg)
 
-    duration_ms = 0
-    for idx, seg in enumerate(segments):
-        info = subtitles[idx]
-        start_ms = info.get("start_ms")
-        end_ms = info.get("end_ms")
-        if start_ms is not None:
-            seg["start_ms"] = start_ms
-        if end_ms is not None:
-            seg["end_ms"] = end_ms
-            if end_ms > duration_ms:
-                duration_ms = end_ms
-        # Ensure text_de exactly matches our normalized subtitle text
-        seg["text_de"] = info["text"]
-
-    if duration_ms > 0:
-        story["duration_ms"] = duration_ms
+    story["segments"] = final_segments
 
     story.setdefault("title_de", file.filename or "Untertitel")
     story.setdefault("title_en", "Subtitles")
@@ -692,8 +680,83 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
 
 
 # ---------------------------------------------------------------------------
-# YouTube subtitle endpoint
+# Retranslate (refresh translations for an existing story)
 # ---------------------------------------------------------------------------
+
+@router.post("/story/retranslate")
+def story_retranslate(payload: dict):
+    """Re-run subtitle AI translation on an existing story using its German lines."""
+    story_id = (payload.get("story_id") or "").strip()
+    level = (payload.get("level") or "A2").upper()
+    if level not in {"A1", "A2", "B1", "B2", "C1", "C2"}:
+        level = "A2"
+    if not story_id:
+        raise HTTPException(status_code=400, detail="story_id is required")
+
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=503, detail="R2 storage not configured")
+
+    # Load the existing story
+    key = _story_key(story_id)
+    try:
+        resp = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+        existing = json.loads(resp["Body"].read())
+    except Exception:
+        raise HTTPException(status_code=404, detail="Story not found")
+
+    # Extract German lines in original order
+    segments = existing.get("segments") or []
+    lines = [(s.get("text_de") or "").strip() for s in segments]
+    lines = [l for l in lines if l]
+    if not lines:
+        raise HTTPException(status_code=422, detail="Story has no German text to retranslate")
+
+    # Re-run AI (now with batched processing that preserves 1:1 mapping)
+    refreshed = _gemini_generate_subtitle_story(lines, level=level)
+    if not isinstance(refreshed, dict):
+        raise HTTPException(status_code=500, detail="AI translation failed")
+
+    # Align regenerated segments back to original German lines
+    ai_segs = refreshed.get("segments") or []
+    new_segments = []
+    for idx, line in enumerate(lines):
+        seg = ai_segs[idx] if idx < len(ai_segs) and isinstance(ai_segs[idx], dict) else {}
+        # Carry over timing from original if present
+        orig = segments[idx] if idx < len(segments) else {}
+        new_seg = {
+            "type": seg.get("type") or orig.get("type") or "narration",
+            "speaker": seg.get("speaker") or orig.get("speaker") or "narrator",
+            "text_de": line,                              # always original German
+            "text_en": (seg.get("text_en") or "").strip(),
+            "highlight_pairs": seg.get("highlight_pairs") or [],
+        }
+        if orig.get("start_ms") is not None:
+            new_seg["start_ms"] = orig["start_ms"]
+        if orig.get("end_ms") is not None:
+            new_seg["end_ms"] = orig["end_ms"]
+        new_segments.append(new_seg)
+
+    existing["segments"] = new_segments
+    existing["vocabulary"] = refreshed.get("vocabulary") or {}
+    if refreshed.get("title_de"):
+        existing.setdefault("title_de", refreshed["title_de"])
+    if refreshed.get("title_en"):
+        existing.setdefault("title_en", refreshed["title_en"])
+
+    # Save updated story back to R2
+    try:
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=key,
+            Body=json.dumps(existing).encode("utf-8"),
+            ContentType="application/json",
+        )
+    except Exception:
+        pass  # Return the refreshed data even if save fails
+
+    return {"story": existing, "story_id": story_id}
+
+
 
 def _extract_video_id(url: str) -> str | None:
     """Extract YouTube video ID from various URL formats."""

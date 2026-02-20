@@ -960,6 +960,16 @@
             background: #f1f5f9;
         }
 
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         /* Tooltip */
 
         .tooltip {
@@ -1001,6 +1011,10 @@
                 <div class="progress-bar" id="progressBar"></div>
             </div>
             <span class="progress-text" id="progressText" style="display: none;">0/0</span>
+            <button class="audio-toggle-btn" id="refreshTranslationsBtn" type="button" style="display:none;"
+                title="Refresh translations">
+                <span class="material-symbols-outlined audio-toggle-btn-icon">refresh</span>
+            </button>
             <button class="audio-toggle-btn" id="audioToggleBtn" type="button" style="display:none;">
                 <span class="material-symbols-outlined audio-toggle-btn-icon" id="audioToggleIcon">volume_up</span>
             </button>
@@ -1254,6 +1268,7 @@
         const srtFileInput = document.getElementById('srtFileInput');
         const audioToggleBtn = document.getElementById('audioToggleBtn');
         const audioToggleIcon = document.getElementById('audioToggleIcon');
+        const refreshTranslationsBtn = document.getElementById('refreshTranslationsBtn');
 
         // State
         const params = new URLSearchParams(location.search);
@@ -1422,6 +1437,7 @@
                     progressContainer.style.display = 'none';
                     progressText.style.display = 'none';
                     if (audioToggleBtn) audioToggleBtn.style.display = 'none';
+                    if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'none';
                     mainContent.classList.remove('with-continue');
                     isReadingMode = false;
 
@@ -1440,6 +1456,7 @@
                     progressContainer.style.display = 'none';
                     progressText.style.display = 'none';
                     if (audioToggleBtn) audioToggleBtn.style.display = 'none';
+                    if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'none';
                     mainContent.classList.remove('with-continue');
                     isReadingMode = false;
                 }
@@ -1693,6 +1710,7 @@
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
             if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
+            if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1773,6 +1791,7 @@
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
             if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
+            if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1859,6 +1878,7 @@
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
             if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
+            if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -1936,6 +1956,7 @@
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
             if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
+            if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -2029,6 +2050,7 @@
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
             if (audioToggleBtn) audioToggleBtn.style.display = 'inline-flex';
+            if (refreshTranslationsBtn) refreshTranslationsBtn.style.display = 'inline-flex';
             mainContent.classList.add('with-continue');
             isReadingMode = true;
 
@@ -2371,6 +2393,10 @@
             }
         }
 
+        if (refreshTranslationsBtn) {
+            refreshTranslationsBtn.addEventListener('click', refreshTranslations);
+        }
+
         if (audioToggleBtn) {
             audioToggleBtn.addEventListener('click', () => {
                 isAudioEnabled = !isAudioEnabled;
@@ -2547,6 +2573,57 @@
 
         function hideTooltip() {
             tooltip.classList.remove('visible');
+        }
+
+        // Refresh translations for current story
+        async function refreshTranslations() {
+            if (!currentDeck) return;
+            const btn = refreshTranslationsBtn;
+            if (btn) {
+                btn.disabled = true;
+                btn.querySelector('.material-symbols-outlined').style.animation = 'spin 1s linear infinite';
+            }
+            try {
+                const level = (story && story.level) || 'A2';
+                const resp = await fetch('/story/retranslate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ story_id: currentDeck, level })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.detail || 'Refresh failed');
+
+                // Swap in refreshed story and restart from current position
+                const savedIndex = currentSegmentIndex;
+                story = data.story;
+                characters = story.characters || [];
+
+                vocabulary = {};
+                if (story.vocabulary && Object.keys(story.vocabulary).length > 0) {
+                    Object.entries(story.vocabulary).forEach(([de, en]) => addToVocabulary(de, en));
+                } else if (story.segments) {
+                    story.segments.forEach(seg => (seg.highlight_pairs || []).forEach(p => addToVocabulary(p.de, p.en)));
+                }
+
+                // Clear old renders, rebuild, restart from same position
+                segmentsContainer.innerHTML = '';
+                renderedSegmentCount = 0;
+                audioCache.forEach(u => { if (u.startsWith('blob:')) URL.revokeObjectURL(u); });
+                audioCache.clear();
+                audioPrefetchEnd = 0;
+
+                rebuildSentenceUnits();
+                const newIndex = Math.min(savedIndex, sentenceUnits.length - 1);
+                showSegmentAt(Math.max(0, newIndex));
+            } catch (err) {
+                console.error('Refresh failed:', err);
+                alert('Refresh failed: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.querySelector('.material-symbols-outlined').style.animation = '';
+                }
+            }
         }
 
         // Events
