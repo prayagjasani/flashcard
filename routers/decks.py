@@ -318,14 +318,16 @@ def delete_deck(payload: DeckDelete):
         code = e.response.get("Error", {}).get("Code")
         if code not in ("404", "NoSuchKey", "NotFound"):
             raise HTTPException(status_code=500, detail=str(e))
-    audio_deleted = 0
-    audio_errors = 0
-    for w in de_words:
-        try:
-            r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=_safe_tts_key_helper(w, "de"))
-            audio_deleted += 1
-        except Exception:
-            audio_errors += 1
+    # Delete audio in background to avoid blocking the request
+    audio_count = len(de_words)
+    if de_words:
+        def _delete_audio():
+            for w in de_words:
+                try:
+                    r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=_safe_tts_key_helper(w, "de"))
+                except Exception:
+                    pass
+        threading.Thread(target=_delete_audio, daemon=True).start()
     csv_deleted = False
     try:
         r2_client.delete_object(Bucket=R2_BUCKET_NAME, Key=csv_key)
@@ -368,8 +370,8 @@ def delete_deck(payload: DeckDelete):
     return {
         "ok": True,
         "csv_deleted": csv_deleted,
-        "audio_deleted": audio_deleted,
-        "audio_errors": audio_errors,
+        "audio_status": "deleting_in_background",
+        "audio_count": audio_count,
         "index_updated": index_updated,
         "index_rebuild": index_rebuild,
     }
@@ -609,7 +611,7 @@ async def preload_deck_audio(deck: str, lang: str = "de"):
             
             # Run the blocking operation in a thread pool
             executor = get_executor()
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(executor, check_and_generate)
             return result
         

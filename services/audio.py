@@ -1,7 +1,7 @@
 import io
 import re
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from services.executor import get_executor
 from gtts import gTTS
 from botocore.exceptions import ClientError
 
@@ -13,14 +13,7 @@ from services.storage import (
 )
 from utils import safe_tts_key
 
-_audio_generation_executor = None
 
-
-def _get_audio_executor():
-    global _audio_generation_executor
-    if _audio_generation_executor is None:
-        _audio_generation_executor = ThreadPoolExecutor(max_workers=4)
-    return _audio_generation_executor
 
 
 def _safe_tts_key_helper(text: str, lang: str = "de") -> str:
@@ -54,7 +47,7 @@ def generate_audio_for_word(de_word: str):
 def background_audio_generation(words: list):
     if not words:
         return
-    executor = _get_audio_executor()
+    executor = get_executor()
     for w in words:
         executor.submit(generate_audio_for_word, w)
 

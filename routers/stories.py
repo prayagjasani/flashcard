@@ -266,7 +266,6 @@ def generate_custom_story(payload: CustomStoryRequest):
         level = "A2"
     
     # Generate a unique story ID
-    import time
     story_id = payload.story_id or f"custom_{int(time.time())}"
     safe_id = _safe_deck_name(story_id)
     
@@ -505,7 +504,7 @@ def get_story_audio(deck: str, text: str):
 
 
 def _timestamp_to_ms(ts: str) -> int | None:
-    m = re.match(r"(\\d{2}):(\\d{2}):(\\d{2}),(\\d{3})", ts.strip())
+    m = re.match(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", ts.strip())
     if not m:
         return None
     h, m_, s, ms = map(int, m.groups())

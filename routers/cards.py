@@ -188,7 +188,7 @@ async def generate_lines(deck: str, limit: int | None = None, refresh: bool = Fa
                 
                 # Use shared executor instead of creating new one per request
                 executor = get_executor()
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 await loop.run_in_executor(executor, lambda: [process_one_sync(it) for it in cleaned])
             except Exception:
                 pass
@@ -293,7 +293,7 @@ async def preload_lines_audio(deck: str, lang: str = "de"):
                         return None, None
             # Use shared executor
             executor = get_executor()
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             return await loop.run_in_executor(executor, check_and_generate)
         sem = asyncio.Semaphore(10)
         async def with_sem(it):
