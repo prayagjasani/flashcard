@@ -746,15 +746,16 @@ def story_from_youtube(payload: YoutubeStoryRequest):
     if not video_id:
         raise HTTPException(status_code=400, detail="Could not extract video ID from URL")
 
-    # Fetch transcript
+    # Fetch transcript — youtube-transcript-api v0.6+ uses instance methods
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+        from youtube_transcript_api import YouTubeTranscriptApi
+        ytt = YouTubeTranscriptApi()
         try:
-            # Prefer manual German first, then auto-generated
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["de"])
-        except NoTranscriptFound:
-            # Try auto-generated
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # Prefer manual German subtitles first
+            transcript = ytt.fetch(video_id, languages=["de"])
+        except Exception:
+            # Fall back to auto-generated German
+            transcript_list = ytt.list(video_id)
             transcript = transcript_list.find_generated_transcript(["de"]).fetch()
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Could not fetch German subtitles: {e}")
