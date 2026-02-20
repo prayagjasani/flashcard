@@ -2692,6 +2692,8 @@
             applyFrontPreference(isEnglishFront);
             // Re-render current card after language flip
             refreshCardText();
+            updateLineHint();
+            renderWordList();
         });
 
         async function loadWordsForDeck(deckName) {
@@ -3942,18 +3944,32 @@
             const lineData = lineDataCache.get(currentCard.de);
             if (lineData && lineData.line_de) {
                 const isRevealed = revealedLineWords.has(currentCard.de);
+                const isEnglishFront = frontLang === 'en';
 
                 if (showingFront) {
-                    // Front: show German line (blurred unless already revealed)
-                    lineHintText.textContent = lineData.line_de;
+                    // Front side (Question)
+                    if (isEnglishFront) {
+                        // English Front: show English line (blurred unless revealed)
+                        lineHintText.textContent = lineData.line_en || lineData.line_de;
+                    } else {
+                        // German Front: show German line (blurred unless revealed)
+                        lineHintText.textContent = lineData.line_de;
+                    }
+
                     if (isRevealed) {
                         lineHintText.classList.remove('is-blurred');
                     } else {
                         lineHintText.classList.add('is-blurred');
                     }
                 } else {
-                    // Back: show English translation (always unblurred)
-                    lineHintText.textContent = lineData.line_en || lineData.line_de;
+                    // Back side (Answer) - always unblurred
+                    if (isEnglishFront) {
+                        // English Front -> Back is German
+                        lineHintText.textContent = lineData.line_de;
+                    } else {
+                        // German Front -> Back is English
+                        lineHintText.textContent = lineData.line_en || lineData.line_de;
+                    }
                     lineHintText.classList.remove('is-blurred');
                 }
                 lineHint.style.display = 'flex';
@@ -3990,12 +4006,28 @@
 
                 const lineData = lineDataCache.get(currentCard.de);
                 let textToSpeak = null;
+                const isEnglishFront = frontLang === 'en';
+
                 if (showingFront) {
-                    textToSpeak = lineData && lineData.line_de;
+                    if (isEnglishFront) {
+                        textToSpeak = (lineData && lineData.line_en) || (lineData && lineData.line_de);
+                    } else {
+                        textToSpeak = lineData && lineData.line_de;
+                    }
                 } else {
-                    textToSpeak = (lineData && lineData.line_en) || (lineData && lineData.line_de);
+                    if (isEnglishFront) {
+                        textToSpeak = lineData && lineData.line_de;
+                    } else {
+                        textToSpeak = (lineData && lineData.line_en) || (lineData && lineData.line_de);
+                    }
                 }
-                const lang = showingFront ? 'de' : 'en';
+
+                let lang = 'de';
+                if (showingFront) {
+                    lang = isEnglishFront ? 'en' : 'de';
+                } else {
+                    lang = isEnglishFront ? 'de' : 'en';
+                }
 
                 if (textToSpeak) {
                     try {
@@ -4066,6 +4098,8 @@
             const tbody = document.createElement('tbody');
             table.appendChild(tbody);
 
+            const isEnglishFront = frontLang === 'en';
+
             wrongItems.forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 tr.dataset.text = item.word.de || '';
@@ -4076,30 +4110,53 @@
 
                 const tdEn = document.createElement('td');
                 tdEn.textContent = item.word.en || '';
-                tdEn.className = 'word-list-en-cell word-list-en-blurred';
 
-                tr.appendChild(tdDe);
-                tr.appendChild(tdEn);
+                if (isEnglishFront) {
+                    // English visible (left), German blurred (right)
+                    tr.appendChild(tdEn);
+                    tr.appendChild(tdDe);
+                    tdDe.className = 'word-list-en-cell word-list-en-blurred';
 
-                tdDe.addEventListener('click', () => {
-                    if (item.word.de) {
-                        speakText(item.word.de);
-                    }
-                });
+                    // Clicking German (hidden) only reveals it (no audio)
+                    tdDe.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        tdDe.classList.remove('word-list-en-blurred');
+                        const existing = wordRevealTimers.get(tdDe);
+                        if (existing) {
+                            clearTimeout(existing);
+                        }
+                        const timerId = setTimeout(() => {
+                            tdDe.classList.add('word-list-en-blurred');
+                            wordRevealTimers.delete(tdDe);
+                        }, 5000);
+                        wordRevealTimers.set(tdDe, timerId);
+                    });
+                } else {
+                    // German visible (left), English blurred (right)
+                    tr.appendChild(tdDe);
+                    tr.appendChild(tdEn);
+                    tdEn.className = 'word-list-en-cell word-list-en-blurred';
 
-                tdEn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    tdEn.classList.remove('word-list-en-blurred');
-                    const existing = wordRevealTimers.get(tdEn);
-                    if (existing) {
-                        clearTimeout(existing);
-                    }
-                    const timerId = setTimeout(() => {
-                        tdEn.classList.add('word-list-en-blurred');
-                        wordRevealTimers.delete(tdEn);
-                    }, 5000);
-                    wordRevealTimers.set(tdEn, timerId);
-                });
+                    tdDe.addEventListener('click', () => {
+                        if (item.word.de) {
+                            speakText(item.word.de);
+                        }
+                    });
+
+                    tdEn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        tdEn.classList.remove('word-list-en-blurred');
+                        const existing = wordRevealTimers.get(tdEn);
+                        if (existing) {
+                            clearTimeout(existing);
+                        }
+                        const timerId = setTimeout(() => {
+                            tdEn.classList.add('word-list-en-blurred');
+                            wordRevealTimers.delete(tdEn);
+                        }, 5000);
+                        wordRevealTimers.set(tdEn, timerId);
+                    });
+                }
 
                 tbody.appendChild(tr);
             });
