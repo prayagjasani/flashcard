@@ -707,6 +707,74 @@ def _extract_video_id(url: str) -> str | None:
     return None
 
 
+# Public Invidious instances — these route around YouTube's cloud IP blocks.
+# Multiple instances provide redundancy if one is down.
+_INVIDIOUS_INSTANCES = [
+    "https://invidious.nerdvpn.de",
+    "https://inv.tux.pizza",
+    "https://iv.ggtyler.dev",
+    "https://invidious.privacydev.net",
+    "https://yt.artemislena.eu",
+]
+
+
+def _parse_vtt(vtt_text: str) -> list[dict]:
+    """Parse WebVTT subtitle format into transcript chunks."""
+    chunks = []
+    for line in vtt_text.splitlines():
+        line = line.strip()
+        # Skip header, timestamps, blank lines, cue identifiers
+        if not line or "-->" in line or line.startswith("WEBVTT") or line.isdigit():
+            continue
+        # Strip VTT inline tags like <c>, <00:01:02.000>
+        text = re.sub(r"<[^>]+>", "", line).strip()
+        if text:
+            chunks.append({"text": text})
+    return chunks
+
+
+def _get_transcript_invidious(video_id: str) -> list[dict] | None:
+    """Try to get German captions via public Invidious instances."""
+    import urllib.request as _req
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; flashcard-app/1.0)"}
+
+    for instance in _INVIDIOUS_INSTANCES:
+        try:
+            # 1. Get caption list
+            list_url = f"{instance}/api/v1/captions/{video_id}"
+            r1 = _req.Request(list_url, headers=headers)
+            with _req.urlopen(r1, timeout=8) as resp:
+                caps_data = json.loads(resp.read())
+
+            # 2. Find a German caption track
+            german = None
+            for cap in caps_data.get("captions", []):
+                lang = (cap.get("languageCode") or "").lower()
+                label = (cap.get("label") or "").lower()
+                if lang.startswith("de") or "german" in label or "deutsch" in label:
+                    german = cap
+                    break
+            if not german:
+                continue
+
+            # 3. Fetch the VTT/SRT content
+            cap_url = german.get("url") or ""
+            if cap_url.startswith("/"):
+                cap_url = f"{instance}{cap_url}"
+            r2 = _req.Request(cap_url, headers=headers)
+            with _req.urlopen(r2, timeout=12) as resp:
+                vtt_text = resp.read().decode("utf-8", errors="replace")
+
+            chunks = _parse_vtt(vtt_text)
+            if chunks:
+                return chunks
+
+        except Exception:
+            continue  # Try next Invidious instance
+
+    return None
+
+
 def _merge_transcript_chunks(chunks: list[dict], max_chars: int = 120) -> list[str]:
     """Merge short transcript chunks into sentence-length lines."""
     lines = []
@@ -746,19 +814,31 @@ def story_from_youtube(payload: YoutubeStoryRequest):
     if not video_id:
         raise HTTPException(status_code=400, detail="Could not extract video ID from URL")
 
-    # Fetch transcript — youtube-transcript-api v0.6+ uses instance methods
-    try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-        ytt = YouTubeTranscriptApi()
+    # Fetch transcript — try Invidious proxies first (bypasses cloud IP blocks),
+    # then fall back to youtube-transcript-api.
+    transcript = _get_transcript_invidious(video_id)
+
+    if not transcript:
         try:
-            # Prefer manual German subtitles first
-            transcript = ytt.fetch(video_id, languages=["de"])
+            from youtube_transcript_api import YouTubeTranscriptApi
+            ytt = YouTubeTranscriptApi()
+            try:
+                transcript = ytt.fetch(video_id, languages=["de"])
+            except Exception:
+                transcript_list = ytt.list(video_id)
+                transcript = transcript_list.find_generated_transcript(["de"]).fetch()
         except Exception:
-            # Fall back to auto-generated German
-            transcript_list = ytt.list(video_id)
-            transcript = transcript_list.find_generated_transcript(["de"]).fetch()
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Could not fetch German subtitles: {e}")
+            transcript = None
+
+    if not transcript:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Could not fetch German subtitles — YouTube is blocking requests from this server's IP. "
+                "Workaround: download the .srt subtitle file from YouTube "
+                "(Video → More → Open transcript → ⋮ → Download) and upload it using the SRT button."
+            ),
+        )
 
     if not transcript:
         raise HTTPException(status_code=422, detail="No German subtitles found for this video")
