@@ -6,6 +6,7 @@ import re
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -32,6 +33,12 @@ from services.audio import generate_story_audio_background
 from services.cache import get_cached, set_cached, invalidate_cache
 from services.deck_service import get_cards as _get_cards_from_service
 from utils import safe_deck_name as _safe_deck_name
+
+
+class YoutubeStoryRequest(BaseModel):
+    url: str
+    level: str | None = "A2"
+    story_id: str | None = None
 
 router = APIRouter()
 def _get_cards_helper(deck: str):
@@ -682,3 +689,160 @@ async def upload_srt(file: UploadFile = File(...), level: str = "A2"):
             thread.start()
 
     return {"story": story, "story_id": story_id}
+
+
+# ---------------------------------------------------------------------------
+# YouTube subtitle endpoint
+# ---------------------------------------------------------------------------
+
+def _extract_video_id(url: str) -> str | None:
+    """Extract YouTube video ID from various URL formats."""
+    patterns = [
+        r"(?:v=|youtu\.be/|/embed/|/shorts/)([A-Za-z0-9_-]{11})",
+    ]
+    for p in patterns:
+        m = re.search(p, url)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _merge_transcript_chunks(chunks: list[dict], max_chars: int = 120) -> list[str]:
+    """Merge short transcript chunks into sentence-length lines."""
+    lines = []
+    buf = ""
+    for c in chunks:
+        text = (c.get("text") or "").replace("\n", " ").strip()
+        if not text:
+            continue
+        if buf:
+            candidate = buf + " " + text
+        else:
+            candidate = text
+        # Break on sentence-ending punctuation or when buffer is long enough
+        if len(candidate) >= max_chars or text[-1] in ".!?":
+            lines.append(candidate.strip())
+            buf = ""
+        else:
+            buf = candidate
+    if buf.strip():
+        lines.append(buf.strip())
+    return [l for l in lines if l]
+
+
+@router.post("/story/from_youtube")
+def story_from_youtube(payload: YoutubeStoryRequest):
+    """Extract German subtitles from a YouTube video and generate a story."""
+    url = (payload.url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="YouTube URL is required")
+
+    level = (payload.level or "A2").upper()
+    if level not in {"A1", "A2", "B1", "B2", "C1", "C2"}:
+        level = "A2"
+
+    # Extract video ID
+    video_id = _extract_video_id(url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="Could not extract video ID from URL")
+
+    # Fetch transcript
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+        try:
+            # Prefer manual German first, then auto-generated
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["de"])
+        except NoTranscriptFound:
+            # Try auto-generated
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            transcript = transcript_list.find_generated_transcript(["de"]).fetch()
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Could not fetch German subtitles: {e}")
+
+    if not transcript:
+        raise HTTPException(status_code=422, detail="No German subtitles found for this video")
+
+    # Merge chunks into readable lines (max ~120 chars)
+    lines = _merge_transcript_chunks(transcript, max_chars=120)
+    if not lines:
+        raise HTTPException(status_code=422, detail="Subtitle text is empty after processing")
+
+    # Cap at 200 lines to keep AI response manageable
+    lines = lines[:200]
+
+    # Run through AI subtitle pipeline (same as SRT upload)
+    story = _gemini_generate_subtitle_story(lines, level=level)
+    if not isinstance(story, dict):
+        story = {}
+
+    story.setdefault("title_de", f"YouTube: {video_id}")
+    story.setdefault("title_en", "YouTube Video")
+    story.setdefault("characters", [])
+    story.setdefault("level", level)
+    story.setdefault("vocabulary", {})
+    story.setdefault(
+        "segments",
+        [
+            {
+                "type": "narration",
+                "speaker": "narrator",
+                "text_de": line,
+                "text_en": "",
+                "highlight_pairs": [],
+            }
+            for line in lines
+        ],
+    )
+
+    # Align segments to lines
+    segments = story.get("segments") or []
+    count = min(len(segments), len(lines))
+    segments = segments[:count]
+    cleaned_segments = []
+    for idx, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            seg = {}
+        seg.setdefault("type", "narration")
+        seg.setdefault("speaker", "narrator")
+        seg.setdefault("text_de", lines[idx])
+        seg.setdefault("text_en", "")
+        seg.setdefault("highlight_pairs", [])
+        cleaned_segments.append(seg)
+    story["segments"] = cleaned_segments
+
+    # Build story ID
+    raw_id = payload.story_id or f"yt_{video_id}_{int(time.time())}"
+    safe_id = _safe_deck_name(raw_id)
+
+    # Save to R2
+    if r2_client and R2_BUCKET_NAME:
+        try:
+            key = _story_key(safe_id)
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=key,
+                Body=json.dumps(story).encode("utf-8"),
+                ContentType="application/json",
+            )
+            meta = {
+                "key": key,
+                "deck": safe_id,
+                "last_modified": datetime.now().isoformat(),
+                "title_de": story.get("title_de"),
+                "title_en": story.get("title_en"),
+                "level": story.get("level"),
+            }
+            update_stories_index(meta)
+        except Exception:
+            pass
+
+        if story.get("segments"):
+            thread = threading.Thread(
+                target=generate_story_audio_background,
+                args=(safe_id, story["segments"]),
+                daemon=True,
+            )
+            thread.start()
+
+    return {"story": story, "story_id": safe_id}
+

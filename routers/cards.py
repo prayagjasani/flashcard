@@ -142,15 +142,26 @@ async def generate_lines(deck: str, limit: int | None = None, refresh: bool = Fa
             is_verb = en_clean.lower().startswith('to ')
             # base = en_clean[3:].strip() if is_verb else en_clean
             bad_en = False
+            bad_de = False
             if chosen:
                 le = (chosen.get('line_en') or '').strip().lower()
-                bad_en = (not le) or le.startswith('this is') or le.startswith('that is') or le.startswith('i the') or (' to ' in le)
+                ld = (chosen.get('line_de') or '').strip()
+                bad_en = (
+                    (not le)
+                    or le.startswith('this is')
+                    or le.startswith('that is')
+                    or le.startswith('i the')
+                    or le.startswith('"')
+                    or le.startswith('",')
+                    or (' to ' in le and is_verb)
+                )
+                bad_de = (not ld) or ld.startswith('"') or ld.startswith('",')
             if chosen:
                 cleaned.append({
                     "de": de,
                     "en": en,
-                    "line_en": (chosen.get('line_en') or '').strip(),
-                    "line_de": (chosen.get('line_de') or '').strip(),
+                    "line_en": '' if bad_en else (chosen.get('line_en') or '').strip(),
+                    "line_de": '' if bad_de else (chosen.get('line_de') or '').strip(),
                 })
             else:
                 cleaned.append({"de": de, "en": en, "line_en": '', "line_de": ''})

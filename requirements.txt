@@ -6,3 +6,5 @@ python-dotenv>=1.0.0
 python-multipart>=0.0.9
 Pillow>=10.0.0
 pypdfium2>=4.27.0
+google-genai>=1.0.0
+youtube-transcript-api>=0.6.0

@@ -1,29 +1,50 @@
 import os
 import json
-import base64
-import urllib.request
-import urllib.error
 import random
 from dotenv import load_dotenv
+from google import genai
 
 # Force load from .env file
 load_dotenv(override=True)
 GEMINI_API_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
 
+# Shared genai client
+_client = None
+
+def _get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=GEMINI_API_KEY)
+    return _client
+
+MODEL = "gemini-2.5-flash"
+
+
+def _generate(prompt: str, timeout: int = 60) -> str | None:
+    """Call Gemini and return the raw text response, or None on failure."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        client = _get_client()
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+            },
+        )
+        return response.text
+    except Exception:
+        return None
+
+
 def generate_lines(cards):
     if not GEMINI_API_KEY:
         return []
 
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
-
     def run_chunk(chunk):
         vocab_list = "\n".join([f'- {{ "de": "{c["de"]}", "en": "{c["en"]}" }}' for c in chunk])
-        prompt = f"""
-You are an expert German language teacher.
+        prompt = f"""You are an expert German language teacher.
 
 Generate PRACTICAL, REAL-LIFE example sentences for A1–B1 learners.
 
@@ -36,40 +57,20 @@ Sentences 8–14 words; daily-life contexts; not literal translations; correct G
 Vocabulary:
 {vocab_list}
 """
-        body = {
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"response_mime_type": "application/json"},
-        }
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])  
-                if isinstance(p0, dict) and "inlineData" in p0:
-                    data_b64 = p0["inlineData"].get("data", "")
-                    if data_b64:
-                        raw_json = base64.b64decode(data_b64).decode("utf-8")
-                        return json.loads(raw_json)
-        if isinstance(parsed, list):
-            return parsed
-        return []
+        raw = _generate(prompt)
+        if not raw:
+            return []
+        try:
+            result = json.loads(raw)
+            return result if isinstance(result, list) else []
+        except Exception:
+            return []
 
     all_items = []
     CHUNK_SIZE = 30
     i = 0
     while i < len(cards):
-        chunk = cards[i:i+CHUNK_SIZE]
+        chunk = cards[i:i + CHUNK_SIZE]
         try:
             res = run_chunk(chunk) or []
             if isinstance(res, list):
@@ -79,16 +80,11 @@ Vocabulary:
         i += CHUNK_SIZE
     return all_items
 
+
 def generate_story(cards, deck_name: str):
     """Generate an actual narrative story using vocabulary from the deck."""
     if not GEMINI_API_KEY:
         return None
-
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
 
     # Pick 8-12 words for a short story
     selected = cards[:12] if len(cards) <= 12 else random.sample(cards, 12)
@@ -194,43 +190,20 @@ HIGHLIGHTING STRATEGY (YOU decide what is most useful for A2–B1 learners):
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-    
-    try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])
+    raw = _generate(prompt, timeout=60)
+    if not raw:
         return None
+    try:
+        return json.loads(raw)
     except Exception:
         return None
+
 
 def generate_custom_story(topic: str, level: str = "A2"):
     """Generate a story based on a custom topic using Gemini."""
     if not GEMINI_API_KEY:
         return None
-    
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
-    
+
     prompt = f"""You are a comedy writer creating SHORT, PUNCHY stories for German learners.
 The target CEFR level is {level}. Adjust the vocabulary and grammar strictly to this level
 (A1 = very simple everyday language, C2 = very advanced, natural native-like language).
@@ -324,32 +297,13 @@ HIGHLIGHTING STRATEGY (ADAPT TO CEFR LEVEL {level}):
 
 Remember: The best language learning happens when students are entertained and want to know what happens next!"""
 
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-    
-    try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])
-        print(f"[AI] No valid response from Gemini: {parsed}")
+    raw = _generate(prompt, timeout=60)
+    if not raw:
         return None
+    try:
+        return json.loads(raw)
     except Exception as e:
-        print(f"[AI] Error generating custom story: {e}")
+        print(f"[AI] Error parsing custom story: {e}")
         return None
 
 
@@ -357,12 +311,6 @@ def generate_subtitle_story(lines: list[str], level: str = "A2"):
     """Generate translations + vocabulary for a list of subtitle lines."""
     if not GEMINI_API_KEY:
         return None
-
-    model = "gemini-2.5-flash"
-    endpoint = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent?key={GEMINI_API_KEY}"
-    )
 
     payload = {
         "level": level,
@@ -413,30 +361,11 @@ IMPORTANT:
 - Only include highlight_pairs where 'de' and 'en' actually appear in
   text_de/text_en."""
 
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-
-    try:
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw)
-        candidates = parsed.get("candidates") or []
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                p0 = parts[0]
-                if isinstance(p0, dict) and "text" in p0:
-                    return json.loads(p0["text"])
-        print(f"[AI] No valid response from Gemini for subtitles: {parsed}")
+    raw = _generate(prompt, timeout=120)
+    if not raw:
         return None
+    try:
+        return json.loads(raw)
     except Exception as e:
-        print(f"[AI] Error generating subtitle story: {e}")
+        print(f"[AI] Error parsing subtitle story: {e}")
         return None
