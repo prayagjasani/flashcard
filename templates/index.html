@@ -2062,6 +2062,12 @@
         const lineDataCache = new Map();
         // Line audio cache (line_de text -> blob object URL)
         const lineAudioCache = new Map();
+        // Line audio URL map (line_de text -> R2 URL, lightweight)
+        const lineAudioURLMap = new Map();
+        // Track how many cards user has seen to trigger preload batches
+        let lineAudioCardsSeen = 0;
+        const LINE_AUDIO_BATCH_SIZE = 5;
+        const LINE_AUDIO_TRIGGER_AT = 4;
         // Track which words have had their line revealed (stays revealed)
         const revealedLineWords = new Set();
         const header = document.querySelector('.site-header');
@@ -2771,19 +2777,27 @@
             originalWords = Array.isArray(data) ? data : [];
             words = originalWords.slice();
             shuffle(words);
+
+            // Reset all state BEFORE showing first card
+            clearDeckPreloads();
+            clearPracticedWords();
+            revealedLineWords.clear();
+            lineAudioCardsSeen = 0;
+            lineAudioURLMap.clear();
+            wordAudioURLMap.clear();
+
+            // Start preloading (populates URL maps, triggers first batch)
+            preloadDeckAudio(deckName);
+            loadLineDataForDeck(deckName);
+
+            // Show first card (triggers preloadNextWordAudios on card 1)
             getNewCard();
+
             if (deckName) {
                 try {
                     localStorage.setItem('selectedDeck', deckName);
                 } catch { }
             }
-
-            clearDeckPreloads();
-            preloadDeckAudio(deckName);
-            clearPracticedWords();
-            revealedLineWords.clear();
-            // Load line data in background
-            loadLineDataForDeck(deckName);
         }
 
         async function preloadDeckAudio(deckName) {
@@ -2791,36 +2805,56 @@
                 const resp = await fetch(`/preload_deck_audio?deck=${encodeURIComponent(deckName)}`);
                 const data = await resp.json();
                 if (data && data.audio_urls) {
-                    const entries = Object.entries(data.audio_urls);
-                    const tasks = entries.map(([text, url]) => (async () => {
-                        try {
-                            const resp2 = await fetch(url);
-                            if (resp2.ok) {
-                                const blob = await resp2.blob();
-                                const objUrl = URL.createObjectURL(blob);
-                                audioCache.set(text, objUrl);
-                                audioBlobUrls.set(text, objUrl);
-                                const base64 = await new Promise((resolve, reject) => {
-                                    const r = new FileReader();
-                                    r.onloadend = () => resolve(r.result);
-                                    r.onerror = reject;
-                                    r.readAsDataURL(blob);
-                                });
-                                try {
-                                    localStorage.setItem(`audio:de:${text}`, String(base64));
-                                } catch { }
-                            } else {
-                                audioCache.set(text, url);
-                            }
-                        } catch (err) {
-                            audioCache.set(text, url);
-                        }
-                    })());
-                    await Promise.allSettled(tasks);
+                    // Store URL map only (lightweight, no blob downloads)
+                    Object.entries(data.audio_urls).forEach(([text, url]) => wordAudioURLMap.set(text, url));
+                    // Trigger initial batch of blob downloads
+                    preloadNextWordAudios();
                 }
             } catch (e) {
                 console.error('Error preloading audio:', e);
             }
+        }
+
+        // Download blobs for only the next N upcoming word audios
+        async function preloadNextWordAudios() {
+            const BATCH = LINE_AUDIO_BATCH_SIZE;
+            const wordsToLoad = [];
+            // Include current card
+            if (currentCard && currentCard.de && !audioCache.has(currentCard.de)) {
+                wordsToLoad.push(currentCard.de);
+            }
+            // Include upcoming cards from words array
+            for (let i = 0; i < words.length && wordsToLoad.length < BATCH; i++) {
+                const w = words[i];
+                if (!w || !w.de) continue;
+                if (!audioCache.has(w.de) && !wordsToLoad.includes(w.de)) {
+                    wordsToLoad.push(w.de);
+                }
+            }
+            if (!wordsToLoad.length) return;
+            const tasks = wordsToLoad.map(text => (async () => {
+                try {
+                    if (audioCache.has(text)) return;
+                    const url = wordAudioURLMap.get(text);
+                    if (!url) return;
+                    const resp2 = await fetch(url);
+                    if (!resp2.ok) return;
+                    const blob = await resp2.blob();
+                    const objUrl = URL.createObjectURL(blob);
+                    audioCache.set(text, objUrl);
+                    audioBlobUrls.set(text, objUrl);
+                    try {
+                        const base64 = await new Promise((resolve, reject) => {
+                            const r = new FileReader();
+                            r.onloadend = () => resolve(r.result);
+                            r.onerror = reject;
+                            r.readAsDataURL(blob);
+                        });
+                        localStorage.setItem(`audio:de:${text}`, String(base64));
+                    } catch { }
+                } catch { }
+            })());
+            await Promise.allSettled(tasks);
         }
 
         async function preloadRandomTestAudio(words) {
@@ -3968,6 +4002,13 @@
             // Show line hint if available
             updateLineHint();
 
+            // Windowed line audio preloading: trigger next batch every 4 cards
+            lineAudioCardsSeen++;
+            if (lineAudioCardsSeen === 1 || lineAudioCardsSeen % LINE_AUDIO_TRIGGER_AT === 0) {
+                preloadNextLineAudios();
+                preloadNextWordAudios();
+            }
+
             // Auto-play audio when showing front (German) side
             if (frontLang === 'de') {
                 // Small delay to ensure card text is rendered
@@ -4120,24 +4161,52 @@
             }
         }
 
-        // Preload line audio from R2 into lineAudioCache
+        // Preload line audio URLs from R2 (lightweight, only stores URL strings)
         async function preloadLineAudioForDeck(deckName) {
             try {
                 const resp = await fetch(`/preload_lines_audio?deck=${encodeURIComponent(deckName)}`);
                 if (!resp.ok) return;
                 const data = await resp.json();
                 const map = (data && data.audio_urls) ? data.audio_urls : {};
-                const tasks = Object.entries(map).map(([text, url]) => (async () => {
-                    try {
-                        if (lineAudioCache.has(text)) return;
-                        const r = await fetch(url);
-                        if (!r.ok) return;
-                        const blob = await r.blob();
-                        lineAudioCache.set(text, URL.createObjectURL(blob));
-                    } catch { }
-                })());
-                await Promise.allSettled(tasks);
+                Object.entries(map).forEach(([text, url]) => lineAudioURLMap.set(text, url));
+                // Trigger initial batch of blob downloads
+                preloadNextLineAudios();
             } catch { }
+        }
+
+        // Download blobs for only the next N upcoming cards' line audio
+        async function preloadNextLineAudios() {
+            // Collect line_de texts for upcoming cards that need audio
+            const textsToLoad = [];
+            // Include current card
+            if (currentCard) {
+                const ld = lineDataCache.get(currentCard.de);
+                if (ld && ld.line_de && !lineAudioCache.has(ld.line_de)) {
+                    textsToLoad.push(ld.line_de);
+                }
+            }
+            // Include upcoming cards from words array
+            for (let i = 0; i < words.length && textsToLoad.length < LINE_AUDIO_BATCH_SIZE; i++) {
+                const w = words[i];
+                if (!w || !w.de) continue;
+                const ld = lineDataCache.get(w.de);
+                if (ld && ld.line_de && !lineAudioCache.has(ld.line_de) && !textsToLoad.includes(ld.line_de)) {
+                    textsToLoad.push(ld.line_de);
+                }
+            }
+            if (!textsToLoad.length) return;
+            const tasks = textsToLoad.map(text => (async () => {
+                try {
+                    if (lineAudioCache.has(text)) return;
+                    const url = lineAudioURLMap.get(text);
+                    if (!url) return;
+                    const r = await fetch(url);
+                    if (!r.ok) return;
+                    const blob = await r.blob();
+                    lineAudioCache.set(text, URL.createObjectURL(blob));
+                } catch { }
+            })());
+            await Promise.allSettled(tasks);
         }
 
         function getNewCard() {
@@ -4478,6 +4547,7 @@
         const audioCache = new Map();
         const preloadedAudios = new Map();
         const audioBlobUrls = new Map();
+        const wordAudioURLMap = new Map();
         const audioPlayer = new Audio();
         audioPlayer.preload = 'none';
         let lastObjectUrl = null;
