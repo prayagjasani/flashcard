@@ -46,11 +46,11 @@
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        
+
         .card {
             background: var(--tw-bg-opacity, 1);
         }
-        
+
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -61,17 +61,17 @@
             background: rgba(255, 255, 255, .6);
             transition: opacity .2s ease
         }
-        
+
         .loading-overlay.is-active {
             display: flex;
         }
-        
+
         .loading-dots {
             display: flex;
             gap: 8px;
             color: #8E8E93
         }
-        
+
         .loading-dots span {
             width: 8px;
             height: 8px;
@@ -80,63 +80,68 @@
             opacity: 0.5;
             animation: dotPulse 1000ms infinite ease-in-out;
         }
-        
+
         .loading-dots span:nth-child(2) {
             animation-delay: 150ms;
         }
-        
+
         .loading-dots span:nth-child(3) {
             animation-delay: 300ms;
         }
-        
+
         @keyframes dotPulse {
             0% {
                 transform: scale(1);
                 opacity: .35
             }
+
             50% {
                 transform: scale(1.25);
                 opacity: 1
             }
+
             100% {
                 transform: scale(1);
                 opacity: .35
             }
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .loading-dots {
                 color: #92adc9
             }
+
             .loading-overlay {
                 background: rgba(0, 0, 0, .6)
             }
         }
-        
+
         .tile-enter {
             animation: slideDown 380ms ease-out both;
             will-change: transform, opacity
         }
-        
+
         @keyframes slideDown {
             0% {
                 transform: translateY(-6px);
                 opacity: 0
             }
+
             100% {
                 transform: translateY(0);
                 opacity: 1
             }
         }
-        
+
         html {
             color-scheme: light;
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .loading-overlay {
                 background: rgba(255, 255, 255, .6) !important;
             }
+
             .loading-dots {
                 color: #8E8E93 !important;
             }
@@ -146,15 +151,23 @@
 
 <body class="bg-background-light dark:bg-background-dark font-display">
     <div class="relative flex min-h-screen w-full flex-col">
-        <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+        <header
+            class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
             <div class="mx-auto max-w-md px-3 py-2 flex items-center gap-2">
-                <button id="backBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Back"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
+                <button id="backBtn"
+                    class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"
+                    aria-label="Back"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
                 <div class="w-8 h-8 shrink-0"></div>
-                <div class="flex-1 text-center text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark" id="progressText"></div>
-                <button id="refreshBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Refresh lines">
+                <div class="flex-1 text-center text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark"
+                    id="progressText"></div>
+                <button id="refreshBtn"
+                    class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"
+                    aria-label="Refresh lines">
                     <span class="material-symbols-outlined text-xl">refresh</span>
                 </button>
-                <button id="homeBtn" class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark" aria-label="Home"><span class="material-symbols-outlined text-xl">home</span></button>
+                <button id="homeBtn"
+                    class="flex h-8 w-8 items-center justify-center rounded-full text-text-primary-light dark:text-text-primary-dark"
+                    aria-label="Home"><span class="material-symbols-outlined text-xl">home</span></button>
             </div>
         </header>
         <div id="globalLoader" class="loading-overlay" aria-hidden="true">
@@ -216,7 +229,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">German</div>
-                            <div class="text-base font-semibold text-text-primary-light dark:text-text-primary-dark">${it.de || ''}</div>
+                            <div class="text-base font-semibold text-text-primary-light dark:text-text-primary-dark word-de" style="cursor:pointer;" data-word="${(it.de || '').replace(/"/g, '&quot;')}">${it.de || ''}</div>
                         </div>
                         <div>
                             <div class="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">English</div>
@@ -235,6 +248,13 @@
                 lineList.appendChild(card);
                 shown.push(it);
                 lastItems.push(it);
+                // attach word audio click
+                const wordEl = card.querySelector('.word-de');
+                if (wordEl && (it.de || '').trim()) {
+                    wordEl.addEventListener('click', () => {
+                        playWord((it.de || '').trim());
+                    });
+                }
                 const btn = card.querySelector('.line-de');
                 if (btn && (it.line_de || '').trim()) {
                     btn.style.cursor = 'pointer';
@@ -244,7 +264,7 @@
                 }
             });
             const total = items.length;
-            setStatus(`Generated ${shown.length}${total?` of ${total}`:''} lines`);
+            setStatus(`Generated ${shown.length}${total ? ` of ${total}` : ''} lines`);
         }
 
         async function generate(refresh = false) {
@@ -266,14 +286,27 @@
                     .then(r => r.json())
                     .then(j => {
                         const map = j && j.audio_urls ? j.audio_urls : {};
-                        Object.entries(map).forEach(([t,u]) => lineAudioURLs.set(t, u));
+                        Object.entries(map).forEach(([t, u]) => lineAudioURLs.set(t, u));
                         if ('requestIdleCallback' in window) {
                             requestIdleCallback(() => preloadLineAudio(map));
                         } else {
                             setTimeout(() => preloadLineAudio(map), 300);
                         }
                     })
-                    .catch(() => {});
+                    .catch(() => { });
+                // Also preload word audio in background
+                fetch(`/preload_deck_audio?deck=${encodeURIComponent(deck)}`)
+                    .then(r => r.json())
+                    .then(j => {
+                        const map = j && j.audio_urls ? j.audio_urls : {};
+                        Object.entries(map).forEach(([t, u]) => wordAudioURLs.set(t, u));
+                        if ('requestIdleCallback' in window) {
+                            requestIdleCallback(() => preloadWordAudio(map));
+                        } else {
+                            setTimeout(() => preloadWordAudio(map), 500);
+                        }
+                    })
+                    .catch(() => { });
             } catch (e) {
                 setStatus(String(e.message || e));
                 hideLoader();
@@ -284,6 +317,9 @@
         audio.preload = 'auto';
         const lineAudioURLs = new Map();
         const lineAudioCache = new Map();
+        const wordAudioURLs = new Map();
+        const wordAudioCache = new Map();
+
         function playLine(text) {
             const key = `audio:de:${text}`;
             const ls = localStorage.getItem(key);
@@ -293,7 +329,13 @@
                 const cached = lineAudioCache.get(text) || lineAudioURLs.get(text);
                 audio.src = cached || `/tts?text=${encodeURIComponent(text)}&lang=de`;
             }
-            audio.play().catch(() => {});
+            audio.play().catch(() => { });
+        }
+
+        function playWord(text) {
+            const cached = wordAudioCache.get(text) || wordAudioURLs.get(text);
+            audio.src = cached || `/tts?text=${encodeURIComponent(text)}&lang=de`;
+            audio.play().catch(() => { });
         }
 
         async function preloadLineAudio(map) {
@@ -314,11 +356,27 @@
                         });
                         try {
                             localStorage.setItem(`audio:de:${text}`, base64);
-                        } catch {}
-                    } catch {}
+                        } catch { }
+                    } catch { }
                 })());
                 await Promise.allSettled(tasks);
-            } catch {}
+            } catch { }
+        }
+
+        async function preloadWordAudio(map) {
+            try {
+                const entries = Object.entries(map);
+                const tasks = entries.map(([text, url]) => (async () => {
+                    try {
+                        if (wordAudioCache.has(text)) return;
+                        const r = await fetch(url);
+                        if (!r.ok) return;
+                        const b = await r.blob();
+                        wordAudioCache.set(text, URL.createObjectURL(b));
+                    } catch { }
+                })());
+                await Promise.allSettled(tasks);
+            } catch { }
         }
 
         function exportCSV() {
@@ -338,8 +396,8 @@
             a.remove();
         }
 
-        backBtn.addEventListener('click',()=>{history.length>1?history.back():location.href='/'});
-        homeBtn.addEventListener('click',()=>{location.href='/'});
+        backBtn.addEventListener('click', () => { history.length > 1 ? history.back() : location.href = '/' });
+        homeBtn.addEventListener('click', () => { location.href = '/' });
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => {
                 // Clear current list and request fresh data from the server

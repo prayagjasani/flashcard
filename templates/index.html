@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <style>
-         :root {
+        :root {
             --bg: #f6f7fb;
             --text: #0f172a;
             --card-bg: #ffffff;
@@ -27,12 +27,12 @@
             --danger: #ef4444;
             --muted: #64748b;
         }
-        
+
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         body {
             margin: 0;
             min-height: 100vh;
@@ -44,8 +44,9 @@
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             padding: 24px;
         }
+
         /* Responsive, animated header (Cosmos-style) */
-        
+
         .site-header {
             position: fixed;
             top: 0;
@@ -58,27 +59,27 @@
             border-bottom: 1px solid rgba(226, 232, 240, 0.7);
             transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .site-header {
                 background: rgba(255, 255, 255, 0.6);
                 border-bottom-color: rgba(226, 232, 240, 0.7);
             }
         }
-        
+
         .site-header.is-solid {
             background: rgba(255, 255, 255, 0.85);
             border-bottom-color: rgba(226, 232, 240, 1);
             box-shadow: 0 6px 20px rgba(2, 8, 23, 0.10);
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .site-header.is-solid {
                 background: rgba(255, 255, 255, 0.85);
                 border-bottom-color: rgba(226, 232, 240, 1);
             }
         }
-        
+
         .header__inner {
             max-width: 1100px;
             margin: 0 auto;
@@ -88,20 +89,20 @@
             align-items: center;
             gap: 12px;
         }
-        
+
         .header__logo {
             font-weight: 700;
             color: inherit;
             text-decoration: none;
         }
-        
+
         .header__nav {
             display: flex;
             grid-column: 2;
             justify-content: center;
             gap: 18px;
         }
-        
+
         .nav__link {
             position: relative;
             display: inline-block;
@@ -111,8 +112,9 @@
             text-decoration: none;
             font-weight: 600;
         }
+
         /* Make the header action button visually identical to nav links */
-        
+
         .nav__link--button {
             background: transparent;
             border: 0;
@@ -122,24 +124,25 @@
             box-shadow: none;
             cursor: pointer;
         }
+
         /* Ensure header button aligns perfectly with nav link sizing */
-        
+
         .nav__link--button {
             font: inherit;
             border-radius: 0;
         }
-        
+
         .link__text {
             display: block;
             line-height: 20px;
             transition: transform 220ms ease;
             will-change: transform;
         }
-        
+
         .link__text--primary {
             transform: translateY(0%);
         }
-        
+
         .link__text--hover {
             position: absolute;
             left: 0;
@@ -147,20 +150,20 @@
             transform: translateY(0%);
             opacity: 0.9;
         }
-        
+
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        
+
         .nav__link:hover .link__text--primary {
             transform: translateY(-100%);
         }
-        
+
         .nav__link:hover .link__text--hover {
             transform: translateY(-100%);
             opacity: 1;
         }
-        
+
         .header__actions {
             display: flex;
             justify-content: center;
@@ -171,22 +174,24 @@
             white-space: nowrap;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         .header__actions::-webkit-scrollbar {
             display: none;
         }
-        
+
         .header__actions>.nav__link,
         .header__actions>.nav__link--button {
             flex: 0 0 auto;
         }
+
         /* Make nav wrap nicely on small screens instead of overflowing */
-        
+
         @media (max-width: 640px) {
             .header__inner {
                 grid-template-columns: 1fr;
                 justify-items: center;
             }
+
             .header__actions {
                 grid-column: 1;
                 flex-wrap: wrap;
@@ -195,20 +200,22 @@
                 overflow-x: visible;
                 white-space: normal;
             }
+
             .nav__link {
                 font-size: 14px;
             }
         }
-        
+
         @media (max-width: 480px) {
             .header__inner {
                 padding: 10px 12px;
             }
+
             .header__actions {
                 gap: 10px 12px;
             }
         }
-        
+
         .btn {
             appearance: none;
             border: 1px solid var(--card-border);
@@ -221,39 +228,39 @@
             cursor: pointer;
             transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
         }
-        
+
         .btn:hover {
             transform: translateY(-1px);
         }
-        
+
         .btn--login {
             opacity: 0.9;
         }
-        
+
         .btn--signup {
             background: var(--accent);
             color: #fff;
             border-color: rgba(59, 130, 246, 0.5);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
         }
-        
+
         .btn--signup:hover {
             filter: brightness(1.05);
             transform: translateY(-1px) scale(1.03);
         }
-        
+
         .btn--danger {
             background: var(--danger);
             color: #fff;
             border-color: rgba(239, 68, 68, 0.55);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.30);
         }
-        
+
         .btn--danger:hover {
             filter: brightness(1.05);
             transform: translateY(-1px) scale(1.03);
         }
-        
+
         .hamburger {
             display: inline-flex;
             flex-direction: column;
@@ -267,19 +274,20 @@
             background: #ffffff;
             cursor: pointer;
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .btn {
                 background: #0b1224;
                 color: #e5e7eb;
                 border-color: #1f2937;
             }
+
             .hamburger {
                 background: #0b1224;
                 border-color: #1f2937;
             }
         }
-        
+
         .hamburger span {
             display: block;
             width: 18px;
@@ -288,7 +296,7 @@
             border-radius: 2px;
             transition: transform 200ms ease, opacity 200ms ease;
         }
-        
+
         .is-dragging-hidden {
             position: absolute !important;
             width: 0 !important;
@@ -298,14 +306,14 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
-        
+
         .folder-drop-target {
             background: rgba(59, 130, 246, 0.15) !important;
             border: 2px dashed var(--accent) !important;
             transform: scale(1.02);
             transition: all 150ms ease;
         }
-        
+
         .folder-drop-target::after {
             content: 'Drop to move inside';
             position: absolute;
@@ -317,19 +325,19 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        
+
         .hamburger.is-open span:nth-child(1) {
             transform: translateY(4px) rotate(45deg);
         }
-        
+
         .hamburger.is-open span:nth-child(2) {
             opacity: 0;
         }
-        
+
         .hamburger.is-open span:nth-child(3) {
             transform: translateY(-4px) rotate(-45deg);
         }
-        
+
         .mobile__menu {
             position: fixed;
             top: 56px;
@@ -345,39 +353,41 @@
             gap: 10px;
             z-index: 49;
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .mobile__menu {
                 background: rgba(255, 255, 255, 0.92);
                 border-bottom-color: rgba(226, 232, 240, 1);
             }
         }
-        
+
         .mobile__menu.is-open {
             display: flex;
             animation: menuFade 180ms ease;
         }
-        
+
         @keyframes menuFade {
             from {
                 opacity: 0;
                 transform: translateY(-6px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-        
+
         @media (min-width: 768px) {
             .hamburger {
                 display: none;
             }
+
             .mobile__menu {
                 display: none !important;
             }
         }
-        
+
         .app {
             width: 100%;
             max-width: 640px;
@@ -388,13 +398,13 @@
             -webkit-tap-highlight-color: transparent;
             /* avoid overlap under fixed header */
         }
-        
+
         h1 {
             margin: 0 0 16px 0;
             font-weight: 700;
             letter-spacing: 0.2px;
         }
-        
+
         #card {
             width: 380px;
             height: 240px;
@@ -417,7 +427,7 @@
             /* Remove mobile tap/selection highlight overlays */
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         .line-hint {
             width: 380px;
             max-width: 92vw;
@@ -431,7 +441,7 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .line-hint-audio {
             flex-shrink: 0;
             width: 32px;
@@ -446,27 +456,27 @@
             justify-content: center;
             font-size: 14px;
         }
-        
+
         .line-hint-audio:active {
             transform: scale(0.95);
         }
-        
+
         .line-hint-content {
             flex: 1;
             text-align: left;
         }
-        
+
         .line-hint-text {
             font-size: 14px;
             color: var(--text);
             line-height: 1.4;
             transition: filter 0.3s ease;
         }
-        
+
         .line-hint-text.is-blurred {
             user-select: none;
         }
-        
+
         .line-hint-label {
             font-size: 11px;
             color: var(--muted);
@@ -476,38 +486,41 @@
             outline: none;
             transition: transform 160ms ease, box-shadow 160ms ease;
         }
-        
+
         #card:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 28px rgba(2, 8, 23, 0.08);
         }
-        
+
         #card:active {
             transform: translateY(0);
         }
+
         /* Restore tap pop animation similar to earlier hover feel */
-        
+
         @keyframes tapPop {
             0% {
                 transform: translateY(-2px) scale(1.01);
                 box-shadow: 0 12px 28px rgba(2, 8, 23, 0.08);
             }
+
             100% {
                 transform: translateY(0) scale(1);
                 box-shadow: var(--shadow);
             }
         }
-        
+
         #card.tap-pop {
             animation: tapPop 180ms ease-out;
         }
+
         /* Simulated press feedback for touch devices */
-        
+
         #card.is-pressed {
             transform: translateY(0) scale(0.98);
             box-shadow: 0 8px 20px rgba(2, 8, 23, 0.06);
         }
-        
+
         .buttons,
         .actions {
             display: flex;
@@ -516,13 +529,13 @@
             margin-top: 16px;
             flex-wrap: wrap;
         }
-        
+
         .footer-actions {
             flex-direction: column;
             align-items: center;
             gap: 10px;
         }
-        
+
         .footer-row {
             display: flex;
             justify-content: center;
@@ -532,13 +545,13 @@
             width: 100%;
             max-width: 380px;
         }
-        
+
         .footer-row button {
             flex: 1 1 0;
             width: auto;
             max-width: 180px;
         }
-        
+
         button {
             appearance: none;
             border: none;
@@ -554,17 +567,17 @@
             cursor: pointer;
             transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease, filter 140ms ease;
         }
-        
+
         button:hover {
             transform: translateY(-1px);
             filter: brightness(1.05);
         }
-        
+
         button:active {
             transform: translateY(0);
             filter: brightness(0.98);
         }
-        
+
         #right {
             background: #22C55E;
             box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
@@ -576,7 +589,7 @@
             padding: 12px 24px;
             height: 50px;
         }
-        
+
         #wrong {
             background: #EF4444;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
@@ -588,7 +601,7 @@
             padding: 12px 24px;
             height: 50px;
         }
-        
+
         #reset {
             background: #71717A;
             box-shadow: 0 4px 12px rgba(113, 113, 122, 0.25);
@@ -600,7 +613,7 @@
             padding: 12px 24px;
             height: 50px;
         }
-        
+
         #prev {
             background: #3B82F6;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
@@ -612,7 +625,7 @@
             padding: 12px 24px;
             height: 50px;
         }
-        
+
         #speak {
             background: #FFB800;
             box-shadow: 0 4px 12px rgba(255, 184, 0, 0.25);
@@ -624,8 +637,9 @@
             padding: 12px 24px;
             height: 50px;
         }
+
         /* Auto-play toggle button styles */
-        
+
         #autoPlayToggle {
             background: #71717A;
             box-shadow: 0 4px 12px rgba(113, 113, 122, 0.25);
@@ -644,40 +658,44 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         #autoPlayToggle:hover {
             transform: translateY(-1px);
             filter: brightness(1.05);
         }
-        
+
         #autoPlayToggle:active {
             transform: translateY(0);
             filter: brightness(0.98);
         }
+
         /* Active state - green when auto-play is enabled */
-        
+
         #autoPlayToggle.active {
             background: #22C55E;
             box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
         }
+
         /* Toggle icon and text styling */
-        
+
         .toggle-icon {
             font-size: 16px;
             transition: transform 300ms ease;
         }
-        
+
         .toggle-text {
             font-size: 14px;
             font-weight: 600;
         }
+
         /* Icon animation when toggling */
-        
+
         #autoPlayToggle.active .toggle-icon {
             transform: scale(1.1);
         }
+
         /* Word list table styles */
-        
+
         .word-list-container {
             margin: 24px auto 0;
             width: 380px;
@@ -688,7 +706,7 @@
             box-shadow: var(--shadow);
             overflow: hidden;
         }
-        
+
         .word-list-header {
             display: flex;
             align-items: center;
@@ -699,110 +717,113 @@
             user-select: none;
             transition: background 0.15s ease;
         }
-        
+
         .word-list-header:hover {
             background: rgba(0, 0, 0, 0.03);
         }
-        
+
         .word-list-header:active {
             background: rgba(0, 0, 0, 0.06);
         }
-        
+
         .word-list-title {
             font-weight: 500;
             font-size: 13px;
             color: var(--muted);
         }
-        
+
         .word-list-container.is-collapsed .word-list-grid {
             display: none;
         }
-        
+
         .word-list-container:not(.is-collapsed) .word-list-header {
             border-bottom: 1px solid var(--card-border);
         }
-        
+
         .word-list-grid {
             max-height: 300px;
             overflow-y: auto;
         }
-        
+
         .word-list-table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         .word-list-table tr {
             cursor: pointer;
             transition: background 0.15s ease;
         }
-        
+
         .word-list-table tr:hover {
             background: rgba(0, 0, 0, 0.04);
         }
-        
+
         .word-list-table tr.is-wrong {
             background: rgba(239, 68, 68, 0.08);
         }
-        
+
         .word-list-table tr.is-right {
             background: rgba(16, 185, 129, 0.08);
         }
-        
+
         .word-list-table td {
             padding: 8px 12px;
             font-size: 13px;
             border-bottom: 1px solid var(--card-border);
             width: 50%;
         }
-        
+
         .word-list-table td:first-child {
             font-weight: 500;
             color: var(--text);
             border-right: 1px solid var(--card-border);
         }
-        
+
         .word-list-table td:last-child {
             color: var(--muted);
         }
-        
+
         .word-list-table tr:last-child td {
             border-bottom: none;
         }
-        
+
         .word-list-en-cell {
             position: relative;
             cursor: pointer;
             transition: filter 0.2s ease;
         }
-        
+
         .word-list-en-blurred {
             filter: blur(6px);
             user-select: none;
         }
-        
+
         .word-list-empty {
             padding: 20px;
             text-align: center;
             color: var(--muted);
             font-size: 14px;
         }
+
         /* Responsive adjustments */
-        
+
         @media (max-width: 640px) {
             #autoPlayToggle {
                 width: 160px;
                 padding: 10px 16px;
             }
+
             .toggle-text {
                 font-size: 12px;
             }
         }
-        
+
         @media (max-width: 480px) {
             .toggle-text {
                 display: none;
             }
+
             .buttons,
             .footer-row {
                 display: flex !important;
@@ -811,6 +832,7 @@
                 padding: 0 8px;
                 box-sizing: border-box;
             }
+
             .buttons button,
             .footer-row button {
                 flex: 1 1 0 !important;
@@ -822,17 +844,17 @@
                 height: 50px;
             }
         }
-        
+
         .footer-actions {
             margin-top: 8px;
         }
-        
+
         .deck-select {
             width: 380px;
             margin: 8px auto 0;
             text-align: center;
         }
-        
+
         .deck-select label {
             font-weight: 600;
             font-size: 14px;
@@ -841,7 +863,7 @@
             margin-bottom: 6px;
             color: var(--muted);
         }
-        
+
         .deck-select select {
             width: 100%;
             height: 40px;
@@ -851,7 +873,7 @@
             background: var(--card-bg);
             color: var(--text);
         }
-        
+
         .selected-deck-name {
             font-size: 14px;
             font-weight: 500;
@@ -863,7 +885,7 @@
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         #flashApp h1,
         #flashApp .deck-select,
         #flashApp .deck-select *,
@@ -876,11 +898,11 @@
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         #flashApp button {
             cursor: default;
         }
-        
+
         .front-toggle {
             margin-top: 8px;
             font-size: 14px;
@@ -890,14 +912,15 @@
             justify-content: center;
             gap: 8px;
         }
+
         /* Multi-deck modal styles */
-        
+
         .multi-deck-list {
             max-height: 320px;
             overflow: auto;
             margin-bottom: 16px;
         }
-        
+
         .multi-deck-item {
             display: flex;
             align-items: center;
@@ -905,22 +928,23 @@
             padding: 14px;
             border-bottom: 1px solid var(--card-border);
         }
-        
+
         .multi-deck-item:last-child {
             border-bottom: 0;
         }
-        
+
         .multi-deck-item input[type="checkbox"] {
             width: 18px;
             height: 18px;
         }
-        
+
         .front-toggle input[type="checkbox"] {
             width: 18px;
             height: 18px;
         }
+
         /* Deck Modal */
-        
+
         .modal {
             position: fixed;
             inset: 0;
@@ -929,11 +953,11 @@
             justify-content: center;
             z-index: 100;
         }
-        
+
         .modal.is-open {
             display: flex;
         }
-        
+
         .modal__backdrop {
             position: absolute;
             inset: 0;
@@ -943,15 +967,15 @@
             transition: opacity 0.3s ease;
             cursor: default;
         }
-        
+
         .modal.is-open .modal__backdrop {
             opacity: 1;
         }
-        
+
         .modal--multi .modal__backdrop {
             cursor: default;
         }
-        
+
         .modal__dialog {
             position: relative;
             width: 90%;
@@ -962,17 +986,17 @@
             box-shadow: var(--shadow);
             padding: 20px;
         }
-        
+
         .modal--multi {
             align-items: flex-end;
             justify-content: center;
             pointer-events: none;
         }
-        
+
         .modal--multi.is-open {
             pointer-events: auto;
         }
-        
+
         .modal--multi .modal__dialog {
             max-width: 420px;
             width: 100%;
@@ -987,49 +1011,51 @@
             animation: slideOutDown 0.25s ease-in forwards;
             box-sizing: border-box;
         }
-        
+
         .modal--multi.is-open .modal__dialog {
             transform: translateY(0);
             opacity: 1;
             animation: slideInUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
             transition: height 0.25s ease, min-height 0.25s ease, max-height 0.25s ease;
         }
-        
+
         .modal--multi.is-closing .modal__dialog {
             animation: slideOutDown 0.25s ease-in forwards;
         }
-        
+
         .modal--multi.is-closing .modal__backdrop {
             opacity: 0;
         }
-        
+
         @keyframes slideInUp {
             0% {
                 transform: translateY(100%);
                 opacity: 0;
             }
+
             100% {
                 transform: translateY(0);
                 opacity: 1;
             }
         }
-        
+
         @keyframes slideOutDown {
             0% {
                 transform: translateY(0);
                 opacity: 1;
             }
+
             100% {
                 transform: translateY(100%);
                 opacity: 0;
             }
         }
-        
+
         .modal__dialog--bottom {
             border-radius: 24px 24px 0 0;
             padding: 24px;
         }
-        
+
         .modal__selected-names {
             font-size: 13px;
             color: var(--accent);
@@ -1038,7 +1064,7 @@
             min-height: 18px;
             word-break: break-word;
         }
-        
+
         .multi-deck-list {
             height: 320px;
             min-height: 320px;
@@ -1047,32 +1073,32 @@
             margin-bottom: 16px;
             background: var(--card-bg);
         }
-        
+
         .multi-deck-list {
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        
+
         .multi-deck-list::-webkit-scrollbar {
             width: 0 !important;
             height: 0 !important;
             background: transparent !important;
         }
-        
+
         .multi-deck-list.is-transitioning {
             opacity: 0;
             transform: translateX(-20px);
         }
-        
+
         .multi-deck-list.is-transitioning-back {
             opacity: 0;
             transform: translateX(-20px);
         }
-        
+
         .multi-deck-list {
             transition: opacity 0.2s ease, transform 0.2s ease, max-height 0.25s ease;
         }
-        
+
         .multi-deck-folder {
             display: flex;
             justify-content: space-between;
@@ -1084,39 +1110,39 @@
             -webkit-tap-highlight-color: transparent;
             user-select: none;
         }
-        
+
         .multi-deck-folder:active {
             background: rgba(0, 0, 0, 0.06);
         }
-        
+
         .multi-deck-folder.is-selected {
             background: rgba(59, 130, 246, 0.1);
         }
-        
+
         .multi-deck-folder.is-selected .folder-label {
             color: var(--accent);
             font-weight: 600;
         }
-        
+
         .multi-deck-folder .folder-label {
             color: var(--text);
         }
-        
+
         .multi-deck-folder .folder-arrow {
             color: var(--muted);
             font-size: 18px;
         }
-        
+
         .multi-deck-folder.is-selected .folder-arrow {
             color: var(--accent);
         }
-        
+
         .multi-deck-divider {
             border: none;
             border-top: 1px solid var(--card-border);
             margin: 0;
         }
-        
+
         .modal__actions--grid {
             display: grid !important;
             grid-template-columns: 1fr 1fr;
@@ -1125,14 +1151,14 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         .modal__actions--grid .btn--cancel,
         .modal__actions--grid .btn--primary {
             width: 100% !important;
             min-width: 0 !important;
             max-width: none !important;
         }
-        
+
         .btn--cancel {
             background: #F3F4F6 !important;
             color: var(--text) !important;
@@ -1146,13 +1172,13 @@
             -webkit-tap-highlight-color: transparent;
             width: auto;
         }
-        
+
         .btn--cancel:active {
             background: #E5E7EB !important;
             transform: scale(0.98);
             box-shadow: none !important;
         }
-        
+
         .btn--primary {
             background: #E5E7EB !important;
             color: var(--text) !important;
@@ -1166,13 +1192,13 @@
             -webkit-tap-highlight-color: transparent;
             width: auto;
         }
-        
+
         .btn--primary:active {
             background: #D1D5DB !important;
             transform: scale(0.98);
             box-shadow: none !important;
         }
-        
+
         .btn--secondary {
             background: #f3f4f6 !important;
             color: var(--text) !important;
@@ -1185,20 +1211,20 @@
             cursor: default;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         .btn--secondary:active {
             background: #e5e7eb !important;
             transform: scale(0.98);
         }
-        
+
         .multi-deck-list::-webkit-scrollbar-thumb {
             background: transparent !important;
         }
-        
+
         .multi-deck-list::-webkit-scrollbar-track {
             background: transparent !important;
         }
-        
+
         .multi-deck-item {
             display: flex;
             align-items: center;
@@ -1211,41 +1237,41 @@
             user-select: none;
             transition: background 0.15s ease;
         }
-        
+
         .multi-deck-item:active {
             background: rgba(0, 0, 0, 0.04);
         }
-        
+
         .multi-deck-item.is-selected {
             background: rgba(59, 130, 246, 0.12);
         }
-        
+
         .multi-deck-item.is-selected span {
             color: var(--accent);
             font-weight: 500;
         }
-        
+
         .multi-deck-item span {
             color: var(--text);
             flex: 1;
         }
-        
+
         .modal--multi .modal__dialog {
             cursor: default;
             user-select: none;
         }
-        
+
         .modal--multi .modal__dialog * {
             cursor: default;
         }
-        
+
         .modal--multi .modal__actions {
             flex-direction: row !important;
             gap: 10px;
             width: 100%;
             box-sizing: border-box;
         }
-        
+
         .modal--multi .modal__actions .btn {
             flex: 1 1 0;
             height: 48px;
@@ -1253,17 +1279,17 @@
             width: auto !important;
             min-width: 0 !important;
         }
-        
+
         .modal--center-actions .modal__dialog {
             max-width: 420px;
         }
-        
+
         .modal--center-actions .modal__actions {
             flex-direction: row;
             flex-wrap: wrap;
             gap: 8px;
         }
-        
+
         .modal--center-actions .modal__actions .btn {
             height: 44px;
             font-size: 17px;
@@ -1271,18 +1297,20 @@
             width: 40px;
             flex: 1 1 auto;
         }
+
         /* Make actions stack on narrow screens */
-        
+
         @media (max-width: 380px) {
             .modal--center-actions .modal__actions {
                 flex-direction: column;
             }
+
             .modal--center-actions .modal__actions .btn {
                 width: 100%;
                 height: 3.5rem;
             }
         }
-        
+
         .modal__close {
             position: absolute;
             top: 10px;
@@ -1298,11 +1326,11 @@
             justify-content: center;
             cursor: pointer;
         }
-        
+
         .modal__close:hover {
             background: #eef0f4;
         }
-        
+
         .btn--pill {
             border-radius: 9999px;
             background: #f3f4f6;
@@ -1310,11 +1338,11 @@
             border-color: var(--card-border);
             box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
         }
-        
+
         .btn--pill:hover {
             background: #eef0f4;
         }
-        
+
         .modal__title {
             margin: 0 0 14px;
             font-weight: 700;
@@ -1323,19 +1351,19 @@
             letter-spacing: -0.01em;
             color: var(--text);
         }
-        
+
         .modal__title--center {
             text-align: center;
             margin-bottom: 0;
             flex: 1;
         }
-        
+
         .modal__header {
             display: flex;
             align-items: center;
             margin-bottom: 8px;
         }
-        
+
         .modal__back-btn {
             width: 36px;
             height: 36px;
@@ -1350,32 +1378,32 @@
             padding: 0;
             box-shadow: none !important;
         }
-        
+
         .modal__back-btn:active {
             opacity: 0.6;
         }
-        
+
         .modal__back-btn .material-symbols-outlined {
             font-size: 28px;
         }
-        
+
         .modal__header-spacer {
             width: 36px;
         }
-        
+
         .study-title {
             margin: 0 0 12px;
             text-align: center;
             font-weight: 700;
             font-size: 24px;
         }
-        
+
         .study-actions {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-        
+
         .study-action {
             display: flex;
             align-items: center;
@@ -1387,17 +1415,17 @@
             font-weight: 600;
             cursor: pointer;
         }
-        
+
         .study-action--primary {
             background: #eef0f4;
             color: var(--text);
         }
-        
+
         .study-action--secondary {
             background: #eef0f4;
             color: var(--text);
         }
-        
+
         .study-action__icon {
             display: inline-flex;
             align-items: center;
@@ -1406,7 +1434,7 @@
             font-size: 20px;
             line-height: 1;
         }
-        
+
         .reloadBtn {
             width: 32px;
             height: 32px;
@@ -1419,18 +1447,18 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         .modal__field {
             margin-bottom: 12px;
             text-align: left;
         }
-        
+
         .modal__field label {
             font-weight: 600;
             display: block;
             margin-bottom: 6px;
         }
-        
+
         .modal__field input,
         .modal__field textarea {
             width: 100%;
@@ -1440,62 +1468,67 @@
             font-family: inherit;
             font-size: 14px;
         }
-        
+
         .modal__field textarea {
             min-height: 180px;
             resize: vertical;
         }
-        
+
         .modal__actions {
             display: flex;
             gap: 12px;
             justify-content: center;
             margin-top: 12px;
         }
-        
+
         .modal__actions .btn {
             flex: 1 1 0;
             height: 44px;
             border-radius: 12px;
         }
-        
+
         @media (max-width: 420px) {
             .modal__actions {
                 flex-direction: column;
             }
         }
-        
+
         .modal__status {
             margin-top: 8px;
             font-size: 13px;
             color: var(--muted);
             text-align: left;
         }
+
         /* Mobile tweaks */
-        
+
         @media (max-width: 480px) {
             body {
                 padding: 12px;
                 align-items: flex-start;
             }
+
             .app {
                 margin-top: 30px;
             }
+
             .deck-select {
                 width: 92vw;
             }
+
             #card {
                 width: 92vw;
                 max-width: 380px;
                 height: auto;
                 aspect-ratio: 19 / 12;
             }
+
             .buttons button,
             .actions button {
                 width: 46%;
             }
         }
-        
+
         .deck-list {
             max-width: none;
             width: 100%;
@@ -1503,26 +1536,26 @@
             margin-top: 16px;
             padding: 32px 0 16px;
         }
-        
+
         .deck-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 10px;
             /* ~gap-4 */
         }
-        
+
         @media (min-width: 640px) {
             .deck-grid {
                 grid-template-columns: 1fr 1fr;
             }
         }
-        
+
         @media (min-width: 1024px) {
             .deck-grid {
                 grid-template-columns: 1fr 1fr 1fr;
             }
         }
-        
+
         .deck-tile {
             position: relative;
             background: var(--card-bg);
@@ -1536,22 +1569,22 @@
             overflow: visible;
             z-index: 0;
         }
-        
+
         .deck-tile:hover {
             box-shadow: var(--card-shadow-hover);
         }
-        
+
         .create-tile {
             background: transparent;
             border: 1px dashed var(--card-border);
             box-shadow: none;
         }
-        
+
         .create-tile:hover {
             box-shadow: none;
             background: rgba(2, 8, 23, 0.02);
         }
-        
+
         .create-tile__icon {
             display: flex;
             align-items: center;
@@ -1560,29 +1593,30 @@
             color: var(--text-secondary);
             height: 24px;
         }
-        
+
         .tile-enter {
             animation: slideDown 380ms ease-out both;
             will-change: transform, opacity;
         }
-        
+
         @keyframes slideDown {
             0% {
                 transform: translateY(-6px);
                 opacity: 0;
             }
+
             100% {
                 transform: translateY(0);
                 opacity: 1;
             }
         }
-        
+
         .deck-title {
             font-weight: 400;
             color: var(--text-primary);
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         }
-        
+
         .kebab-btn {
             position: absolute;
             top: 50%;
@@ -1602,31 +1636,31 @@
             line-height: 1;
             cursor: pointer;
         }
-        
+
         .kebab-btn:hover {
             color: var(--text);
             background: transparent;
             transform: translateY(-50%);
         }
-        
+
         .kebab-btn:active {
             transform: translateY(-50%);
         }
-        
+
         .modal__dialog .kebab-btn {
             top: 10px;
             right: 10px;
             transform: none;
         }
-        
+
         .modal__dialog .kebab-btn:hover {
             transform: none;
         }
-        
+
         .modal__dialog .kebab-btn:active {
             transform: none;
         }
-        
+
         .kebab-menu {
             position: absolute;
             top: 46px;
@@ -1640,17 +1674,17 @@
             display: none;
             z-index: 3000;
         }
-        
+
         .deck-tile.menu-open {
             z-index: 4000 !important;
             transform: translateZ(10px);
             /* Force it to be "closer" if 3D transform is involved */
         }
-        
+
         .kebab-menu.is-open {
             display: block;
         }
-        
+
         .kebab-item {
             display: flex;
             align-items: center;
@@ -1666,16 +1700,16 @@
             box-shadow: inset 0 -1px rgba(15, 23, 42, 0.04);
             min-height: 40px;
         }
-        
+
         .kebab-item:hover {
             background: #eef0f4;
         }
-        
+
         .deck-subtitle {
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
-        
+
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -1685,33 +1719,34 @@
             justify-content: center;
             background: rgba(255, 255, 255, 0.6);
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .loading-overlay {
                 background: rgba(17, 24, 39, 0.45);
             }
         }
-        
+
         .loading-overlay.is-active {
             display: flex;
             animation: fadeIn 0.2s ease-out forwards;
         }
-        
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
             }
+
             to {
                 opacity: 1;
             }
         }
-        
+
         .loading-dots {
             display: flex;
             gap: 8px;
             color: var(--muted);
         }
-        
+
         .loading-dots span {
             width: 8px;
             height: 8px;
@@ -1720,30 +1755,32 @@
             opacity: 0.5;
             animation: dotPulse 1000ms infinite ease-in-out;
         }
-        
+
         .loading-dots span:nth-child(2) {
             animation-delay: 150ms;
         }
-        
+
         .loading-dots span:nth-child(3) {
             animation-delay: 300ms;
         }
-        
+
         @keyframes dotPulse {
             0% {
                 transform: scale(1);
                 opacity: 0.35;
             }
+
             50% {
                 transform: scale(1.25);
                 opacity: 1;
             }
+
             100% {
                 transform: scale(1);
                 opacity: 0.35;
             }
         }
-        
+
         .fab-btn {
             position: fixed;
             bottom: 20px;
@@ -1763,7 +1800,7 @@
             cursor: pointer;
             z-index: 90;
         }
-        
+
         .fab-btn:hover {
             filter: brightness(1.05);
         }
@@ -1772,12 +1809,13 @@
         html {
             color-scheme: light;
         }
-        
+
         @media (prefers-color-scheme: dark) {
             .modal__dialog {
                 background: var(--card-bg) !important;
                 border-color: var(--card-border) !important;
             }
+
             .loading-overlay {
                 background: rgba(255, 255, 255, 0.6) !important;
             }
@@ -1888,7 +1926,8 @@
     </div>
     <div class="modal modal--multi" id="multiDeckModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-multi="true"></div>
-        <div class="modal__dialog modal__dialog--bottom" role="dialog" aria-modal="true" aria-labelledby="multiDeckModalTitle">
+        <div class="modal__dialog modal__dialog--bottom" role="dialog" aria-modal="true"
+            aria-labelledby="multiDeckModalTitle">
             <div class="modal__header">
                 <button class="modal__back-btn" id="multiDeckBackBtn" type="button" style="visibility:hidden;">
                     <span class="material-symbols-outlined">chevron_left</span>
@@ -1976,7 +2015,8 @@
                 <button id="speak">Speak</button>
             </div>
             <div class="footer-row">
-                <button id="autoPlayToggle" class="auto-play-toggle" aria-label="Toggle auto-play audio" role="switch" aria-checked="false" title="Enable/disable automatic audio playback">
+                <button id="autoPlayToggle" class="auto-play-toggle" aria-label="Toggle auto-play audio" role="switch"
+                    aria-checked="false" title="Enable/disable automatic audio playback">
                     <span class="toggle-icon">🔇</span>
                     <span class="toggle-text">Auto-Play Audio</span>
                 </button>
@@ -2020,6 +2060,8 @@
 
         // Line data cache (de word -> {line_de, line_en})
         const lineDataCache = new Map();
+        // Line audio cache (line_de text -> blob object URL)
+        const lineAudioCache = new Map();
         // Track which words have had their line revealed (stays revealed)
         const revealedLineWords = new Set();
         const header = document.querySelector('.site-header');
@@ -2386,7 +2428,7 @@
                 tile.classList.add('folder-drop-target');
                 folderDropTarget = name;
                 // Start timer - if held for 800ms, move folder inside
-                folderDropTimer = setTimeout(async() => {
+                folderDropTimer = setTimeout(async () => {
                     if (draggingFolder && folderDropTarget === name && draggingFolder !== name) {
                         // Move folder inside target
                         try {
@@ -2413,7 +2455,7 @@
                                 // Reload folders
                                 await loadFolders();
                             }
-                        } catch {}
+                        } catch { }
                     }
                     tile.classList.remove('folder-drop-target');
                     folderDropTarget = null;
@@ -2434,7 +2476,7 @@
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(folderGrid, idx < 0 ? 0 : idx);
             });
-            tile.addEventListener('drop', async(e) => {
+            tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 // Clear timer and highlight
                 if (folderDropTimer) clearTimeout(folderDropTimer);
@@ -2489,7 +2531,7 @@
                 const idx = tiles.indexOf(tile);
                 placePlaceholder(deckGrid, idx < 0 ? 0 : idx);
             });
-            tile.addEventListener('drop', async(e) => {
+            tile.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const target = name;
                 const dragged = draggingDeck;
@@ -2588,7 +2630,7 @@
             isAutoPlayEnabled = false;
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
-            } catch {}
+            } catch { }
             updateAutoPlayToggle();
         }
 
@@ -2597,7 +2639,7 @@
             isAutoPlayEnabled = !isAutoPlayEnabled;
             try {
                 localStorage.setItem('autoPlayEnabled', String(isAutoPlayEnabled));
-            } catch {}
+            } catch { }
             updateAutoPlayToggle();
         });
 
@@ -2680,7 +2722,7 @@
             let saved = false;
             try {
                 saved = localStorage.getItem('englishFront') === 'true';
-            } catch {}
+            } catch { }
             applyFrontPreference(saved);
             if (englishFrontToggle) englishFrontToggle.checked = saved;
         })();
@@ -2688,7 +2730,7 @@
             const isEnglishFront = e.target.checked;
             try {
                 localStorage.setItem('englishFront', String(isEnglishFront));
-            } catch {}
+            } catch { }
             applyFrontPreference(isEnglishFront);
             // Re-render current card after language flip
             refreshCardText();
@@ -2704,7 +2746,7 @@
             randomTestPracticedKeys.clear();
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
-            } catch {}
+            } catch { }
             updateAutoPlayToggle();
             cardHistory = [];
             updateSelectedDeckName(deckName);
@@ -2718,7 +2760,7 @@
                     if (deckName && Array.isArray(data)) {
                         try {
                             sessionStorage.setItem(`flashcard_cards_${deckName}`, JSON.stringify(data));
-                        } catch {}
+                        } catch { }
                     }
                 } else {
                     data = [];
@@ -2733,7 +2775,7 @@
             if (deckName) {
                 try {
                     localStorage.setItem('selectedDeck', deckName);
-                } catch {}
+                } catch { }
             }
 
             clearDeckPreloads();
@@ -2750,7 +2792,7 @@
                 const data = await resp.json();
                 if (data && data.audio_urls) {
                     const entries = Object.entries(data.audio_urls);
-                    const tasks = entries.map(([text, url]) => (async() => {
+                    const tasks = entries.map(([text, url]) => (async () => {
                         try {
                             const resp2 = await fetch(url);
                             if (resp2.ok) {
@@ -2766,7 +2808,7 @@
                                 });
                                 try {
                                     localStorage.setItem(`audio:de:${text}`, String(base64));
-                                } catch {}
+                                } catch { }
                             } else {
                                 audioCache.set(text, url);
                             }
@@ -2783,7 +2825,7 @@
 
         async function preloadRandomTestAudio(words) {
             if (!words || !words.length) return;
-            const tasks = words.map(w => (async() => {
+            const tasks = words.map(w => (async () => {
                 const text = w.de;
                 if (!text || audioCache.has(text)) return;
                 try {
@@ -2801,7 +2843,7 @@
                                 r.readAsDataURL(blob);
                             });
                             localStorage.setItem(`audio:de:${text}`, String(base64));
-                        } catch {}
+                        } catch { }
                     }
                 } catch (err) {
                     console.warn('Failed to preload audio for:', text);
@@ -2816,17 +2858,17 @@
                     try {
                         a.pause();
                         a.src = '';
-                    } catch {}
+                    } catch { }
                 });
                 preloadedAudios.clear();
                 audioBlobUrls.forEach((url) => {
                     try {
                         URL.revokeObjectURL(url);
-                    } catch {}
+                    } catch { }
                 });
                 audioBlobUrls.clear();
                 audioCache.clear();
-            } catch {}
+            } catch { }
         }
 
         // Cache keys for instant loading
@@ -2893,7 +2935,7 @@
                 cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
                 saveToCache(CACHE_KEY_DECKS, cachedDeckList);
                 updateDeckCounts();
-            } catch {}
+            } catch { }
 
             hideLoader();
             renderFolderGrid();
@@ -2971,7 +3013,7 @@
                     renderFolderGrid();
                     renderDeckGrid();
                 }
-            } catch {}
+            } catch { }
         }
 
         function populateDeckSelect() {
@@ -3057,7 +3099,7 @@
                         });
                     }
                 });
-            } catch {}
+            } catch { }
         }
 
         // Handle URL parameters for direct deck access
@@ -3079,7 +3121,7 @@
                         window.location.href = `/learn?deck=${encodeURIComponent(qsDeck)}`;
                     }
                 }
-            } catch {}
+            } catch { }
         }
 
         async function loadFolders() {
@@ -3092,7 +3134,7 @@
                 saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
                 await refreshFolderOrder();
                 renderFolderGrid();
-            } catch {}
+            } catch { }
         }
 
         async function renderDeckGrid(skipOrderRefresh = false) {
@@ -3201,7 +3243,7 @@
                     mDelete.className = 'kebab-item';
                     mDelete.type = 'button';
                     mDelete.textContent = 'Delete';
-                    mDelete.addEventListener('click', async(e) => {
+                    mDelete.addEventListener('click', async (e) => {
                         e.stopPropagation();
                         closeKebabMenus();
                         await deleteFolder(f.name);
@@ -3252,7 +3294,7 @@
         if (createFolderModal) createFolderModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeCreateFolder === 'true') closeCreateFolderModal();
         });
-        if (createFolderSaveBtn) createFolderSaveBtn.addEventListener('click', async() => {
+        if (createFolderSaveBtn) createFolderSaveBtn.addEventListener('click', async () => {
             const raw = folderNameInput.value;
             const name = sanitizeName(raw);
             if (!name) {
@@ -3328,7 +3370,7 @@
                 renameFolderStatus.textContent = String(err.message || err);
             }
         }
-        if (renameFolderSaveBtn) renameFolderSaveBtn.addEventListener('click', async() => {
+        if (renameFolderSaveBtn) renameFolderSaveBtn.addEventListener('click', async () => {
             const newName = sanitizeName(renameFolderInput.value);
             if (!folderToManage) return;
             if (!newName) {
@@ -3451,14 +3493,14 @@
                     row.appendChild(label);
                     moveFolderList.appendChild(row);
                 });
-            } catch {}
+            } catch { }
         }
         if (moveFolderBtn) moveFolderBtn.addEventListener('click', openMoveFolderModal);
         if (moveFolderCancelBtn) moveFolderCancelBtn.addEventListener('click', closeMoveFolderModal);
         if (moveFolderModal) moveFolderModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeMoveFolder === 'true') closeMoveFolderModal();
         });
-        if (moveFolderSaveBtn) moveFolderSaveBtn.addEventListener('click', async() => {
+        if (moveFolderSaveBtn) moveFolderSaveBtn.addEventListener('click', async () => {
             if (!folderToManage) return;
             const picked = document.querySelector('input[name="moveFolderTarget"]:checked');
             const targetParent = picked ? picked.value : '';
@@ -3653,7 +3695,7 @@
         if (moveDeckModal) moveDeckModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeMove === 'true') closeMoveDeckModal();
         });
-        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
+        if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async () => {
             if (!selectedDeckForAction) return;
             if (!moveDeckBrowserCursor || moveDeckBrowserCursor === MOVE_BROWSER_ROOT) {
                 moveDeckStatus.textContent = 'Choose a folder first';
@@ -3720,7 +3762,7 @@
         if (deckSettingsMoveBtn) deckSettingsMoveBtn.addEventListener('click', () => {
             openMoveDeckModal();
         });
-        if (deckSettingsDeleteBtn) deckSettingsDeleteBtn.addEventListener('click', async() => {
+        if (deckSettingsDeleteBtn) deckSettingsDeleteBtn.addEventListener('click', async () => {
             if (!selectedDeckForAction) return;
             const ok = confirm(`Delete deck "${selectedDeckForAction}"? This cannot be undone.`);
             if (!ok) return;
@@ -3782,7 +3824,7 @@
         if (pdfBtn) pdfBtn.addEventListener('click', () => {
             try {
                 showLoader();
-            } catch {}
+            } catch { }
             window.location.href = '/pdf';
         });
 
@@ -3798,7 +3840,7 @@
 
         // Random test: load random words from all decks
         const randomTestBtn = document.getElementById('randomTestBtn');
-        if (randomTestBtn) randomTestBtn.addEventListener('click', async() => {
+        if (randomTestBtn) randomTestBtn.addEventListener('click', async () => {
             showLoader();
             try {
                 // Fetch deck list only (fast)
@@ -3824,8 +3866,8 @@
                 // Load only 2 decks immediately (fast)
                 const quickPromises = quickDecks.map(d =>
                     fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
-                    .then(r => r.ok ? r.json() : [])
-                    .catch(() => [])
+                        .then(r => r.ok ? r.json() : [])
+                        .catch(() => [])
                 );
                 const quickWordLists = await Promise.all(quickPromises);
                 const quickWords = [].concat(...quickWordLists);
@@ -3855,7 +3897,7 @@
                 isAutoPlayEnabled = false;
                 try {
                     localStorage.setItem('autoPlayEnabled', 'false');
-                } catch {}
+                } catch { }
                 updateAutoPlayToggle();
                 cardHistory = [];
                 isRandomTest = true;
@@ -4000,7 +4042,7 @@
 
         // Audio button to play line audio
         if (lineHintAudio) {
-            lineHintAudio.addEventListener('click', async(e) => {
+            lineHintAudio.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 if (!currentCard) return;
 
@@ -4031,14 +4073,23 @@
 
                 if (textToSpeak) {
                     try {
+                        // Use preloaded blob cache first (instant playback)
+                        const cachedUrl = lineAudioCache.get(textToSpeak);
+                        if (cachedUrl) {
+                            const audio = new Audio(cachedUrl);
+                            await audio.play();
+                            return;
+                        }
+                        // Fall back to /tts endpoint
                         const resp = await fetch(`/tts?text=${encodeURIComponent(textToSpeak)}&lang=${lang}`);
                         if (resp.ok) {
                             const blob = await resp.blob();
                             const url = URL.createObjectURL(blob);
+                            lineAudioCache.set(textToSpeak, url);
                             const audio = new Audio(url);
                             await audio.play();
                         }
-                    } catch {}
+                    } catch { }
                 }
             });
         }
@@ -4061,10 +4112,32 @@
                     });
                     // Update current card's line hint if it now has data
                     updateLineHint();
+                    // Preload line audio in background after line data is ready
+                    preloadLineAudioForDeck(deckName);
                 }
             } catch (err) {
                 console.warn('Failed to load line data:', err);
             }
+        }
+
+        // Preload line audio from R2 into lineAudioCache
+        async function preloadLineAudioForDeck(deckName) {
+            try {
+                const resp = await fetch(`/preload_lines_audio?deck=${encodeURIComponent(deckName)}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const map = (data && data.audio_urls) ? data.audio_urls : {};
+                const tasks = Object.entries(map).map(([text, url]) => (async () => {
+                    try {
+                        if (lineAudioCache.has(text)) return;
+                        const r = await fetch(url);
+                        if (!r.ok) return;
+                        const blob = await r.blob();
+                        lineAudioCache.set(text, URL.createObjectURL(blob));
+                    } catch { }
+                })());
+                await Promise.allSettled(tasks);
+            } catch { }
         }
 
         function getNewCard() {
@@ -4190,7 +4263,7 @@
                     const audio = new Audio(cached);
                     await audio.play();
                     return;
-                } catch {}
+                } catch { }
             }
 
             try {
@@ -4201,7 +4274,7 @@
                     const audio = new Audio(url);
                     await audio.play();
                 }
-            } catch {}
+            } catch { }
         }
 
         let recentlyTouched = false;
@@ -4415,7 +4488,7 @@
                 if (!isPreloaded) {
                     try {
                         URL.revokeObjectURL(lastObjectUrl);
-                    } catch {}
+                    } catch { }
                 }
                 lastObjectUrl = null;
             }
@@ -4451,7 +4524,7 @@
             }
             selectGermanVoice();
         }
-        speakBtn.addEventListener('click', async() => {
+        speakBtn.addEventListener('click', async () => {
             if (!currentCard.de) return;
             const text = currentCard.de;
             speakBtn.disabled = true;
@@ -4466,7 +4539,7 @@
                     audioPlayer.currentTime = 0;
                     await audioPlayer.play();
                     return;
-                } catch {}
+                } catch { }
             }
 
             // Prefer same-origin fetch as blob to avoid re-downloading
@@ -4484,7 +4557,7 @@
                     audioBlobUrls.set(text, objUrl);
                     return;
                 }
-            } catch {}
+            } catch { }
 
             // No write fallbacks: if R2 URL unavailable, use browser speechSynthesis
             try {
@@ -4510,7 +4583,7 @@
             isAutoPlayEnabled = false;
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
-            } catch {}
+            } catch { }
             updateAutoPlayToggle();
             loadWordsForDeck(name);
         });
@@ -4771,7 +4844,7 @@
             randomTestPracticedKeys.clear();
             try {
                 localStorage.setItem('autoPlayEnabled', 'false');
-            } catch {}
+            } catch { }
             updateAutoPlayToggle();
             const names = Array.isArray(deckNames) ? deckNames.filter(Boolean) : [];
             if (!names.length) return;
@@ -4784,7 +4857,7 @@
                     if (Array.isArray(lists[i])) {
                         try {
                             sessionStorage.setItem(`flashcard_cards_${n}`, JSON.stringify(lists[i]));
-                        } catch {}
+                        } catch { }
                     }
                 });
                 const combined = ([]).concat(...lists);
@@ -4862,7 +4935,7 @@
         if (createDeckBtn) createDeckBtn.addEventListener('click', () => {
             try {
                 showLoader();
-            } catch {}
+            } catch { }
             window.location.href = '/create';
         });
     </script>
