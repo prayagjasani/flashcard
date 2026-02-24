@@ -4007,8 +4007,12 @@
             const remaining = words.length + 1;
             const badge = document.createElement('span');
             badge.textContent = remaining;
-            badge.style.cssText = 'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--muted,#64748b);pointer-events:none;line-height:1.4;letter-spacing:0.3px;';
-            card.appendChild(badge);
+            badge.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:600;color:var(--muted,#64748b);pointer-events:none;line-height:1.4;letter-spacing:0.3px;z-index:40;';
+            badge.className = 'card-count-badge';
+            // Remove any previous badge
+            const oldBadge = document.querySelector('.card-count-badge');
+            if (oldBadge) oldBadge.remove();
+            document.body.appendChild(badge);
 
             // Show line hint if available
             updateLineHint();
