@@ -1998,7 +1998,10 @@
                 <label for="englishFrontToggle">English on front</label>
             </div>
         </div>
-        <div id="card">Welcome! Please select a deck.</div>
+        <div id="card" style="position:relative;">Welcome! Please select a deck.
+            <span id="pendingCount"
+                style="display:none;position:absolute;top:10px;right:12px;font-size:11px;font-weight:600;color:var(--muted,#64748b);background:rgba(100,116,139,0.1);padding:2px 8px;border-radius:99px;pointer-events:none;line-height:1.4;letter-spacing:0.3px;"></span>
+        </div>
         <div id="lineHint" class="line-hint" style="display:none;">
             <button id="lineHintAudio" class="line-hint-audio" type="button">🔊</button>
             <div class="line-hint-content">
@@ -3999,6 +4002,13 @@
             card.innerText = currentCard[frontLang];
             showingFront = true;
 
+            // Update pending word count badge
+            const remaining = words.length + 1;
+            const badge = document.createElement('span');
+            badge.textContent = remaining;
+            badge.style.cssText = 'position:absolute;top:10px;right:12px;font-size:11px;font-weight:600;color:var(--muted,#64748b);background:rgba(100,116,139,0.1);padding:2px 8px;border-radius:99px;pointer-events:none;line-height:1.4;letter-spacing:0.3px;';
+            card.appendChild(badge);
+
             // Show line hint if available
             updateLineHint();
 
@@ -4839,6 +4849,37 @@
                 });
                 multiDeckList.appendChild(row);
             });
+
+            // Also show decks that belong directly to this folder (not just sub-folders)
+            const directDecks = cachedDeckList.filter(d => (d.folder || 'Uncategorized') === parentName);
+            if (directDecks.length) {
+                const baseDecks = directDecks.map(d => ({ name: d.name, _raw: d }));
+                const orderedDecks = applyOrder(baseDecks, 'deck', parentName);
+
+                orderedDecks.forEach(entry => {
+                    const d = entry._raw;
+                    const row = document.createElement('div');
+                    row.className = 'multi-deck-item';
+                    if (multiDeckSelectedNames.has(d.name)) row.classList.add('is-selected');
+
+                    const label = document.createElement('span');
+                    label.textContent = d.name;
+                    row.appendChild(label);
+
+                    row.addEventListener('click', () => {
+                        if (multiDeckSelectedNames.has(d.name)) {
+                            multiDeckSelectedNames.delete(d.name);
+                            row.classList.remove('is-selected');
+                        } else {
+                            multiDeckSelectedNames.add(d.name);
+                            row.classList.add('is-selected');
+                        }
+                        updateMultiDeckSelectedNames();
+                    });
+
+                    multiDeckList.appendChild(row);
+                });
+            }
 
             updateMultiDeckSelectedNames();
         }
