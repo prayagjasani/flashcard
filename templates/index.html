@@ -4221,6 +4221,9 @@
             showCardData(next);
         }
 
+        let wordListExpanded = false;
+        const WORD_LIST_LIMIT = 5;
+
         function renderWordList() {
             if (!wordListGrid) return;
 
@@ -4235,6 +4238,8 @@
                 return;
             }
 
+            const visibleItems = wordListExpanded ? wrongItems : wrongItems.slice(0, WORD_LIST_LIMIT);
+
             const table = document.createElement('table');
             table.className = 'word-list-table';
             const tbody = document.createElement('tbody');
@@ -4242,7 +4247,7 @@
 
             const isEnglishFront = frontLang === 'en';
 
-            wrongItems.forEach((item, idx) => {
+            visibleItems.forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 tr.dataset.text = item.word.de || '';
                 tr.className = item.isWrong ? 'is-wrong' : 'is-right';
@@ -4305,6 +4310,20 @@
 
             wordListGrid.innerHTML = '';
             wordListGrid.appendChild(table);
+
+            // Show "View More" / "Show Less" button if there are more than 5 items
+            if (wrongItems.length > WORD_LIST_LIMIT) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.textContent = wordListExpanded ? `Show Less` : `View More (${wrongItems.length - WORD_LIST_LIMIT} more)`;
+                toggleBtn.style.cssText = 'width:100%;padding:10px;background:none;border:none;border-top:1px solid var(--card-border);color:var(--text);opacity:0.55;font-size:13px;font-weight:600;cursor:pointer;height:auto;box-shadow:none;';
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    wordListExpanded = !wordListExpanded;
+                    renderWordList();
+                });
+                wordListGrid.appendChild(toggleBtn);
+            }
         }
 
         function addPracticedWord(word, isWrong) {
