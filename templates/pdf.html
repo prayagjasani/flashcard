@@ -1853,13 +1853,17 @@
                         replaceInput.value = '';
                     }
                 });
+                replaceInput.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
                 replaceBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     menu.classList.remove('is-open');
                     tile.classList.remove('menu-open');
                     replaceInput.click();
                 });
-                tile.appendChild(replaceInput);
+                document.body.appendChild(replaceInput);
                 menu.appendChild(renameBtn);
                 menu.appendChild(moveBtn);
                 menu.appendChild(replaceBtn);
