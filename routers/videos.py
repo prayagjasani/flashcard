@@ -79,15 +79,24 @@ def parse_srt(srt_text: str) -> list[dict]:
 
 # ── AI translation ───────────────────────────────────────────────
 
-def translate_subtitles(subs: list[dict]) -> list[dict]:
+def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[dict]:
     """Translate German subtitle lines to English using Gemini AI."""
     if not subs:
         return subs
 
+    # Find the indices of the subtitles we want to translate
+    to_translate_indices = []
+    for i, s in enumerate(subs):
+        if not only_missing or not s.get("text_en"):
+            to_translate_indices.append(i)
+
+    if not to_translate_indices:
+        return subs
+
     BATCH = 30
-    for i in range(0, len(subs), BATCH):
-        batch = subs[i: i + BATCH]
-        lines = [s["text_de"] for s in batch]
+    for i in range(0, len(to_translate_indices), BATCH):
+        batch_indices = to_translate_indices[i: i + BATCH]
+        lines = [subs[idx]["text_de"] for idx in batch_indices]
         
         # We number from 1 to len(batch) to ensure the AI follows the correct structure.
         numbered = "\n".join(f"{j+1}. {l}" for j, l in enumerate(lines))
@@ -120,15 +129,16 @@ def translate_subtitles(subs: list[dict]) -> list[dict]:
                 for item in arr:
                     # Parse correctly whether the AI returned an int or string for n
                     idx = int(item.get("n", 0)) - 1
-                    if 0 <= idx < len(batch):
-                        batch[idx]["text_en"] = item.get("en", "")
+                    if 0 <= idx < len(batch_indices):
+                        real_idx = batch_indices[idx]
+                        subs[real_idx]["text_en"] = item.get("en", "")
             except Exception as e:
                 logger.error(f"Translation parse error for batch {i//BATCH}: {e}. Raw: {raw[:200]}...")
                 
         # Fill any missing translations for this batch
-        for s in batch:
-            if "text_en" not in s:
-                s["text_en"] = ""
+        for idx in batch_indices:
+            if "text_en" not in subs[idx] or not subs[idx]["text_en"]:
+                subs[idx]["text_en"] = ""
     return subs
 
 
@@ -201,10 +211,10 @@ def create_video(req: VideoCreate, background_tasks: BackgroundTasks):
 
     return {"ok": True, "video": meta}
 
-def _background_translate(video_id: str, video_data: dict):
+def _background_translate(video_id: str, video_data: dict, only_missing: bool = False):
     """Translates subtitles in the background and updates storage."""
     try:
-        translated_subs = translate_subtitles(video_data["subtitles"])
+        translated_subs = translate_subtitles(video_data["subtitles"], only_missing=only_missing)
         video_data["subtitles"] = translated_subs
         video_data["translating"] = False
         
@@ -255,4 +265,35 @@ def delete_video(video_id: str):
     idx = [v for v in idx if v.get("id") != video_id]
     _save_index(idx)
 
+    return {"ok": True}
+
+@router.post("/videos/{video_id}/retry")
+def retry_translations(video_id: str, background_tasks: BackgroundTasks):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(500, "Storage not configured")
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_video_key(video_id))
+        data = json.loads(obj["Body"].read().decode("utf-8"))
+    except Exception:
+        raise HTTPException(404, "Video not found")
+
+    data["translating"] = True
+    
+    # Save video with translating=True
+    r2_client.put_object(
+        Bucket=R2_BUCKET_NAME,
+        Key=_video_key(video_id),
+        Body=json.dumps(data).encode("utf-8"),
+        ContentType="application/json",
+    )
+
+    # Update index
+    idx = _get_index()
+    for i, meta in enumerate(idx):
+        if meta["id"] == video_id:
+            idx[i]["translating"] = True
+            break
+    _save_index(idx)
+
+    background_tasks.add_task(_background_translate, video_id, data, only_missing=True)
     return {"ok": True}

@@ -506,6 +506,19 @@
             position: absolute;
             right: 0;
         }
+
+        #playerTitle {
+            flex: 1;
+            font-size: 1.25rem;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 1;
+            line-clamp: 1;
+            text-overflow: ellipsis;
+            white-space: normal;
+            margin-right: 12px;
+        }
     </style>
 </head>
 
@@ -549,11 +562,17 @@
     <!-- Player View -->
     <div class="page" id="playerView">
         <div class="page-header">
-            <div style="display:flex; align-items:center; gap: 12px;">
-                <button class="icon-button" onclick="closePlayer()">
+            <div style="display:flex; align-items:center; gap: 12px; width: 100%;">
+                <button class="icon-button" onclick="closePlayer()" style="flex-shrink: 0;">
                     <span class="material-symbols-outlined">arrow_back</span>
                 </button>
                 <h1 class="page-title" id="playerTitle">Video Title</h1>
+                <button class="btn btn--secondary" id="retryTranslationBtn" onclick="retryTranslations()"
+                    style="display:none; margin-left:auto; padding: 4px 12px; font-size: 0.85rem; flex-shrink: 0;">
+                    <span class="material-symbols-outlined"
+                        style="font-size: 18px; margin-right: 4px; vertical-align: middle;">translate</span>
+                    Retry Missing
+                </button>
             </div>
         </div>
 
@@ -841,11 +860,38 @@
                 document.getElementById('playerView').style.display = 'block';
                 document.getElementById('playerTitle').textContent = data.title;
 
+                // Show the Retry Missing button if any line is missing its english translation
+                const hasMissing = data.subtitles.some(s => !s.text_en);
+                document.getElementById('retryTranslationBtn').style.display = hasMissing ? 'block' : 'none';
+
                 initYouTubePlayer(data.youtube_id);
             } catch (err) {
                 console.error(err);
             } finally {
                 globalLoader.classList.remove('is-active');
+            }
+        }
+
+        async function retryTranslations() {
+            if (!currentVideo || !currentVideo.id) return;
+            const btn = document.getElementById('retryTranslationBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = "Retrying in Background...";
+            btn.disabled = true;
+
+            try {
+                const resp = await fetch(`/videos/${currentVideo.id}/retry`, { method: 'POST' });
+                if (!resp.ok) throw new Error("Failed to retry translations");
+
+                // Alert the user and close the player so the UI can accurately reflect the Translating state
+                alert("Missing translations are being generated in the background! Please check back in a minute.");
+                closePlayer();
+                await loadVideos();
+            } catch (err) {
+                console.error(err);
+                alert("Error retrying translations.");
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
             }
         }
 
