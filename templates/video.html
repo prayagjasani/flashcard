@@ -973,24 +973,18 @@
                 }
             }
 
-            if (autoStopEnabled && activeIdx !== lastPlayedIdx && lastPlayedIdx !== -1) {
-                // We've moved from our previously playing line to a new line / gap
-                if (activeIdx === -1 || activeIdx > lastPlayedIdx) {
-                    // Check if we just crossed the End boundary of the last playing line
-                    // Stop immediately when crossing end bound
-                    if (time >= subs[lastPlayedIdx].end && time < subs[lastPlayedIdx].end + 0.3) {
-                        // Prevent re-pausing on the same line if the user just clicked play
-                        if (lastAutoStoppedIdx !== lastPlayedIdx) {
-                            player.pauseVideo();
-                            activeIdx = lastPlayedIdx; // Keep visual active state
-                            player.seekTo(subs[lastPlayedIdx].end); // Snap exactly to the end
-                            lastAutoStoppedIdx = lastPlayedIdx; // Mark as stopped
-                        }
-                    }
+            if (autoStopEnabled && activeIdx !== -1) {
+                // If we are getting very close to the end of the current subtitle
+                // Stop slightly before or exactly at the end rather than waiting for it to leak into the gap
+                if (time >= subs[activeIdx].end - 0.05 && lastAutoStoppedIdx !== activeIdx) {
+                    player.pauseVideo();
+                    player.seekTo(subs[activeIdx].end);
+                    lastAutoStoppedIdx = activeIdx;
                 }
             }
 
-            // Reset the auto-stop tracker if we seek or let playback naturally move to a new line
+            // If the user seeks forward or backward, or the line naturally progresses, 
+            // reset the auto-stop flag for the new active line.
             if (activeIdx !== lastPlayedIdx) {
                 if (activeIdx !== lastAutoStoppedIdx) {
                     lastAutoStoppedIdx = -1;
