@@ -204,8 +204,10 @@
             overflow: hidden;
             display: -webkit-box;
             -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
+            -webkit-line-clamp: 1;
+            line-clamp: 1;
+            text-overflow: ellipsis;
+            white-space: normal;
         }
 
         .kebab-btn {
@@ -677,11 +679,22 @@
 
             videos.forEach(v => {
                 const thumb = `https://img.youtube.com/vi/${v.youtube_id}/maxresdefault.jpg`;
+                const isTranslating = v.translating;
                 const tile = document.createElement('div');
                 tile.className = 'deck-tile';
+                if (isTranslating) {
+                    tile.style.opacity = '0.7';
+                }
+
+                // Construct the click handler
+                const clickHandler = isTranslating
+                    ? `alert('This video is currently being translated in the background. Please check back in a minute!')`
+                    : `openPlayer('${v.id}')`;
+
                 tile.innerHTML = `
-                    <div class="pdf-thumb-wrap" onclick="openPlayer('${v.id}')">
+                    <div class="pdf-thumb-wrap" onclick="${clickHandler}" style="position: relative;">
                         <img src="${thumb}" class="pdf-thumb-img">
+                        ${isTranslating ? '<div style="position:absolute; top:8px; left:8px; background:var(--accent); color:white; font-size:0.75rem; padding:4px 8px; border-radius:6px; font-weight:600; box-shadow:0 2px 4px rgba(0,0,0,0.2);">Translating AI...</div>' : ''}
                     </div>
                     <div class="pdf-card-header">
                         <div class="pdf-card-title">${v.title}</div>
@@ -765,7 +778,7 @@
                 return;
             }
 
-            status.textContent = "Translating subtitles with AI... This takes ~15-30s.";
+            status.textContent = "Uploading video... Translation will run in background.";
             status.style.color = "var(--accent)";
             btn.disabled = true;
 
