@@ -540,6 +540,10 @@
                 <button onclick="jumpToNextLine()" title="Next Line">
                     <span class="material-symbols-outlined">skip_next</span>
                 </button>
+                <button onclick="toggleAutoStop()" id="autoStopBtn" title="Auto Stop After Line"
+                    style="background: var(--card-bg); color: var(--muted); margin-left: auto;">
+                    <span class="material-symbols-outlined">motion_pause</span>
+                </button>
             </div>
         </div>
     </div>
@@ -592,6 +596,8 @@
 
         // Subtitle tracking
         let activeSubtitleIdx = -1;
+        let autoStopEnabled = false;
+        let lastPlayedIdx = -1;
 
         async function loadVideos() {
             try {
@@ -891,6 +897,22 @@
                 }
             }
 
+            if (autoStopEnabled && activeIdx !== lastPlayedIdx && lastPlayedIdx !== -1) {
+                // We've moved from our previously playing line to a new line / gap
+                if (activeIdx === -1 || activeIdx > lastPlayedIdx) {
+                    // Check if we just crossed the End boundary of the last playing line
+                    if (time >= subs[lastPlayedIdx].end && time < subs[lastPlayedIdx].end + 0.5) {
+                        player.pauseVideo();
+                        // Set active to the old index visually when paused right after line
+                        activeIdx = lastPlayedIdx;
+                    }
+                }
+            }
+
+            if (activeIdx !== -1) {
+                lastPlayedIdx = activeIdx;
+            }
+
             if (activeIdx !== activeSubtitleIdx) {
                 activeSubtitleIdx = activeIdx;
                 const deEl = document.getElementById('subDe');
@@ -905,6 +927,18 @@
                     deEl.style.opacity = 0.3;
                     enEl.style.opacity = 0.3;
                 }
+            }
+        }
+
+        function toggleAutoStop() {
+            autoStopEnabled = !autoStopEnabled;
+            const btn = document.getElementById('autoStopBtn');
+            if (autoStopEnabled) {
+                btn.style.background = 'var(--accent)';
+                btn.style.color = 'white';
+            } else {
+                btn.style.background = 'var(--card-bg)';
+                btn.style.color = 'var(--muted)';
             }
         }
 
