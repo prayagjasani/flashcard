@@ -653,6 +653,7 @@
         let activeSubtitleIdx = -1;
         let autoStopEnabled = false;
         let lastPlayedIdx = -1;
+        let lastAutoStoppedIdx = -1;
 
         async function loadVideos() {
             try {
@@ -976,17 +977,24 @@
                 // We've moved from our previously playing line to a new line / gap
                 if (activeIdx === -1 || activeIdx > lastPlayedIdx) {
                     // Check if we just crossed the End boundary of the last playing line
-                    // Tightened checking to remove delay (stop immediately when crossing end bound)
-                    if (time >= subs[lastPlayedIdx].end && time < subs[lastPlayedIdx].end + 0.2) {
-                        player.pauseVideo();
-                        // Set active to the old index visually when paused right after line
-                        activeIdx = lastPlayedIdx;
-                        player.seekTo(subs[lastPlayedIdx].end); // Snap exactly to the end
+                    // Stop immediately when crossing end bound
+                    if (time >= subs[lastPlayedIdx].end && time < subs[lastPlayedIdx].end + 0.3) {
+                        // Prevent re-pausing on the same line if the user just clicked play
+                        if (lastAutoStoppedIdx !== lastPlayedIdx) {
+                            player.pauseVideo();
+                            activeIdx = lastPlayedIdx; // Keep visual active state
+                            player.seekTo(subs[lastPlayedIdx].end); // Snap exactly to the end
+                            lastAutoStoppedIdx = lastPlayedIdx; // Mark as stopped
+                        }
                     }
                 }
             }
 
-            if (activeIdx !== -1) {
+            // Reset the auto-stop tracker if we seek or let playback naturally move to a new line
+            if (activeIdx !== lastPlayedIdx) {
+                if (activeIdx !== lastAutoStoppedIdx) {
+                    lastAutoStoppedIdx = -1;
+                }
                 lastPlayedIdx = activeIdx;
             }
 
