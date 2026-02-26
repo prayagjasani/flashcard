@@ -3866,13 +3866,13 @@
             window.location.href = '/pdf';
         });
 
-        // Story mode: navigate to story page
-        const storyBtn = document.getElementById('storyBtn');
-        if (storyBtn) storyBtn.addEventListener('click', () => {
+        // Video mode: navigate to video page
+        const videoBtn = document.getElementById('videoBtn');
+        if (videoBtn) videoBtn.addEventListener('click', () => {
             showLoader();
             // Short delay to allow loader to render before navigation freezes UI
             setTimeout(() => {
-                window.location.href = '/story';
+                window.location.href = '/video';
             }, 50);
         });
 

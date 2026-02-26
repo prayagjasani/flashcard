@@ -821,9 +821,9 @@
                     <span class="link__text link__text--primary">Random</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Random</span>
                 </button>
-                <button class="nav__link nav__link--button" id="storyNavBtn" type="button">
-                    <span class="link__text link__text--primary">Story</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Story</span>
+                <button class="nav__link nav__link--button" id="videoNavBtn" type="button">
+                    <span class="link__text link__text--primary">Video</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Video</span>
                 </button>
             </div>
         </div>
@@ -932,7 +932,7 @@
         const flashNavBtn = document.getElementById('flashNavBtn');
         const pdfNavBtn = document.getElementById('pdfNavBtn');
         const randomNavBtn = document.getElementById('randomNavBtn');
-        const storyNavBtn = document.getElementById('storyNavBtn');
+        const videoNavBtn = document.getElementById('videoNavBtn');
         if (homeBtn) homeBtn.addEventListener('click', () => {
             showLoader();
             window.location.href = '/';
@@ -953,9 +953,9 @@
             showLoader();
             window.location.href = '/';
         });
-        if (storyNavBtn) storyNavBtn.addEventListener('click', () => {
+        if (videoNavBtn) videoNavBtn.addEventListener('click', () => {
             showLoader();
-            window.location.href = '/story';
+            window.location.href = '/video';
         });
         const uploadPdfBtn = document.getElementById('uploadPdfBtn');
         const uploadPdfModal = document.getElementById('uploadPdfModal');
