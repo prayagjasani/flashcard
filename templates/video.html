@@ -430,7 +430,7 @@
         }
 
         .subtitle-de {
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 600;
             color: var(--text);
             margin-bottom: 8px;
@@ -651,6 +651,36 @@
         // Upload handling
         const srtInput = document.getElementById('srtFile');
         let srtContent = '';
+
+        const videoUrlInput = document.getElementById('videoUrl');
+        const videoTitleInput = document.getElementById('videoTitle');
+        const statusEl = document.getElementById('modalStatus');
+
+        videoUrlInput.addEventListener('input', async (e) => {
+            const url = e.target.value.trim();
+            if (url && !videoTitleInput.value && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+                const oldText = statusEl.textContent;
+                statusEl.textContent = "Fetching video title...";
+                statusEl.style.color = "var(--muted)";
+
+                try {
+                    const fetchUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+                    const resp = await fetch(fetchUrl);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && data.title) {
+                            videoTitleInput.value = data.title;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch YouTube title:", err);
+                } finally {
+                    if (statusEl.textContent === "Fetching video title...") {
+                        statusEl.textContent = oldText;
+                    }
+                }
+            }
+        });
 
         srtInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
