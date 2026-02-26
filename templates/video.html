@@ -531,8 +531,14 @@
             </div>
 
             <div class="player-controls">
+                <button onclick="jumpToPreviousLine()" title="Previous Line">
+                    <span class="material-symbols-outlined">skip_previous</span>
+                </button>
                 <button onclick="togglePlayPause()" id="playPauseBtn">
                     <span class="material-symbols-outlined">play_arrow</span>
+                </button>
+                <button onclick="jumpToNextLine()" title="Next Line">
+                    <span class="material-symbols-outlined">skip_next</span>
                 </button>
             </div>
         </div>
@@ -803,6 +809,40 @@
                 player.pauseVideo();
             } else {
                 player.playVideo();
+            }
+        }
+
+        function jumpToPreviousLine() {
+            if (!player || !currentVideo || !currentVideo.subtitles) return;
+            const subs = currentVideo.subtitles;
+            const time = player.getCurrentTime();
+
+            for (let i = subs.length - 1; i >= 0; i--) {
+                if (time > subs[i].start + 1.0) {
+                    player.seekTo(subs[i].start);
+                    return;
+                } else if (time > subs[i].start) {
+                    if (i > 0) {
+                        player.seekTo(subs[i - 1].start);
+                    } else {
+                        player.seekTo(0);
+                    }
+                    return;
+                }
+            }
+            player.seekTo(0);
+        }
+
+        function jumpToNextLine() {
+            if (!player || !currentVideo || !currentVideo.subtitles) return;
+            const subs = currentVideo.subtitles;
+            const time = player.getCurrentTime();
+
+            for (let i = 0; i < subs.length; i++) {
+                if (time < subs[i].start - 0.1) {
+                    player.seekTo(subs[i].start);
+                    return;
+                }
             }
         }
 
