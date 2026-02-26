@@ -23,9 +23,9 @@ def spelling_screen():
 def line_screen():
     return FileResponse('templates/line.html')
 
-@router.get("/story")
-def story_screen():
-    return FileResponse('templates/story.html')
+@router.get("/video")
+def video_screen():
+    return FileResponse('templates/video.html')
 
 @router.get("/folder")
 def folder_screen():

@@ -84,6 +84,11 @@ class PdfFolderMove(BaseModel):
     target: str | None = None
 
 
+class VideoCreate(BaseModel):
+    title: str
+    youtube_url: str
+    srt_content: str
+
 
 
 
