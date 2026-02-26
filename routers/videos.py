@@ -93,7 +93,9 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
     if not to_translate_indices:
         return subs
 
-    BATCH = 30
+    # Massively increase batch size to trade RPM for TPM
+    # 300 subtitle lines ≈ 3000-4500 output tokens, well within the 8192 output token limit.
+    BATCH = 300
     for i in range(0, len(to_translate_indices), BATCH):
         batch_indices = to_translate_indices[i: i + BATCH]
         lines = [subs[idx]["text_de"] for idx in batch_indices]
@@ -106,7 +108,7 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
             "Preserve the order and ensure you translate every single line provided. Only return the JSON array, nothing else.\n\n"
             f"{numbered}"
         )
-        raw = _generate(prompt, timeout=120)
+        raw = _generate(prompt, timeout=1000)
         
         if raw:
             try:
