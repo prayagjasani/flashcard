@@ -446,28 +446,63 @@
         .player-controls {
             display: flex;
             justify-content: center;
+            align-items: center;
             margin-top: 16px;
-            gap: 12px;
+            gap: 16px;
+            position: relative;
         }
 
         .player-controls button {
-            width: 54px;
-            height: 54px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             border: none;
             background: var(--accent);
             color: white;
-            font-size: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            transition: transform 100ms ease;
+            transition: transform 100ms ease, background 200ms ease;
+        }
+
+        .player-controls button svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
         }
 
         .player-controls button:active {
             transform: scale(0.95);
+        }
+
+        .player-controls .btn-secondary {
+            background: var(--card-bg);
+            color: var(--muted);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--card-border);
+        }
+
+        .player-controls .btn-secondary:hover {
+            color: var(--text);
+            border-color: #cbd5e1;
+        }
+
+        .player-controls .btn-active {
+            background: var(--accent) !important;
+            color: white !important;
+            border-color: var(--accent) !important;
+        }
+
+        .side-control-left {
+            position: absolute;
+            left: 0;
+        }
+
+        .side-control-right {
+            position: absolute;
+            right: 0;
         }
     </style>
 </head>
@@ -531,18 +566,38 @@
             </div>
 
             <div class="player-controls">
-                <button onclick="jumpToPreviousLine()" title="Previous Line">
-                    <span class="material-symbols-outlined">skip_previous</span>
+                <button onclick="replayCurrentLine()" class="btn-secondary side-control-left" title="Replay Line">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+                    </svg>
                 </button>
-                <button onclick="togglePlayPause()" id="playPauseBtn">
-                    <span class="material-symbols-outlined">play_arrow</span>
-                </button>
-                <button onclick="jumpToNextLine()" title="Next Line">
-                    <span class="material-symbols-outlined">skip_next</span>
-                </button>
-                <button onclick="toggleAutoStop()" id="autoStopBtn" title="Auto Stop After Line"
-                    style="background: var(--card-bg); color: var(--muted); margin-left: auto;">
-                    <span class="material-symbols-outlined">motion_pause</span>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <button onclick="jumpToPreviousLine()" title="Previous Line">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                        </svg>
+                    </button>
+                    <button onclick="togglePlayPause()" id="playPauseBtn" style="width: 60px; height: 60px;">
+                        <svg viewBox="0 0 24 24" id="playIcon">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg viewBox="0 0 24 24" id="pauseIcon" style="display: none;">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    </button>
+                    <button onclick="jumpToNextLine()" title="Next Line">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                        </svg>
+                    </button>
+                </div>
+                <button onclick="toggleAutoStop()" id="autoStopBtn" class="btn-secondary side-control-right"
+                    title="Auto Stop After Line">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M18 16h-2v-6h2v6zm-4-6h-2v6h2v-6zm3-4H7c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM7 18V8h10v10H7z" />
+                    </svg>
                 </button>
             </div>
         </div>
@@ -620,7 +675,7 @@
             }
 
             videos.forEach(v => {
-                const thumb = `https://img.youtube.com/vi/${v.youtube_id}/mqdefault.jpg`;
+                const thumb = `https://img.youtube.com/vi/${v.youtube_id}/maxresdefault.jpg`;
                 const tile = document.createElement('div');
                 tile.className = 'deck-tile';
                 tile.innerHTML = `
@@ -821,16 +876,19 @@
         }
 
         function onPlayerStateChange(event) {
-            const btn = document.getElementById('playPauseBtn');
-            const icon = btn.querySelector('.material-symbols-outlined');
+            const playIcon = document.getElementById('playIcon');
+            const pauseIcon = document.getElementById('pauseIcon');
 
             if (event.data == YT.PlayerState.PLAYING) {
-                icon.textContent = 'pause';
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
                 if (!playTimer) {
-                    playTimer = setInterval(updateSubtitles, 100);
+                    // Update check rate to 30ms for tighter polling on subtitles/autostop
+                    playTimer = setInterval(updateSubtitles, 30);
                 }
             } else {
-                icon.textContent = 'play_arrow';
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
                 if (playTimer) {
                     clearInterval(playTimer);
                     playTimer = null;
@@ -882,6 +940,23 @@
             }
         }
 
+        function replayCurrentLine() {
+            if (!player || !currentVideo || !currentVideo.subtitles) return;
+            const subs = currentVideo.subtitles;
+            const time = player.getCurrentTime();
+
+            // Replay the line we are currently in or the one we just passed
+            for (let i = subs.length - 1; i >= 0; i--) {
+                if (time >= subs[i].start) {
+                    player.seekTo(subs[i].start);
+                    player.playVideo();
+                    return;
+                }
+            }
+            player.seekTo(0);
+            player.playVideo();
+        }
+
         function updateSubtitles() {
             if (!player || !currentVideo || !currentVideo.subtitles) return;
 
@@ -901,10 +976,12 @@
                 // We've moved from our previously playing line to a new line / gap
                 if (activeIdx === -1 || activeIdx > lastPlayedIdx) {
                     // Check if we just crossed the End boundary of the last playing line
-                    if (time >= subs[lastPlayedIdx].end && time < subs[lastPlayedIdx].end + 0.5) {
+                    // Tightened checking to remove delay (stop immediately when crossing end bound)
+                    if (time >= subs[lastPlayedIdx].end && time < subs[lastPlayedIdx].end + 0.2) {
                         player.pauseVideo();
                         // Set active to the old index visually when paused right after line
                         activeIdx = lastPlayedIdx;
+                        player.seekTo(subs[lastPlayedIdx].end); // Snap exactly to the end
                     }
                 }
             }
@@ -934,11 +1011,9 @@
             autoStopEnabled = !autoStopEnabled;
             const btn = document.getElementById('autoStopBtn');
             if (autoStopEnabled) {
-                btn.style.background = 'var(--accent)';
-                btn.style.color = 'white';
+                btn.classList.add('btn-active');
             } else {
-                btn.style.background = 'var(--card-bg)';
-                btn.style.color = 'var(--muted)';
+                btn.classList.remove('btn-active');
             }
         }
 
