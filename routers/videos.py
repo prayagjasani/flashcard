@@ -88,24 +88,44 @@ def translate_subtitles(subs: list[dict]) -> list[dict]:
     for i in range(0, len(subs), BATCH):
         batch = subs[i: i + BATCH]
         lines = [s["text_de"] for s in batch]
+        
+        # We number from 1 to len(batch) to ensure the AI follows the correct structure.
         numbered = "\n".join(f"{j+1}. {l}" for j, l in enumerate(lines))
         prompt = (
             "Translate each numbered German line to English. "
             "Return a JSON array of objects with keys \"n\" (line number) and \"en\" (English translation). "
-            "Preserve the order. Only return the JSON array, nothing else.\n\n"
+            "Preserve the order and ensure you translate every single line provided. Only return the JSON array, nothing else.\n\n"
             f"{numbered}"
         )
-        raw = _generate(prompt, timeout=90)
+        raw = _generate(prompt, timeout=120)
+        
         if raw:
             try:
-                arr = json.loads(raw)
+                # Clean up any potential markdown or trailing text from the AI response
+                clean_raw = raw.strip()
+                if clean_raw.startswith("```json"):
+                    clean_raw = clean_raw.replace("```json\n", "", 1)
+                if clean_raw.startswith("```"):
+                    clean_raw = clean_raw.replace("```\n", "", 1)
+                if clean_raw.endswith("```"):
+                    clean_raw = clean_raw[:-3].strip()
+                    
+                # Find the first [ and last ] in case there is conversation text
+                start_idx = clean_raw.find("[")
+                end_idx = clean_raw.rfind("]")
+                if start_idx != -1 and end_idx != -1:
+                    clean_raw = clean_raw[start_idx:end_idx+1]
+
+                arr = json.loads(clean_raw)
                 for item in arr:
-                    idx = int(item["n"]) - 1
+                    # Parse correctly whether the AI returned an int or string for n
+                    idx = int(item.get("n", 0)) - 1
                     if 0 <= idx < len(batch):
-                        batch[idx]["text_en"] = item["en"]
+                        batch[idx]["text_en"] = item.get("en", "")
             except Exception as e:
-                logger.warning(f"Translation parse error: {e}")
-        # Fill any missing translations
+                logger.error(f"Translation parse error for batch {i//BATCH}: {e}. Raw: {raw[:200]}...")
+                
+        # Fill any missing translations for this batch
         for s in batch:
             if "text_en" not in s:
                 s["text_en"] = ""
