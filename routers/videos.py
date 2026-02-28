@@ -88,7 +88,7 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False, max_durati
     # Find the indices of the subtitles we want to translate
     to_translate_indices = []
     for i, s in enumerate(subs):
-        if not only_missing or not s.get("text_en") or not s.get("chunks"):
+        if not only_missing or not s.get("text_en") or not s.get("chunks") or len(s.get("chunks", [])) == 0:
             to_translate_indices.append(i)
 
     if not to_translate_indices:
@@ -261,6 +261,29 @@ def _background_translate(video_id: str, video_data: dict, only_missing: bool = 
         logger.info(f"Successfully background translated video {video_id}")
     except Exception as e:
         logger.error(f"Failed to background translate video {video_id}: {e}")
+        # Always clear translating flag so we don't get stuck
+        try:
+            if r2_client and R2_BUCKET_NAME:
+                try:
+                    obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_video_key(video_id))
+                    vdata = json.loads(obj["Body"].read().decode("utf-8"))
+                    vdata["translating"] = False
+                    r2_client.put_object(
+                        Bucket=R2_BUCKET_NAME,
+                        Key=_video_key(video_id),
+                        Body=json.dumps(vdata).encode("utf-8"),
+                        ContentType="application/json",
+                    )
+                except Exception:
+                    pass
+                idx = _get_index()
+                for i, meta in enumerate(idx):
+                    if meta["id"] == video_id:
+                        idx[i]["translating"] = False
+                        break
+                _save_index(idx)
+        except Exception:
+            pass
 
 
 @router.get("/videos/{video_id}")
