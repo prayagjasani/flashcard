@@ -619,6 +619,10 @@
             <div class="subtitles-container">
                 <div class="subtitle-de" id="subDe">...</div>
                 <div class="subtitle-en" id="subEn">...</div>
+                <button id="resumeBtn" onclick="resumeVideo()"
+                    style="display:none; margin-top:12px; padding:8px 20px; border:none; background:var(--accent); color:white; border-radius:999px; font-size:0.9rem; font-weight:600; cursor:pointer; box-shadow: 0 2px 8px rgba(79,70,229,0.3);">
+                    ▶ Resume
+                </button>
             </div>
 
             <div class="player-controls">
@@ -905,6 +909,19 @@
                 const hasMissingData = data.subtitles.some(s => !s.text_en || !s.chunks || s.chunks.length === 0);
                 document.getElementById('retryTranslationBtn').style.display = hasMissingData ? 'block' : 'none';
 
+                // Show Resume button if there is saved progress
+                const resumeBtn = document.getElementById('resumeBtn');
+                const saved = localStorage.getItem('video_progress_' + data.id);
+                if (saved && parseFloat(saved) > 5) {
+                    const mins = Math.floor(parseFloat(saved) / 60);
+                    const secs = Math.floor(parseFloat(saved) % 60);
+                    resumeBtn.textContent = `▶ Resume at ${mins}:${secs.toString().padStart(2, '0')}`;
+                    resumeBtn.style.display = 'inline-block';
+                    setTimeout(() => { resumeBtn.style.display = 'none'; }, 5000);
+                } else {
+                    resumeBtn.style.display = 'none';
+                }
+
                 initYouTubePlayer(data.youtube_id);
             } catch (err) {
                 console.error(err);
@@ -934,6 +951,15 @@
                 btn.innerHTML = originalHTML;
                 btn.disabled = false;
             }
+        }
+        function resumeVideo() {
+            if (!player || !currentVideo) return;
+            const saved = localStorage.getItem('video_progress_' + currentVideo.id);
+            if (saved) {
+                const t = parseFloat(saved);
+                if (t > 0) player.seekTo(t, true);
+            }
+            document.getElementById('resumeBtn').style.display = 'none';
         }
 
         function closePlayer() {
@@ -968,14 +994,7 @@
             }
 
             const onReady = () => {
-                // Restore saved progress
-                if (currentVideo) {
-                    const saved = localStorage.getItem('video_progress_' + currentVideo.id);
-                    if (saved) {
-                        const t = parseFloat(saved);
-                        if (t > 0) player.seekTo(t, true);
-                    }
-                }
+                // Player ready — resume button handles seeking if needed
             };
 
             if (player) {
