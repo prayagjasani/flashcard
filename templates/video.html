@@ -180,7 +180,6 @@
             color: var(--text);
             font-size: 1.05rem;
             line-height: 1.6;
-            transition: opacity 200ms ease;
         }
 
         .explanation-list li {
@@ -474,13 +473,11 @@
             font-weight: 600;
             color: var(--text);
             margin-bottom: 8px;
-            transition: opacity 200ms ease;
         }
 
         .subtitle-en {
             font-size: 1.1rem;
             color: var(--muted);
-            transition: opacity 200ms ease;
         }
 
         .player-controls {
@@ -940,12 +937,18 @@
         }
 
         function closePlayer() {
+            // Save progress before closing
+            if (player && currentVideo && typeof player.getCurrentTime === 'function') {
+                const t = player.getCurrentTime();
+                if (t > 0) localStorage.setItem('video_progress_' + currentVideo.id, t.toFixed(1));
+            }
             document.getElementById('listView').style.display = 'block';
             document.getElementById('playerView').style.display = 'none';
             if (player && typeof player.pauseVideo === 'function') {
                 player.pauseVideo();
             }
             if (playTimer) clearInterval(playTimer);
+            if (progressSaveTimer) { clearInterval(progressSaveTimer); progressSaveTimer = null; }
             document.getElementById('subDe').textContent = '...';
             document.getElementById('subEn').textContent = '...';
         }
@@ -956,14 +959,29 @@
             ytApiReady = true;
         }
 
+        let progressSaveTimer = null;
+
         function initYouTubePlayer(videoId) {
             if (!ytApiReady) {
                 setTimeout(() => initYouTubePlayer(videoId), 100);
                 return;
             }
 
+            const onReady = () => {
+                // Restore saved progress
+                if (currentVideo) {
+                    const saved = localStorage.getItem('video_progress_' + currentVideo.id);
+                    if (saved) {
+                        const t = parseFloat(saved);
+                        if (t > 0) player.seekTo(t, true);
+                    }
+                }
+            };
+
             if (player) {
                 player.loadVideoById(videoId);
+                // loadVideoById triggers onReady-like behavior after a short delay
+                setTimeout(onReady, 500);
             } else {
                 player = new YT.Player('ytplayer', {
                     videoId: videoId,
@@ -973,6 +991,7 @@
                         'controls': 1
                     },
                     events: {
+                        'onReady': onReady,
                         'onStateChange': onPlayerStateChange
                     }
                 });
@@ -990,12 +1009,30 @@
                     // Update check rate to 30ms for tighter polling on subtitles/autostop
                     playTimer = setInterval(updateSubtitles, 30);
                 }
+                // Save progress every 5 seconds while playing
+                if (!progressSaveTimer && currentVideo) {
+                    progressSaveTimer = setInterval(() => {
+                        if (player && currentVideo && typeof player.getCurrentTime === 'function') {
+                            const t = player.getCurrentTime();
+                            if (t > 0) localStorage.setItem('video_progress_' + currentVideo.id, t.toFixed(1));
+                        }
+                    }, 5000);
+                }
             } else {
                 playIcon.style.display = 'block';
                 pauseIcon.style.display = 'none';
                 if (playTimer) {
                     clearInterval(playTimer);
                     playTimer = null;
+                }
+                if (progressSaveTimer) {
+                    clearInterval(progressSaveTimer);
+                    progressSaveTimer = null;
+                }
+                // Save progress on pause
+                if (player && currentVideo && typeof player.getCurrentTime === 'function') {
+                    const t = player.getCurrentTime();
+                    if (t > 0) localStorage.setItem('video_progress_' + currentVideo.id, t.toFixed(1));
                 }
             }
         }
@@ -1015,20 +1052,22 @@
             const subs = currentVideo.subtitles;
             const time = player.getCurrentTime();
 
+            // Find which line we are currently on or just passed
+            let currentLineIdx = -1;
             for (let i = subs.length - 1; i >= 0; i--) {
-                if (time > subs[i].start + 1.0) {
-                    player.seekTo(subs[i].start);
-                    return;
-                } else if (time > subs[i].start) {
-                    if (i > 0) {
-                        player.seekTo(subs[i - 1].start);
-                    } else {
-                        player.seekTo(0);
-                    }
-                    return;
+                if (time >= subs[i].start - 0.1) {
+                    currentLineIdx = i;
+                    break;
                 }
             }
-            player.seekTo(0);
+
+            // Always jump to the line before the current one
+            if (currentLineIdx > 0) {
+                lastAutoStoppedIdx = -1;
+                player.seekTo(subs[currentLineIdx - 1].start);
+            } else {
+                player.seekTo(0);
+            }
         }
 
         function jumpToNextLine() {
@@ -1070,10 +1109,10 @@
             const time = player.getCurrentTime();
             const subs = currentVideo.subtitles;
 
-            // Find active subtitle — look 200ms ahead so fade-in completes before line starts
+            // Find active subtitle
             let activeIdx = -1;
             for (let i = 0; i < subs.length; i++) {
-                if (time >= subs[i].start - 0.2 && time <= subs[i].end) {
+                if (time >= subs[i].start && time <= subs[i].end) {
                     activeIdx = i;
                     break;
                 }
@@ -1102,41 +1141,28 @@
                 activeSubtitleIdx = activeIdx;
                 const deEl = document.getElementById('subDe');
                 const enEl = document.getElementById('subEn');
-                const expCont = document.getElementById('explanationContainer');
                 const expList = document.getElementById('explanationList');
 
-                // Fade out first, then swap and fade in
-                deEl.style.opacity = 0;
-                enEl.style.opacity = 0;
-                expList.style.opacity = 0;
+                if (activeIdx >= 0) {
+                    const sub = subs[activeIdx];
+                    deEl.textContent = sub.text_de;
+                    enEl.textContent = sub.text_en || '';
 
-                setTimeout(() => {
-                    if (activeIdx >= 0) {
-                        const sub = subs[activeIdx];
-                        deEl.textContent = sub.text_de;
-                        enEl.textContent = sub.text_en || '';
-
-                        if (sub.chunks && sub.chunks.length > 0) {
-                            expList.innerHTML = '';
-                            sub.chunks.forEach(chunk => {
-                                const li = document.createElement('li');
-                                li.innerHTML = `<strong>${chunk.de}</strong> = ${chunk.en}`;
-                                expList.appendChild(li);
-                            });
-                        } else {
-                            expList.innerHTML = '<li class="explanation-empty">No word breakdown available for this line</li>';
-                        }
+                    if (sub.chunks && sub.chunks.length > 0) {
+                        expList.innerHTML = '';
+                        sub.chunks.forEach(chunk => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `<strong>${chunk.de}</strong> = ${chunk.en}`;
+                            expList.appendChild(li);
+                        });
                     } else {
-                        deEl.textContent = '...';
-                        enEl.textContent = '';
-                        expList.innerHTML = '<li class="explanation-empty">Word breakdown will appear here</li>';
+                        expList.innerHTML = '<li class="explanation-empty">No word breakdown available for this line</li>';
                     }
-
-                    // Fade in
-                    deEl.style.opacity = 1;
-                    enEl.style.opacity = 1;
-                    expList.style.opacity = 1;
-                }, 100);
+                } else {
+                    deEl.textContent = '...';
+                    enEl.textContent = '';
+                    expList.innerHTML = '<li class="explanation-empty">Word breakdown will appear here</li>';
+                }
             }
         }
 
