@@ -27,6 +27,10 @@ def line_screen():
 def video_screen():
     return FileResponse('templates/video.html')
 
+@router.get("/story")
+def story_screen():
+    return FileResponse('templates/story.html')
+
 @router.get("/folder")
 def folder_screen():
     return FileResponse('templates/folder.html')

@@ -1852,6 +1852,10 @@
                     <span class="link__text link__text--primary">Video</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Video</span>
                 </button>
+                <button class="nav__link nav__link--button" id="storyBtn" type="button">
+                    <span class="link__text link__text--primary">Story</span>
+                    <span class="link__text link__text--hover" aria-hidden="true">Story</span>
+                </button>
             </div>
         </div>
     </header>
@@ -3873,6 +3877,15 @@
             // Short delay to allow loader to render before navigation freezes UI
             setTimeout(() => {
                 window.location.href = '/video';
+            }, 50);
+        });
+
+        // Story mode: navigate to story page
+        const storyBtn = document.getElementById('storyBtn');
+        if (storyBtn) storyBtn.addEventListener('click', () => {
+            showLoader();
+            setTimeout(() => {
+                window.location.href = '/story';
             }, 50);
         });
 
