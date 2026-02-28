@@ -257,34 +257,53 @@
 
         .kebab-menu {
             position: absolute;
-            top: 28px;
+            top: 32px;
             right: 0;
-            min-width: 120px;
+            min-width: 140px;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 10px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             padding: 4px 0;
             display: none;
-            z-index: 20;
+            z-index: 100;
+            transform-origin: top right;
         }
 
         .kebab-menu.is-open {
             display: block;
+            animation: menuFadeIn 0.15s ease-out forwards;
+        }
+
+        @keyframes menuFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .kebab-menu button {
             width: 100%;
-            padding: 6px 12px;
+            padding: 8px 16px;
             border: 0;
             background: transparent;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            transition: background 0.2s;
         }
 
         .kebab-menu button:hover {
-            background: #eef2ff;
+            background: #f1f5f9;
         }
 
         /* Modal Styles */
@@ -767,8 +786,16 @@
                                 <span class="material-symbols-outlined" style="font-size:20px">more_vert</span>
                             </button>
                             <div class="kebab-menu" id="menu-${v.id}">
-                                ${isTranslating ? `<button onclick="fixStuckVideo('${v.id}')" style="color:var(--accent)">Fix Stuck Badge</button>` : ''}
-                                <button onclick="deleteVideo('${v.id}')" style="color:var(--danger)">Delete</button>
+                                ${isTranslating ? `
+                                <button onclick="fixStuckVideo('${v.id}')" style="color:var(--accent)">
+                                    <span class="material-symbols-outlined" style="font-size: 18px;">build</span>
+                                    Fix Stuck
+                                </button>
+                                ` : ''}
+                                <button onclick="deleteVideo('${v.id}')" style="color:var(--danger)">
+                                    <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+                                    Delete
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -780,12 +807,20 @@
         function toggleMenu(e, id) {
             e.stopPropagation();
             document.querySelectorAll('.kebab-menu').forEach(m => m.classList.remove('is-open'));
+            document.querySelectorAll('.deck-tile').forEach(m => m.style.zIndex = '');
             const menu = document.getElementById(`menu-${id}`);
-            if (menu) menu.classList.add('is-open');
+            if (menu) {
+                const tile = menu.closest('.deck-tile');
+                if (tile) tile.style.zIndex = '50';
+                menu.classList.add('is-open');
+            }
         }
 
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.kebab-menu').forEach(m => m.classList.remove('is-open'));
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.kebab-menu') && !e.target.closest('.kebab-btn')) {
+                document.querySelectorAll('.kebab-menu').forEach(m => m.classList.remove('is-open'));
+                document.querySelectorAll('.deck-tile').forEach(m => m.style.zIndex = '');
+            }
         });
 
         // Upload handling
