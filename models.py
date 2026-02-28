@@ -92,6 +92,37 @@ class VideoCreate(BaseModel):
 
 
 
+class CustomStoryRequest(BaseModel):
+    topic: str
+    story_id: str | None = None
+    level: str | None = "A2"
+
+
+class TextStoryRequest(BaseModel):
+    text: str
+    story_id: str | None = None
+    level: str | None = "A2"
+
+
+# AI Response Models for validation
+class StorySegment(BaseModel):
+    """A single segment of a story (dialogue or narration)."""
+    type: str  # "narration" or "dialogue"
+    speaker: str  # "narrator" or character name
+    text_de: str
+    text_en: str
+
+
+class StoryResponse(BaseModel):
+    """AI-generated story response structure."""
+    title_de: str
+    title_en: str
+    characters: list[str] = []
+    vocabulary: dict[str, str] = {}
+    segments: list[StorySegment] = []
+    level: str | None = None
+
+
 class LineItem(BaseModel):
     """A single vocabulary line with example sentence."""
     de: str
