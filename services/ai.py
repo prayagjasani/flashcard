@@ -21,21 +21,37 @@ MODEL = "gemini-2.5-flash"
 
 
 def _generate(prompt: str, timeout: int = 60) -> str | None:
-    """Call Gemini and return the raw text response, or None on failure."""
+    """Call Gemini and return the raw text response, or None on failure.
+    Retries up to 5 times with exponential backoff to handle rate limits."""
+    import time as _time
+    import logging
+    _logger = logging.getLogger(__name__)
+
     if not GEMINI_API_KEY:
         return None
-    try:
-        client = _get_client()
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-            },
-        )
-        return response.text
-    except Exception:
-        return None
+
+    max_retries = 5
+    base_wait = 15  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            client = _get_client()
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                },
+            )
+            return response.text
+        except Exception as e:
+            wait_time = base_wait * (2 ** attempt)  # 15, 30, 60, 120, 240
+            _logger.warning(f"[AI] _generate attempt {attempt+1}/{max_retries} failed: {e}. Retrying in {wait_time}s...")
+            if attempt < max_retries - 1:
+                _time.sleep(wait_time)
+            else:
+                _logger.error(f"[AI] _generate failed after {max_retries} attempts: {e}")
+                return None
 
 
 def generate_lines(cards):

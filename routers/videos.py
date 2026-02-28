@@ -79,8 +79,9 @@ def parse_srt(srt_text: str) -> list[dict]:
 
 # ── AI translation ───────────────────────────────────────────────
 
-def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[dict]:
-    """Translate German subtitle lines to English using Gemini AI."""
+def translate_subtitles(subs: list[dict], only_missing: bool = False, max_duration_secs: int = 1200) -> list[dict]:
+    """Translate German subtitle lines to English using Gemini AI.
+    max_duration_secs caps translation to ~20 min of video at a time."""
     if not subs:
         return subs
 
@@ -93,11 +94,26 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
     if not to_translate_indices:
         return subs
 
+    # Cap to a ~20 min window from the first untranslated line
+    if max_duration_secs and max_duration_secs > 0:
+        first_start = subs[to_translate_indices[0]].get("start", 0)
+        cutoff = first_start + max_duration_secs
+        capped = [idx for idx in to_translate_indices if subs[idx].get("start", 0) <= cutoff]
+        logger.info(f"Capping translation: {len(capped)}/{len(to_translate_indices)} lines within {max_duration_secs}s window (start={first_start:.0f}s, cutoff={cutoff:.0f}s)")
+        to_translate_indices = capped
+
+    if not to_translate_indices:
+        return subs
+
     # We also want word-by-word chunking, which increases output tokens by ~3-4x.
     # Therefore, we reduce the batch size to 60.
     BATCH = 60
+    total_batches = (len(to_translate_indices) + BATCH - 1) // BATCH
+    logger.info(f"Translating {len(to_translate_indices)} lines in {total_batches} batches (batch size {BATCH})")
     for i in range(0, len(to_translate_indices), BATCH):
+        batch_num = i // BATCH + 1
         batch_indices = to_translate_indices[i: i + BATCH]
+        logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch_indices)} lines)...")
         lines = [subs[idx]["text_de"] for idx in batch_indices]
         
         # We number from 1 to len(batch) to ensure the AI follows the correct structure.

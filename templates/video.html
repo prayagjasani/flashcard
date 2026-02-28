@@ -1137,6 +1137,41 @@
 
         // Init
         loadVideos();
+
+        // Auto-refresh polling: check every 10s if any video is still translating
+        let translatingPollTimer = null;
+
+        function startTranslatingPoll() {
+            if (translatingPollTimer) return; // already polling
+            translatingPollTimer = setInterval(async () => {
+                try {
+                    const resp = await fetch('/videos');
+                    const data = await resp.json();
+                    const updatedVideos = data.videos || [];
+                    const stillTranslating = updatedVideos.some(v => v.translating);
+
+                    // Update the grid with fresh data
+                    videos = updatedVideos;
+                    renderGrid();
+
+                    if (!stillTranslating) {
+                        clearInterval(translatingPollTimer);
+                        translatingPollTimer = null;
+                    }
+                } catch (err) {
+                    // Silently ignore polling errors
+                }
+            }, 10000);
+        }
+
+        // Hook into renderGrid to start/stop polling automatically
+        const _originalRenderGrid = renderGrid;
+        renderGrid = function () {
+            _originalRenderGrid();
+            if (videos.some(v => v.translating)) {
+                startTranslatingPoll();
+            }
+        };
     </script>
 </body>
 
