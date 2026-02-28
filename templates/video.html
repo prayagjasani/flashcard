@@ -1070,10 +1070,10 @@
             const time = player.getCurrentTime();
             const subs = currentVideo.subtitles;
 
-            // Find active subtitle
+            // Find active subtitle — look 200ms ahead so fade-in completes before line starts
             let activeIdx = -1;
             for (let i = 0; i < subs.length; i++) {
-                if (time >= subs[i].start && time <= subs[i].end) {
+                if (time >= subs[i].start - 0.2 && time <= subs[i].end) {
                     activeIdx = i;
                     break;
                 }
@@ -1105,7 +1105,7 @@
                 const expCont = document.getElementById('explanationContainer');
                 const expList = document.getElementById('explanationList');
 
-                // Fade out
+                // Fade out first, then swap and fade in
                 deEl.style.opacity = 0;
                 enEl.style.opacity = 0;
                 expList.style.opacity = 0;
@@ -1136,7 +1136,7 @@
                     deEl.style.opacity = 1;
                     enEl.style.opacity = 1;
                     expList.style.opacity = 1;
-                }, 150);
+                }, 100);
             }
         }
 
