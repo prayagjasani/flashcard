@@ -180,6 +180,7 @@
             color: var(--text);
             font-size: 1.05rem;
             line-height: 1.6;
+            transition: opacity 200ms ease;
         }
 
         .explanation-list li {
@@ -1048,6 +1049,9 @@
             const subs = currentVideo.subtitles;
             const time = player.getCurrentTime();
 
+            // Reset auto-stop so it will stop again at the end of this line
+            lastAutoStoppedIdx = -1;
+
             // Replay the line we are currently in or the one we just passed
             for (let i = subs.length - 1; i >= 0; i--) {
                 if (time >= subs[i].start) {
@@ -1101,26 +1105,38 @@
                 const expCont = document.getElementById('explanationContainer');
                 const expList = document.getElementById('explanationList');
 
-                if (activeIdx >= 0) {
-                    const sub = subs[activeIdx];
-                    deEl.textContent = sub.text_de;
-                    enEl.textContent = sub.text_en || '';
+                // Fade out
+                deEl.style.opacity = 0;
+                enEl.style.opacity = 0;
+                expList.style.opacity = 0;
 
-                    if (sub.chunks && sub.chunks.length > 0) {
-                        expList.innerHTML = '';
-                        sub.chunks.forEach(chunk => {
-                            const li = document.createElement('li');
-                            li.innerHTML = `<strong>${chunk.de}</strong> = ${chunk.en}`;
-                            expList.appendChild(li);
-                        });
+                setTimeout(() => {
+                    if (activeIdx >= 0) {
+                        const sub = subs[activeIdx];
+                        deEl.textContent = sub.text_de;
+                        enEl.textContent = sub.text_en || '';
+
+                        if (sub.chunks && sub.chunks.length > 0) {
+                            expList.innerHTML = '';
+                            sub.chunks.forEach(chunk => {
+                                const li = document.createElement('li');
+                                li.innerHTML = `<strong>${chunk.de}</strong> = ${chunk.en}`;
+                                expList.appendChild(li);
+                            });
+                        } else {
+                            expList.innerHTML = '<li class="explanation-empty">No word breakdown available for this line</li>';
+                        }
                     } else {
-                        expList.innerHTML = '<li class="explanation-empty">No word breakdown available for this line</li>';
+                        deEl.textContent = '...';
+                        enEl.textContent = '';
+                        expList.innerHTML = '<li class="explanation-empty">Word breakdown will appear here</li>';
                     }
-                } else {
-                    deEl.textContent = '...';
-                    enEl.textContent = '';
-                    expList.innerHTML = '<li class="explanation-empty">Word breakdown will appear here</li>';
-                }
+
+                    // Fade in
+                    deEl.style.opacity = 1;
+                    enEl.style.opacity = 1;
+                    expList.style.opacity = 1;
+                }, 150);
             }
         }
 
