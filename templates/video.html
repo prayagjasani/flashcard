@@ -168,7 +168,8 @@
             border-radius: 14px;
             border: 1px solid var(--card-border);
             box-shadow: var(--shadow);
-            min-height: 60px;
+            height: 800px;
+            overflow-y: auto;
             text-align: left;
         }
 
@@ -1104,8 +1105,6 @@
                     const sub = subs[activeIdx];
                     deEl.textContent = sub.text_de;
                     enEl.textContent = sub.text_en || '';
-                    deEl.style.opacity = 1;
-                    enEl.style.opacity = 1;
 
                     if (sub.chunks && sub.chunks.length > 0) {
                         expList.innerHTML = '';
@@ -1118,8 +1117,8 @@
                         expList.innerHTML = '<li class="explanation-empty">No word breakdown available for this line</li>';
                     }
                 } else {
-                    deEl.style.opacity = 0.3;
-                    enEl.style.opacity = 0.3;
+                    deEl.textContent = '...';
+                    enEl.textContent = '';
                     expList.innerHTML = '<li class="explanation-empty">Word breakdown will appear here</li>';
                 }
             }
