@@ -79,9 +79,9 @@ def parse_srt(srt_text: str) -> list[dict]:
 
 # ── AI translation ───────────────────────────────────────────────
 
-def translate_subtitles(subs: list[dict], only_missing: bool = False, max_duration_secs: int = 1200) -> list[dict]:
+def translate_subtitles(subs: list[dict], only_missing: bool = False, max_duration_secs: int = 600) -> list[dict]:
     """Translate German subtitle lines to English using Gemini AI.
-    max_duration_secs caps translation to ~20 min of video at a time."""
+    max_duration_secs caps translation to ~10 min of video at a time."""
     if not subs:
         return subs
 
