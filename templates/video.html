@@ -767,6 +767,7 @@
                                 <span class="material-symbols-outlined" style="font-size:20px">more_vert</span>
                             </button>
                             <div class="kebab-menu" id="menu-${v.id}">
+                                ${isTranslating ? `<button onclick="fixStuckVideo('${v.id}')" style="color:var(--accent)">Fix Stuck Badge</button>` : ''}
                                 <button onclick="deleteVideo('${v.id}')" style="color:var(--danger)">Delete</button>
                             </div>
                         </div>
@@ -889,6 +890,16 @@
             } catch (err) {
                 console.error(err);
                 globalLoader.classList.remove('is-active');
+            }
+        }
+
+        async function fixStuckVideo(id) {
+            try {
+                await fetch(`/videos/${id}/fix-stuck`, { method: 'POST' });
+                await loadVideos();
+            } catch (err) {
+                console.error(err);
+                alert('Failed to fix stuck badge.');
             }
         }
 

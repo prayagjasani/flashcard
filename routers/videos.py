@@ -237,7 +237,17 @@ def create_video(req: VideoCreate, background_tasks: BackgroundTasks):
 
 def _background_translate(video_id: str, video_data: dict, only_missing: bool = False):
     """Translates subtitles in the background and updates storage."""
+    logger.info(f"[BG] Starting translation for video {video_id}, only_missing={only_missing}")
     try:
+        # Always re-fetch the latest data from R2 to avoid stale state
+        if r2_client and R2_BUCKET_NAME:
+            try:
+                obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_video_key(video_id))
+                video_data = json.loads(obj["Body"].read().decode("utf-8"))
+                logger.info(f"[BG] Re-fetched video {video_id}, {len(video_data.get('subtitles', []))} subtitles")
+            except Exception as e:
+                logger.warning(f"[BG] Could not re-fetch video {video_id}, using passed data: {e}")
+
         translated_subs = translate_subtitles(video_data["subtitles"], only_missing=only_missing)
         video_data["subtitles"] = translated_subs
         video_data["translating"] = False
@@ -250,6 +260,7 @@ def _background_translate(video_id: str, video_data: dict, only_missing: bool = 
                 Body=json.dumps(video_data).encode("utf-8"),
                 ContentType="application/json",
             )
+            logger.info(f"[BG] Saved translated video {video_id}")
             
         # Update index flag
         idx = _get_index()
@@ -258,32 +269,24 @@ def _background_translate(video_id: str, video_data: dict, only_missing: bool = 
                 idx[i]["translating"] = False
                 break
         _save_index(idx)
-        logger.info(f"Successfully background translated video {video_id}")
+        logger.info(f"[BG] Successfully completed translation for video {video_id}")
     except Exception as e:
-        logger.error(f"Failed to background translate video {video_id}: {e}")
-        # Always clear translating flag so we don't get stuck
+        logger.error(f"[BG] Failed to translate video {video_id}: {e}", exc_info=True)
+    finally:
+        # Always clear the translating flag so the badge never gets stuck
         try:
-            if r2_client and R2_BUCKET_NAME:
-                try:
-                    obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_video_key(video_id))
-                    vdata = json.loads(obj["Body"].read().decode("utf-8"))
-                    vdata["translating"] = False
-                    r2_client.put_object(
-                        Bucket=R2_BUCKET_NAME,
-                        Key=_video_key(video_id),
-                        Body=json.dumps(vdata).encode("utf-8"),
-                        ContentType="application/json",
-                    )
-                except Exception:
-                    pass
-                idx = _get_index()
-                for i, meta in enumerate(idx):
-                    if meta["id"] == video_id:
-                        idx[i]["translating"] = False
-                        break
+            idx = _get_index()
+            changed = False
+            for i, meta in enumerate(idx):
+                if meta["id"] == video_id and meta.get("translating"):
+                    idx[i]["translating"] = False
+                    changed = True
+                    break
+            if changed:
                 _save_index(idx)
-        except Exception:
-            pass
+                logger.info(f"[BG] Cleared stuck translating flag for video {video_id} in finally block")
+        except Exception as cleanup_err:
+            logger.error(f"[BG] Failed to clear translating flag for video {video_id}: {cleanup_err}")
 
 
 @router.get("/videos/{video_id}")
@@ -343,4 +346,34 @@ def retry_translations(video_id: str, background_tasks: BackgroundTasks):
     _save_index(idx)
 
     background_tasks.add_task(_background_translate, video_id, data, only_missing=True)
+    return {"ok": True}
+
+@router.post("/videos/{video_id}/fix-stuck")
+def fix_stuck_video(video_id: str):
+    """Clear the translating flag if a video got stuck."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(500, "Storage not configured")
+    
+    # Clear in video JSON
+    try:
+        obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=_video_key(video_id))
+        data = json.loads(obj["Body"].read().decode("utf-8"))
+        data["translating"] = False
+        r2_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=_video_key(video_id),
+            Body=json.dumps(data).encode("utf-8"),
+            ContentType="application/json",
+        )
+    except Exception:
+        pass
+
+    # Clear in index
+    idx = _get_index()
+    for i, meta in enumerate(idx):
+        if meta["id"] == video_id:
+            idx[i]["translating"] = False
+            break
+    _save_index(idx)
+    logger.info(f"Manually fixed stuck translating flag for video {video_id}")
     return {"ok": True}
