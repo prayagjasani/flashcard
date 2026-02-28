@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from services.storage import r2_client, R2_BUCKET_NAME
 from services.executor import shutdown_executor
-from routers import screens, decks, folders, cards, system, pdfs, videos
+from routers import screens, decks, folders, cards, system, pdfs, videos, stories
 
 # Load env
 load_dotenv(override=True)
@@ -48,7 +48,7 @@ app.add_middleware(
 app.include_router(screens.router)
 app.include_router(decks.router)
 app.include_router(folders.router)
-
+app.include_router(stories.router)
 app.include_router(cards.router)
 app.include_router(system.router)
 app.include_router(pdfs.router)
