@@ -87,15 +87,15 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
     # Find the indices of the subtitles we want to translate
     to_translate_indices = []
     for i, s in enumerate(subs):
-        if not only_missing or not s.get("text_en"):
+        if not only_missing or not s.get("text_en") or not s.get("chunks"):
             to_translate_indices.append(i)
 
     if not to_translate_indices:
         return subs
 
-    # Massively increase batch size to trade RPM for TPM
-    # 300 subtitle lines ≈ 3000-4500 output tokens, well within the 8192 output token limit.
-    BATCH = 300
+    # We also want word-by-word chunking, which increases output tokens by ~3-4x.
+    # Therefore, we reduce the batch size to 60.
+    BATCH = 60
     for i in range(0, len(to_translate_indices), BATCH):
         batch_indices = to_translate_indices[i: i + BATCH]
         lines = [subs[idx]["text_de"] for idx in batch_indices]
@@ -103,8 +103,11 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
         # We number from 1 to len(batch) to ensure the AI follows the correct structure.
         numbered = "\n".join(f"{j+1}. {l}" for j, l in enumerate(lines))
         prompt = (
-            "Translate each numbered German line to English. "
-            "Return a JSON array of objects with keys \"n\" (line number) and \"en\" (English translation). "
+            "Translate each numbered German line to English, and provide a word-by-word or short phrase breakdown. "
+            "Return a JSON array of objects with keys:\n"
+            "- \"n\" (line number)\n"
+            "- \"en\" (the full English translation)\n"
+            "- \"chunks\": a JSON array matching words/phrases from the German line to their English meaning. EACH chunk must have keys \"de\" and \"en\". Example: [{\"de\": \"Und jetzt\", \"en\": \"And now\"}, {\"de\": \"bringen wir\", \"en\": \"we bring\"}]\n\n"
             "Preserve the order and ensure you translate every single line provided. Only return the JSON array, nothing else.\n\n"
             f"{numbered}"
         )
@@ -134,6 +137,7 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
                     if 0 <= idx < len(batch_indices):
                         real_idx = batch_indices[idx]
                         subs[real_idx]["text_en"] = item.get("en", "")
+                        subs[real_idx]["chunks"] = item.get("chunks", [])
             except Exception as e:
                 logger.error(f"Translation parse error for batch {i//BATCH}: {e}. Raw: {raw[:200]}...")
                 
@@ -141,6 +145,8 @@ def translate_subtitles(subs: list[dict], only_missing: bool = False) -> list[di
         for idx in batch_indices:
             if "text_en" not in subs[idx] or not subs[idx]["text_en"]:
                 subs[idx]["text_en"] = ""
+            if "chunks" not in subs[idx]:
+                subs[idx]["chunks"] = []
     return subs
 
 

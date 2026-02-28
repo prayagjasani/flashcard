@@ -161,6 +161,42 @@
             }
         }
 
+        #explanationContainer {
+            margin-top: 16px;
+            padding: 16px 20px;
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--shadow);
+            min-height: 60px;
+            text-align: left;
+        }
+
+        .explanation-list {
+            list-style-type: disc;
+            padding-left: 20px;
+            margin: 0;
+            color: var(--text);
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+
+        .explanation-list li {
+            margin-bottom: 8px;
+        }
+
+        .explanation-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .explanation-empty {
+            list-style: none;
+            color: var(--muted);
+            font-size: 0.95rem;
+            text-align: center;
+            padding: 8px 0;
+        }
+
         .deck-tile {
             position: relative;
             background: var(--card-bg);
@@ -621,6 +657,12 @@
                     </svg>
                 </button>
             </div>
+
+            <div id="explanationContainer">
+                <ul class="explanation-list" id="explanationList">
+                    <li class="explanation-empty">Word breakdown will appear here</li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -860,9 +902,9 @@
                 document.getElementById('playerView').style.display = 'block';
                 document.getElementById('playerTitle').textContent = data.title;
 
-                // Show the Retry Missing button if any line is missing its english translation
-                const hasMissing = data.subtitles.some(s => !s.text_en);
-                document.getElementById('retryTranslationBtn').style.display = hasMissing ? 'block' : 'none';
+                // Show the Retry Missing button if any line is missing its english translation or explanation chunks
+                const hasMissingData = data.subtitles.some(s => !s.text_en || !s.chunks || s.chunks.length === 0);
+                document.getElementById('retryTranslationBtn').style.display = hasMissingData ? 'block' : 'none';
 
                 initYouTubePlayer(data.youtube_id);
             } catch (err) {
@@ -884,7 +926,7 @@
                 if (!resp.ok) throw new Error("Failed to retry translations");
 
                 // Alert the user and close the player so the UI can accurately reflect the Translating state
-                alert("Missing translations are being generated in the background! Please check back in a minute.");
+                alert("Missing translations and explanations are being generated in the background! Please check back in a minute.");
                 closePlayer();
                 await loadVideos();
             } catch (err) {
@@ -1055,15 +1097,30 @@
                 activeSubtitleIdx = activeIdx;
                 const deEl = document.getElementById('subDe');
                 const enEl = document.getElementById('subEn');
+                const expCont = document.getElementById('explanationContainer');
+                const expList = document.getElementById('explanationList');
 
                 if (activeIdx >= 0) {
-                    deEl.textContent = subs[activeIdx].text_de;
-                    enEl.textContent = subs[activeIdx].text_en || '';
+                    const sub = subs[activeIdx];
+                    deEl.textContent = sub.text_de;
+                    enEl.textContent = sub.text_en || '';
                     deEl.style.opacity = 1;
                     enEl.style.opacity = 1;
+
+                    if (sub.chunks && sub.chunks.length > 0) {
+                        expList.innerHTML = '';
+                        sub.chunks.forEach(chunk => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `<strong>${chunk.de}</strong> = ${chunk.en}`;
+                            expList.appendChild(li);
+                        });
+                    } else {
+                        expList.innerHTML = '<li class="explanation-empty">No word breakdown available for this line</li>';
+                    }
                 } else {
                     deEl.style.opacity = 0.3;
                     enEl.style.opacity = 0.3;
+                    expList.innerHTML = '<li class="explanation-empty">Word breakdown will appear here</li>';
                 }
             }
         }
