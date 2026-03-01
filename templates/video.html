@@ -1116,23 +1116,28 @@
         function jumpToPreviousLine() {
             if (!player || !currentVideo || !currentVideo.subtitles) return;
             const subs = currentVideo.subtitles;
-            const time = player.getCurrentTime();
 
-            // Find which line we are currently on or just passed
-            let currentLineIdx = -1;
-            for (let i = subs.length - 1; i >= 0; i--) {
-                if (time >= subs[i].start - 0.1) {
-                    currentLineIdx = i;
-                    break;
+            // Prefer the tracked index — reliable even when paused at a line boundary by auto-stop
+            let currentLineIdx = activeSubtitleIdx;
+
+            if (currentLineIdx < 0) {
+                // Fallback: time-based search with a small buffer
+                const time = player.getCurrentTime() + 0.5;
+                for (let i = subs.length - 1; i >= 0; i--) {
+                    if (time >= subs[i].start) {
+                        currentLineIdx = i;
+                        break;
+                    }
                 }
             }
 
-            // Always jump to the line before the current one
+            lastAutoStoppedIdx = -1;
             if (currentLineIdx > 0) {
-                lastAutoStoppedIdx = -1;
                 player.seekTo(subs[currentLineIdx - 1].start);
-            } else {
+                player.playVideo();
+            } else if (currentLineIdx === 0) {
                 player.seekTo(0);
+                player.playVideo();
             }
         }
 
