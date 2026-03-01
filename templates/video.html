@@ -1152,12 +1152,20 @@
         function replayCurrentLine() {
             if (!player || !currentVideo || !currentVideo.subtitles) return;
             const subs = currentVideo.subtitles;
-            const time = player.getCurrentTime();
 
             // Reset auto-stop so it will stop again at the end of this line
             lastAutoStoppedIdx = -1;
 
-            // Replay the line we are currently in or the one we just passed
+            // Prefer the currently tracked subtitle index (reliable even when paused at line end)
+            if (activeSubtitleIdx >= 0 && activeSubtitleIdx < subs.length) {
+                player.seekTo(subs[activeSubtitleIdx].start);
+                player.playVideo();
+                return;
+            }
+
+            // Fallback: find the last subtitle whose start is <= current time + small buffer
+            // The +0.5s buffer ensures we still catch the current line when paused at its end
+            const time = player.getCurrentTime() + 0.5;
             for (let i = subs.length - 1; i >= 0; i--) {
                 if (time >= subs[i].start) {
                     player.seekTo(subs[i].start);
