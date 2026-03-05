@@ -166,6 +166,33 @@ async def generate_lines(deck: str, limit: int | None = None, refresh: bool = Fa
             else:
                 cleaned.append({"de": de, "en": en, "line_en": '', "line_de": ''})
 
+        # Retry missing items up to 2 times
+        for _retry in range(2):
+            missing_cards = []
+            missing_indices = []
+            for idx, c in enumerate(cleaned):
+                if not c.get('line_en', '').strip() or not c.get('line_de', '').strip():
+                    missing_cards.append({'de': c['de'], 'en': c['en']})
+                    missing_indices.append(idx)
+            if not missing_cards:
+                break
+            retry_items = _gemini_generate_lines(missing_cards)
+            retry_by_de = {}
+            for it in retry_items or []:
+                k = (it.get('de') or '').strip().lower()
+                if k and k not in retry_by_de:
+                    retry_by_de[k] = it
+            for idx in missing_indices:
+                c = cleaned[idx]
+                chosen = retry_by_de.get((c['de'] or '').strip().lower())
+                if chosen:
+                    new_le = (chosen.get('line_en') or '').strip()
+                    new_ld = (chosen.get('line_de') or '').strip()
+                    if new_le and not c.get('line_en', '').strip():
+                        c['line_en'] = new_le
+                    if new_ld and not c.get('line_de', '').strip():
+                        c['line_de'] = new_ld
+
         # Save to R2 for caching
         saved = False
         if r2_client and R2_BUCKET_NAME:
