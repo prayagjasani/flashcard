@@ -4342,7 +4342,7 @@
                 const toggleBtn = document.createElement('button');
                 toggleBtn.type = 'button';
                 toggleBtn.textContent = wordListExpanded ? `Show Less` : `View More (${wrongItems.length - WORD_LIST_LIMIT} more)`;
-                toggleBtn.style.cssText = 'width:100%;padding:10px;background:none;border:none;border-top:1px solid var(--card-border);color:var(--text);opacity:0.55;font-size:13px;font-weight:600;cursor:pointer;height:auto;box-shadow:none;';
+                toggleBtn.style.cssText = 'width:100%;padding:10px;background:var(--card-bg);border:none;border-top:1px solid var(--card-border);color:var(--text);opacity:0.55;font-size:13px;font-weight:600;cursor:pointer;height:auto;box-shadow:none;position:sticky;bottom:0;z-index:1;';
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     wordListExpanded = !wordListExpanded;
