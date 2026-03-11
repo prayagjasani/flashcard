@@ -263,14 +263,23 @@
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 14px;
-            padding: 16px 16px 10px;
+            /* ~rounded-xl */
+            padding: 20px;
+            /* ~p-5 */
             cursor: pointer;
             box-shadow: var(--shadow);
+            /* Using default var since var(--card-shadow) isn't defined here */
             overflow: visible;
             z-index: 0;
             display: flex;
             flex-direction: column;
             gap: 4px;
+            transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+        }
+
+        .deck-tile:hover {
+            box-shadow: 0 12px 28px rgba(2, 8, 23, 0.08);
+            /* Mimic index.html hover */
         }
 
         .pdf-folder-tile {
@@ -287,6 +296,7 @@
 
         .deck-title {
             font-weight: 500;
+            color: var(--text);
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         }
 
@@ -296,7 +306,7 @@
         }
 
         .tile-enter {
-            animation: slideDown 280ms ease-out both;
+            animation: slideDown 380ms ease-out both;
             will-change: transform, opacity;
         }
 
@@ -314,19 +324,44 @@
 
         .kebab-btn {
             position: absolute;
-            top: 8px;
-            right: 8px;
-            border: 0;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
             background: transparent;
-            padding: 4px;
+            color: var(--muted);
+            border-radius: 0;
+            box-shadow: none;
+            font-size: 18px;
+            line-height: 1;
             cursor: pointer;
-            border-radius: 999px;
         }
 
-        .folder-kebab-btn {
-            position: static;
-            top: auto;
-            right: auto;
+        .kebab-btn:hover {
+            color: var(--text);
+            background: transparent;
+            transform: translateY(-50%);
+        }
+
+        .kebab-btn:active {
+            transform: translateY(-50%);
+        }
+
+        /* Folder kebab: overrides the absolute-positioned base .kebab-btn
+           so it sits naturally in the flex row and inherits align-items:center */
+        .folder-kebab-btn,
+        .folder-kebab-btn:hover,
+        .folder-kebab-btn:active {
+            position: static !important;
+            top: auto !important;
+            right: auto !important;
+            transform: none !important;
+            flex-shrink: 0;
             margin-left: 8px;
             width: 28px;
             height: 28px;
@@ -335,16 +370,17 @@
             justify-content: center;
         }
 
-        .pdf-kebab-btn {
-            position: static;
-            top: auto;
-            right: auto;
+        .pdf-kebab-btn,
+        .pdf-kebab-btn:hover,
+        .pdf-kebab-btn:active {
+            position: static !important;
+            top: auto !important;
+            right: auto !important;
+            transform: none !important;
+            flex-shrink: 0;
             margin-left: 8px;
             width: 28px;
             height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .pdf-kebab-actions .kebab-menu {
