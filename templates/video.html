@@ -769,10 +769,8 @@
                     tile.style.opacity = '0.7';
                 }
 
-                // Construct the click handler
-                const clickHandler = isTranslating
-                    ? `alert('This video is currently being translated in the background. Please check back in a minute!')`
-                    : `openPlayer('${v.id}')`;
+                // Always allow opening the player so users can watch while translation runs in background
+                const clickHandler = `openPlayer('${v.id}')`;
 
                 tile.innerHTML = `
                     <div class="pdf-thumb-wrap" onclick="${clickHandler}" style="position: relative;">
@@ -980,25 +978,79 @@
             if (!currentVideo || !currentVideo.id) return;
             const btn = document.getElementById('retryTranslationBtn');
             const originalHTML = btn.innerHTML;
-            btn.innerHTML = "Retrying in Background...";
+            btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" stroke-linecap="round"/></svg>
+                Generating in background...
+            </span>`;
             btn.disabled = true;
 
             try {
                 const resp = await fetch(`/videos/${currentVideo.id}/retry`, { method: 'POST' });
                 if (!resp.ok) throw new Error("Failed to retry translations");
 
-                // Alert the user and close the player so the UI can accurately reflect the Translating state
-                alert("Missing translations and explanations are being generated in the background! Please check back in a minute.");
-                closePlayer();
-                await loadVideos();
-                startTranslatingPoll();
+                // Show a non-intrusive toast — do NOT close the player
+                showRetryToast();
+
+                // Start polling in the background; re-enables button when done
+                startRetryPoll(currentVideo.id, btn, originalHTML);
             } catch (err) {
                 console.error(err);
-                alert("Error retrying translations.");
                 btn.innerHTML = originalHTML;
                 btn.disabled = false;
+                const toast = document.getElementById('retryToast');
+                if (toast) { toast.textContent = 'Error starting retry. Try again.'; toast.style.background = 'var(--danger)'; toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 4000); }
             }
         }
+
+        function showRetryToast() {
+            let toast = document.getElementById('retryToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'retryToast';
+                toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(15, 23, 42, 0.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#f8fafc;padding:10px 20px;border-radius:12px;font-size:0.85rem;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.15);pointer-events:none;transition:opacity 0.4s ease, transform 0.4s ease;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,0.1);';
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite;color:var(--accent)"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" stroke-linecap="round"/></svg>
+            <span style="letter-spacing:0.01em;">Translating missing lines in background...</span>`;
+            toast.style.display = 'flex';
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+        }
+
+        function startRetryPoll(videoId, btn, originalHTML) {
+            const POLL_INTERVAL = 10000; // 10s
+            const timer = setInterval(async () => {
+                try {
+                    const resp = await fetch(`/videos/${videoId}`);
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    if (!data.translating) {
+                        clearInterval(timer);
+                        // Hide toast
+                        const toast = document.getElementById('retryToast');
+                        if (toast) {
+                            toast.innerHTML = `<span class="material-symbols-outlined" style="color:var(--success);font-size:18px;">check_circle</span> <span>Translations updated</span>`;
+                            setTimeout(() => {
+                                toast.style.opacity = '0';
+                                toast.style.transform = 'translate(-50%, -10px)';
+                                setTimeout(() => toast.style.display = 'none', 400);
+                            }, 3000);
+                        }
+                        // Update the current video data with fresh subtitles
+                        currentVideo = data;
+                        const hasMissing = data.subtitles.some(s => !s.text_en || !s.chunks || s.chunks.length === 0);
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                        btn.style.display = hasMissing ? 'block' : 'none';
+                        // Refresh subtitle panel if open
+                        if (typeof renderSubtitles === 'function') renderSubtitles(data.subtitles);
+                        // Also refresh grid badge
+                        loadVideos();
+                    }
+                } catch { }
+            }, POLL_INTERVAL);
+        }
+
         function resumeVideo() {
             if (!player || !currentVideo) return;
             const saved = localStorage.getItem('video_progress_' + currentVideo.id);
