@@ -513,7 +513,9 @@ def rename_pdf(payload: PdfRename):
                     d["thumb"] = new_thumb_key
                 except Exception:
                     d.pop("thumb", None)
-            d["last_modified"] = now_iso
+            
+            # Do NOT update last_modified here so the PDF retains its original position
+            
             if d.get("folder"):
                 folders.add(_safe_name(d.get("folder")))
     try:
@@ -526,7 +528,23 @@ def rename_pdf(payload: PdfRename):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     for f in folders or {"root"}:
-        invalidate_cache(f"pdfs:order:{f or 'root'}")
+        scope = f or "root"
+        try:
+            okey = _order_pdfs_key(scope)
+            obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=okey)
+            odata = obj["Body"].read().decode("utf-8")
+            oparsed = json.loads(odata)
+            if isinstance(oparsed, list):
+                new_order = [new if x == old else x for x in oparsed]
+                r2_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=okey,
+                    Body=json.dumps(new_order).encode("utf-8"),
+                    ContentType="application/json",
+                )
+        except Exception:
+            pass
+        invalidate_cache(f"pdfs:order:{scope}")
     return {"ok": True, "old_name": old, "new_name": new}
 
 
