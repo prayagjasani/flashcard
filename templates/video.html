@@ -742,7 +742,8 @@
 
         async function loadVideos() {
             try {
-                const resp = await fetch('/videos');
+                // Cache-busting parameter to ensure we get fresh data after creating/deleting videos
+                const resp = await fetch(`/videos?t=${Date.now()}`);
                 const data = await resp.json();
                 videos = data.videos || [];
                 renderGrid();
@@ -988,8 +989,7 @@
                 const resp = await fetch(`/videos/${currentVideo.id}/retry`, { method: 'POST' });
                 if (!resp.ok) throw new Error("Failed to retry translations");
 
-                // Show a non-intrusive toast — do NOT close the player
-                showRetryToast();
+                // We removed the toast here and rely purely on the button animation
 
                 // Start polling in the background; re-enables button when done
                 startRetryPoll(currentVideo.id, btn, originalHTML);
@@ -1002,50 +1002,33 @@
             }
         }
 
-        function showRetryToast() {
-            let toast = document.getElementById('retryToast');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.id = 'retryToast';
-                toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(15, 23, 42, 0.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#f8fafc;padding:10px 20px;border-radius:12px;font-size:0.85rem;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.15);pointer-events:none;transition:opacity 0.4s ease, transform 0.4s ease;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,0.1);';
-                document.body.appendChild(toast);
-            }
-            toast.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite;color:var(--accent)"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" stroke-linecap="round"/></svg>
-            <span style="letter-spacing:0.01em;">Translating missing lines in background...</span>`;
-            toast.style.display = 'flex';
-            toast.style.opacity = '1';
-            toast.style.transform = 'translate(-50%, 0)';
-        }
+
 
         function startRetryPoll(videoId, btn, originalHTML) {
             const POLL_INTERVAL = 10000; // 10s
             const timer = setInterval(async () => {
                 try {
-                    const resp = await fetch(`/videos/${videoId}`);
+                    // Use cache busting to ensure we get the real status from the backend
+                    const resp = await fetch(`/videos/${videoId}?t=${Date.now()}`);
                     if (!resp.ok) return;
                     const data = await resp.json();
                     if (!data.translating) {
                         clearInterval(timer);
-                        // Hide toast
-                        const toast = document.getElementById('retryToast');
-                        if (toast) {
-                            toast.innerHTML = `<span class="material-symbols-outlined" style="color:var(--success);font-size:18px;">check_circle</span> <span>Translations updated</span>`;
-                            setTimeout(() => {
-                                toast.style.opacity = '0';
-                                toast.style.transform = 'translate(-50%, -10px)';
-                                setTimeout(() => toast.style.display = 'none', 400);
-                            }, 3000);
-                        }
-                        // Update the current video data with fresh subtitles
-                        currentVideo = data;
-                        const hasMissing = data.subtitles.some(s => !s.text_en || !s.chunks || s.chunks.length === 0);
-                        btn.innerHTML = originalHTML;
-                        btn.disabled = false;
-                        btn.style.display = hasMissing ? 'block' : 'none';
-                        // Refresh subtitle panel if open
-                        if (typeof renderSubtitles === 'function') renderSubtitles(data.subtitles);
-                        // Also refresh grid badge
-                        loadVideos();
+
+                        // Show a temporary success icon inside the button before restoring
+                        btn.innerHTML = `<span class="material-symbols-outlined" style="display:inline-flex;align-items:center;color:var(--success);font-size:18px;gap:6px">check_circle</span>`;
+                        setTimeout(() => {
+                            // Update the current video data with fresh subtitles
+                            currentVideo = data;
+                            const hasMissing = data.subtitles.some(s => !s.text_en || !s.chunks || s.chunks.length === 0);
+                            btn.innerHTML = originalHTML;
+                            btn.disabled = false;
+                            btn.style.display = hasMissing ? 'block' : 'none';
+                            // Refresh subtitle panel if open
+                            if (typeof renderSubtitles === 'function') renderSubtitles(data.subtitles);
+                            // Also refresh grid badge
+                            loadVideos();
+                        }, 2000);
                     }
                 } catch { }
             }, POLL_INTERVAL);
