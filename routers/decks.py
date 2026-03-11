@@ -23,7 +23,7 @@ from utils import safe_deck_name as _safe_deck_name
 router = APIRouter()
 
 # Cache TTL for deck order (in seconds)
-DECK_ORDER_CACHE_TTL = 30
+DECK_ORDER_CACHE_TTL = 300
 
 @router.get("/decks")
 def list_decks():
@@ -82,6 +82,104 @@ def list_decks():
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/home-data")
+def get_home_data():
+    """Combined endpoint: returns folders, decks, and folder order in one request.
+    
+    Replaces the 3 separate calls (/folders, /decks, /order/folders) made by the
+    home screen, reducing 3 round-trips to 1.
+    """
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+
+    from routers.folders import _fetch_deck_index, _fetch_folders_index, _fetch_parents
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    HOME_CACHE_KEY = "home:data"
+    HOME_CACHE_TTL = 300  # 5 minutes
+
+    cached = get_cached(HOME_CACHE_KEY, HOME_CACHE_TTL)
+    if cached is not None:
+        return cached
+
+    # Fetch all 3 data sources in parallel
+    deck_index = []
+    folders_index = []
+    parents_data = {}
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(_fetch_deck_index): "deck_index",
+            executor.submit(_fetch_folders_index): "folders_index",
+            executor.submit(_fetch_parents): "parents",
+        }
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                result = future.result()
+                if key == "deck_index":
+                    deck_index = result if isinstance(result, list) else []
+                elif key == "folders_index":
+                    folders_index = result if isinstance(result, list) else []
+                elif key == "parents":
+                    parents_data = result if isinstance(result, dict) else {}
+            except Exception:
+                pass
+
+    # Build decks list (same logic as /decks, but using cached deck_index)
+    decks = []
+    for d in deck_index:
+        if isinstance(d, dict):
+            name = d.get("name")
+            file = d.get("file")
+            if name and file and file.lower().endswith(".csv") and (file.startswith("csv/") or "/csv/" in file):
+                decks.append({
+                    "name": name,
+                    "file": file,
+                    "last_modified": d.get("last_modified"),
+                    "folder": d.get("folder"),
+                })
+    decks.sort(key=lambda x: x.get("last_modified") or "", reverse=True)
+
+    # Build folders list (same logic as /folders)
+    counts = {}
+    folders_from_decks = set()
+    for d in deck_index:
+        if isinstance(d, dict):
+            f = d.get("folder") or "Uncategorized"
+            folders_from_decks.add(f)
+            counts[f] = counts.get(f, 0) + 1
+
+    parent_folders = set(parents_data.values())
+    ordered_folders = []
+    seen = set()
+
+    for f in folders_index:
+        if isinstance(f, str) and f not in seen:
+            ordered_folders.append({"name": f, "count": counts.get(f, 0), "parent": parents_data.get(f)})
+            seen.add(f)
+
+    for f in sorted(folders_from_decks):
+        if f not in seen:
+            ordered_folders.append({"name": f, "count": counts.get(f, 0), "parent": parents_data.get(f)})
+            seen.add(f)
+
+    for f in sorted(parent_folders):
+        if f and f not in seen:
+            ordered_folders.insert(0, {"name": f, "count": counts.get(f, 0), "parent": parents_data.get(f)})
+            seen.add(f)
+
+    # folder_order is the same as folders_index (ordered list of folder names)
+    folder_order = [f for f in folders_index if isinstance(f, str)]
+
+    result = {
+        "folders": ordered_folders,
+        "decks": decks,
+        "folder_order": folder_order,
+    }
+    set_cached(HOME_CACHE_KEY, result)
+    return result
 
 @router.get("/cards")
 def get_cards(deck: str = "list"):
@@ -215,6 +313,7 @@ def create_deck(payload: DeckCreate):
     folder_scope = _safe_deck_name(payload.folder) if payload.folder else "root"
     invalidate_cache(f"decks:order:{folder_scope}")
     invalidate_cache("folders:")
+    invalidate_cache("home:")
 
     # Return immediately - audio will be generated in background
     return {
@@ -366,6 +465,7 @@ def delete_deck(payload: DeckDelete):
     # Invalidate caches
     invalidate_cache("decks:order:")
     invalidate_cache("folders:")
+    invalidate_cache("home:")
     
     return {
         "ok": True,
@@ -434,6 +534,7 @@ def rename_deck(payload: DeckRename):
     # Invalidate caches
     invalidate_cache("decks:order:")
     invalidate_cache("folders:")
+    invalidate_cache("home:")
     
     return {"ok": True, "old_name": old, "new_name": new, "index_updated": index_updated, "index_rebuild": index_rebuild}
 
@@ -496,6 +597,7 @@ def deck_move(payload: DeckMove):
                 invalidate_cache(f"decks:order:{_safe_deck_name(prev_folder)}")
             invalidate_cache(f"decks:order:{_safe_deck_name(folder or 'root')}")
             invalidate_cache("folders:")
+            invalidate_cache("home:")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"ok": True, "name": name, "folder": folder or None}

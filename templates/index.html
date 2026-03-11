@@ -2200,10 +2200,11 @@
                 });
                 if (resp.ok) {
                     ordersCache.folders = Array.isArray(names) ? names.slice() : [];
-                    // Clear sessionStorage cache
-                    sessionStorage.removeItem(CACHE_KEY_FOLDERS);
-                    sessionStorage.removeItem(CACHE_KEY_DECKS);
-                    sessionStorage.removeItem('flashcard_folder_order_cache');
+                    // Clear localStorage home cache so next load reflects new order
+                    try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
+                    try { sessionStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
+                    try { sessionStorage.removeItem(CACHE_KEY_DECKS); } catch { }
+                    try { sessionStorage.removeItem('flashcard_folder_order_cache'); } catch { }
                     saveToCache('flashcard_folder_order_cache', ordersCache.folders);
                     // Clear Service Worker API cache
                     await clearSwApiCache();
@@ -2222,10 +2223,11 @@
                 });
                 if (resp.ok) {
                     ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
-                    // Clear sessionStorage cache
-                    sessionStorage.removeItem(CACHE_KEY_FOLDERS);
-                    sessionStorage.removeItem(CACHE_KEY_DECKS);
-                    sessionStorage.removeItem('flashcard_folder_order_cache');
+                    // Clear localStorage home cache so next load reflects new order
+                    try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
+                    try { sessionStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
+                    try { sessionStorage.removeItem(CACHE_KEY_DECKS); } catch { }
+                    try { sessionStorage.removeItem('flashcard_folder_order_cache'); } catch { }
                     // Clear Service Worker API cache
                     await clearSwApiCache();
                 }
@@ -2910,68 +2912,71 @@
         }
 
         // Cache keys for instant loading
+        const CACHE_KEY_HOME = 'flashcard_home_cache_v1';
         const CACHE_KEY_DECKS = 'flashcard_decks_cache';
         const CACHE_KEY_FOLDERS = 'flashcard_folders_cache';
         const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
         function saveToCache(key, data) {
-            return;
+            try {
+                localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+            } catch { }
         }
 
         function getFromCache(key) {
-            return null;
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.ts || !parsed.data) return null;
+                if (Date.now() - parsed.ts > CACHE_EXPIRY) {
+                    localStorage.removeItem(key);
+                    return null;
+                }
+                return parsed.data;
+            } catch { return null; }
         }
 
         function clearCache() {
-            // Clear folder/deck data caches to force fresh load
-            // But preserve order cache since it's already in sync with R2
-            sessionStorage.removeItem(CACHE_KEY_FOLDERS);
-            sessionStorage.removeItem(CACHE_KEY_DECKS);
-            // DON'T clear 'flashcard_folder_order_cache' - it stays in sync via writeOrder()
+            // Clear all home / folder / deck caches to force a fresh network load
+            try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
+            try { localStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
+            try { localStorage.removeItem(CACHE_KEY_DECKS); } catch { }
         }
 
-        // Optimized parallel loading function with instant cache
+        // Fast home screen loader: single /home-data request + localStorage cache
         async function loadAllData() {
-            // Try to load from cache first for instant display
-            const cachedFolders = getFromCache(CACHE_KEY_FOLDERS);
-            const cachedDecks = getFromCache(CACHE_KEY_DECKS);
-            const cachedFolderOrder = getFromCache('flashcard_folder_order_cache');
-
-            // If we have cached data, show it immediately - NO background refresh, NO flicker
-            if (cachedFolders && cachedDecks) {
-                cachedFolderList = cachedFolders;
-                cachedDeckList = cachedDecks;
-                ordersCache.folders = cachedFolderOrder || [];
+            // Check localStorage for fresh cached data (5-min TTL)
+            const cached = getFromCache(CACHE_KEY_HOME);
+            if (cached) {
+                cachedFolderList = cached.folders || [];
+                cachedDeckList = cached.decks || [];
+                ordersCache.folders = cached.folder_order || [];
                 updateDeckCounts();
                 renderFolderGrid();
                 renderDeckGrid();
                 populateDeckSelect();
                 handleUrlParams();
-                // Hide loader after render (use requestAnimationFrame for smooth transition)
                 requestAnimationFrame(() => hideLoader());
-                return; // Done - use cache for entire session
+                return; // Instant — no network needed
             }
 
-            // No cache - loader is already visible, fetch fresh data
-
+            // Cache miss: single combined request to backend
             try {
-                const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
-                    fetch('/folders').then(r => r.json()).catch(() => ({
-                        folders: []
-                    })),
-                    fetch('/decks').then(r => r.json()).catch(() => []),
-                    fetch('/order/folders').then(r => r.json()).catch(() => [])
-                ]);
+                const resp = await fetch('/home-data');
+                const data = resp.ok ? await resp.json().catch(() => ({})) : {};
 
-                // Update folders
-                cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
-                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
-                ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
-                saveToCache('flashcard_folder_order_cache', ordersCache.folders);
+                cachedFolderList = Array.isArray(data.folders) ? data.folders : [];
+                cachedDeckList = Array.isArray(data.decks) ? data.decks : [];
+                ordersCache.folders = Array.isArray(data.folder_order) ? data.folder_order : [];
 
-                // Update decks
-                cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
-                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
+                // Persist to localStorage for instant next visit
+                saveToCache(CACHE_KEY_HOME, {
+                    folders: cachedFolderList,
+                    decks: cachedDeckList,
+                    folder_order: ordersCache.folders,
+                });
+
                 updateDeckCounts();
             } catch { }
 
@@ -2979,8 +2984,6 @@
             renderFolderGrid();
             renderDeckGrid();
             populateDeckSelect();
-
-            // Handle URL parameters
             handleUrlParams();
         }
 
@@ -3820,17 +3823,20 @@
                 if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to delete deck');
                 closeDeckSettingsModal();
                 showLoader();
+                // Clear home cache so fresh data is loaded
+                try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
                 try {
-                    const [foldersResp, decksResp, folderOrderResp] = await Promise.all([
-                        fetch('/folders').then(r => r.json()).catch(() => ({
-                            folders: []
-                        })),
-                        fetch('/decks').then(r => r.json()).catch(() => []),
-                        fetch('/order/folders').then(r => r.json()).catch(() => [])
-                    ]);
-                    cachedFolderList = Array.isArray(foldersResp.folders) ? foldersResp.folders : [];
-                    ordersCache.folders = Array.isArray(folderOrderResp) ? folderOrderResp : [];
-                    cachedDeckList = Array.isArray(decksResp) ? decksResp : [];
+                    const homeResp = await fetch('/home-data');
+                    const homeData = homeResp.ok ? await homeResp.json().catch(() => ({})) : {};
+                    cachedFolderList = Array.isArray(homeData.folders) ? homeData.folders : [];
+                    ordersCache.folders = Array.isArray(homeData.folder_order) ? homeData.folder_order : [];
+                    cachedDeckList = Array.isArray(homeData.decks) ? homeData.decks : [];
+                    // Cache the fresh data
+                    saveToCache(CACHE_KEY_HOME, {
+                        folders: cachedFolderList,
+                        decks: cachedDeckList,
+                        folder_order: ordersCache.folders,
+                    });
                     updateDeckCounts();
                     renderFolderGrid();
                     renderDeckGrid();

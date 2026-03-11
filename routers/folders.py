@@ -11,7 +11,7 @@ from utils import safe_deck_name as _safe_deck_name
 router = APIRouter()
 
 # Cache TTL in seconds
-CACHE_TTL = 30
+CACHE_TTL = 300
 
 # Key for the single folders file (combines index and order)
 def _folders_index_key() -> str:
@@ -180,6 +180,7 @@ def folder_create(payload: FolderCreate):
         ContentType="application/json"
     )
     invalidate_cache("folders:")
+    invalidate_cache("home:")
     return {"ok": True, "name": name}
 
 
@@ -269,6 +270,7 @@ def folder_rename(payload: FolderRename):
         pass
     
     invalidate_cache("folders:")
+    invalidate_cache("home:")
     return {"ok": True, "old_name": old, "new_name": new}
 
 
@@ -350,6 +352,7 @@ def folder_delete(payload: FolderDelete):
         pass
     
     invalidate_cache("folders:")
+    invalidate_cache("home:")
     return {"ok": True, "deleted": name}
 
 
@@ -405,6 +408,7 @@ def folder_move(payload: FolderMove):
     )
     
     invalidate_cache("folders:")
+    invalidate_cache("home:")
     return {"ok": True, "name": name, "parent": parent}
 
 
