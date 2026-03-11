@@ -573,6 +573,12 @@
             white-space: normal;
             margin-right: 12px;
         }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
@@ -979,11 +985,9 @@
             if (!currentVideo || !currentVideo.id) return;
             const btn = document.getElementById('retryTranslationBtn');
             const originalHTML = btn.innerHTML;
-            btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" stroke-linecap="round"/></svg>
-                Generating in background...
-            </span>`;
+            btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="animation:spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" stroke-linecap="round"/></svg>`;
             btn.disabled = true;
+            btn.style.padding = '4px 12px'; // keep it squarish
 
             try {
                 const resp = await fetch(`/videos/${currentVideo.id}/retry`, { method: 'POST' });
@@ -1016,7 +1020,7 @@
                         clearInterval(timer);
 
                         // Show a temporary success icon inside the button before restoring
-                        btn.innerHTML = `<span class="material-symbols-outlined" style="display:inline-flex;align-items:center;color:var(--success);font-size:18px;gap:6px">check_circle</span>`;
+                        btn.innerHTML = `<span class="material-symbols-outlined" style="display:inline-flex;align-items:center;color:var(--success);font-size:20px;">check_circle</span>`;
                         setTimeout(() => {
                             // Update the current video data with fresh subtitles
                             currentVideo = data;
@@ -1024,11 +1028,12 @@
                             btn.innerHTML = originalHTML;
                             btn.disabled = false;
                             btn.style.display = hasMissing ? 'block' : 'none';
+                            btn.style.padding = '4px 12px';
                             // Refresh subtitle panel if open
-                            if (typeof renderSubtitles === 'function') renderSubtitles(data.subtitles);
+                            renderSubtitlePanel();
                             // Also refresh grid badge
                             loadVideos();
-                        }, 2000);
+                        }, 1500);
                     }
                 } catch { }
             }, POLL_INTERVAL);
