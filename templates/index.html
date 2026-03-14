@@ -1840,10 +1840,7 @@
                     <span class="link__text link__text--primary">PDF</span>
                     <span class="link__text link__text--hover" aria-hidden="true">PDF</span>
                 </button>
-                <button class="nav__link nav__link--button" id="randomTestBtn" type="button">
-                    <span class="link__text link__text--primary">Random</span>
-                    <span class="link__text link__text--hover" aria-hidden="true">Random</span>
-                </button>
+
                 <button class="nav__link nav__link--button" id="videoBtn" type="button">
                     <span class="link__text link__text--primary">Video</span>
                     <span class="link__text link__text--hover" aria-hidden="true">Video</span>
@@ -3891,126 +3888,7 @@
             }, 50);
         });
 
-        // Random test: load random words from all decks
-        const randomTestBtn = document.getElementById('randomTestBtn');
-        if (randomTestBtn) randomTestBtn.addEventListener('click', async () => {
-            showLoader();
-            try {
-                // Fetch deck list only (fast)
-                const decksResp = await fetch('/decks');
-                const decksData = decksResp.ok ? await decksResp.json() : [];
-                const allDecks = Array.isArray(decksData) ? decksData : [];
 
-                if (!allDecks.length) {
-                    hideLoader();
-                    alert('No decks found');
-                    return;
-                }
-
-                // Shuffle decks and pick 2 random decks for quick start
-                const shuffledDecks = allDecks.slice();
-                for (let i = shuffledDecks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffledDecks[i], shuffledDecks[j]] = [shuffledDecks[j], shuffledDecks[i]];
-                }
-                const quickDecks = shuffledDecks.slice(0, Math.min(2, shuffledDecks.length));
-                const remainingDecks = shuffledDecks.slice(2);
-
-                // Load only 2 decks immediately (fast)
-                const quickPromises = quickDecks.map(d =>
-                    fetch(`/cards?deck=${encodeURIComponent(d.name)}`)
-                        .then(r => r.ok ? r.json() : [])
-                        .catch(() => [])
-                );
-                const quickWordLists = await Promise.all(quickPromises);
-                const quickWords = [].concat(...quickWordLists);
-
-                if (!quickWords.length) {
-                    hideLoader();
-                    alert('No words found');
-                    return;
-                }
-
-                // Shuffle and pick only 10 words to start
-                const shuffledQuick = quickWords.slice();
-                for (let i = shuffledQuick.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffledQuick[i], shuffledQuick[j]] = [shuffledQuick[j], shuffledQuick[i]];
-                }
-                const initialWords = shuffledQuick.slice(0, Math.min(10, shuffledQuick.length));
-
-                // Store ALL quick words as available pool (for adding more later)
-                allAvailableWords = quickWords.slice();
-                // But only use 10 words to start
-                originalWords = initialWords.slice();
-                words = initialWords.slice();
-                shuffle(words);
-
-                // Reset state
-                isAutoPlayEnabled = false;
-                try {
-                    localStorage.setItem('autoPlayEnabled', 'false');
-                } catch { }
-                updateAutoPlayToggle();
-                cardHistory = [];
-                isRandomTest = true;
-                randomTestWrongWords = [];
-                randomTestCompletedCount = 0;
-                randomTestPracticedKeys.clear();
-
-                // Show flashcard screen immediately
-                if (flashApp) flashApp.style.display = 'block';
-                if (homeDeckList) homeDeckList.style.display = 'none';
-                if (createFolderBtn) createFolderBtn.style.display = 'none';
-                isOnFlashcardScreen = true;
-                updateFlashMultiBtn();
-                updateSelectedDeckName(['Random Test (10 words)']);
-
-                clearDeckPreloads();
-                preloadRandomTestAudio(initialWords);
-                clearPracticedWords();
-                revealedLineWords.clear();
-
-                // Load line data for the initial decks in background
-                quickDecks.forEach(d => loadLineDataForDeck(d.name));
-
-                getNewCard();
-                hideLoader();
-
-                // Load remaining decks in background (adds to allAvailableWords pool)
-                if (remainingDecks.length > 0) {
-                    loadRemainingDecksInBackground(remainingDecks);
-                }
-            } catch (err) {
-                hideLoader();
-                console.error('Random test error:', err);
-                alert('Failed to load random test');
-            }
-        });
-
-        // Background loader for remaining decks - just adds to pool, doesn't add to active words
-        async function loadRemainingDecksInBackground(decks) {
-            if (!decks || !decks.length) return;
-
-            for (const deck of decks) {
-                try {
-                    const resp = await fetch(`/cards?deck=${encodeURIComponent(deck.name)}`);
-                    if (resp.ok) {
-                        const deckWords = await resp.json();
-                        if (Array.isArray(deckWords) && deckWords.length) {
-                            // Just add to available pool (checkAndAddMoreRandomWords will use these)
-                            allAvailableWords.push(...deckWords);
-                        }
-                    }
-                    // Load line data for this deck too
-                    loadLineDataForDeck(deck.name);
-                } catch {
-                    // Continue with next deck
-                }
-                // Small delay to not overwhelm the server
-                await new Promise(r => setTimeout(r, 200));
-            }
-        }
 
         function showCardData(cardData) {
             if (!cardData) return;
