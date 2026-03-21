@@ -59,7 +59,7 @@
             align-items: center;
             justify-content: center;
             background: rgba(255, 255, 255, .6);
-            transition: opacity .2s ease
+            transition: none
         }
 
         .loading-overlay.is-active {
@@ -117,8 +117,7 @@
         }
 
         .tile-enter {
-            animation: slideDown 380ms ease-out both;
-            will-change: transform, opacity
+            animation: none
         }
 
         @keyframes slideDown {

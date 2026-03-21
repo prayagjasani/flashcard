@@ -70,7 +70,7 @@
             align-items: center;
             justify-content: center;
             background: rgba(255, 255, 255, 0.6);
-            transition: opacity 0.2s ease;
+            transition: none;
         }
         
         .loading-overlay.is-active {
@@ -128,13 +128,13 @@
         .study-card {
             user-select: none;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            will-change: transform;
+            transition: none;
+            will-change: auto;
         }
         
         .study-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transform: none;
+            box-shadow: none;
         }
         
         @media (prefers-color-scheme: dark) {

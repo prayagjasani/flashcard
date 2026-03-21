@@ -56,7 +56,7 @@
             -webkit-backdrop-filter: saturate(180%) blur(8px);
             background: rgba(255, 255, 255, 0.6);
             border-bottom: 1px solid rgba(226, 232, 240, 0.7);
-            transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+            transition: none;
         }
 
         .site-header.is-solid {
@@ -120,8 +120,8 @@
         .link__text {
             display: block;
             line-height: 20px;
-            transition: transform 220ms ease;
-            will-change: transform;
+            transition: none;
+            will-change: auto;
         }
 
         .link__text--primary {
@@ -274,7 +274,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+            transition: none;
         }
 
         .deck-tile:hover {
@@ -487,7 +487,7 @@
             border: 1px solid transparent;
             background: #ffffff;
             cursor: pointer;
-            transition: background 140ms ease, transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+            transition: none;
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
             margin-bottom: 6px;
         }

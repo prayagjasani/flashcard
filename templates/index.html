@@ -135,8 +135,7 @@
         .link__text {
             display: block;
             line-height: 20px;
-            transition: transform 220ms ease;
-            will-change: transform;
+            transition: none;
         }
 
         .link__text--primary {
@@ -226,11 +225,11 @@
             font-weight: 600;
             font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             cursor: pointer;
-            transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
+            transition: none;
         }
 
         .btn:hover {
-            transform: translateY(-1px);
+            transform: none;
         }
 
         .btn--login {
@@ -294,7 +293,7 @@
             height: 2px;
             background: currentColor;
             border-radius: 2px;
-            transition: transform 200ms ease, opacity 200ms ease;
+            transition: none;
         }
 
         .is-dragging-hidden {
@@ -311,7 +310,7 @@
             background: rgba(59, 130, 246, 0.15) !important;
             border: 2px dashed var(--accent) !important;
             transform: scale(1.02);
-            transition: all 150ms ease;
+            transition: none;
         }
 
         .folder-drop-target::after {
@@ -471,7 +470,7 @@
             font-size: 14px;
             color: var(--text);
             line-height: 1.4;
-            transition: filter 0.3s ease;
+            transition: none;
         }
 
         .line-hint-text.is-blurred {
@@ -485,7 +484,7 @@
             -webkit-touch-callout: none;
             touch-action: manipulation;
             outline: none;
-            transition: transform 160ms ease, box-shadow 160ms ease;
+            transition: none;
         }
 
         #card:hover {
@@ -566,11 +565,11 @@
             background: var(--accent);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
             cursor: pointer;
-            transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease, filter 140ms ease;
+            transition: none;
         }
 
         button:hover {
-            transform: translateY(-1px);
+            transform: none;
             filter: brightness(1.05);
         }
 
@@ -655,7 +654,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: all 300ms ease;
+            transition: none;
             position: relative;
             overflow: hidden;
         }
@@ -681,7 +680,7 @@
 
         .toggle-icon {
             font-size: 16px;
-            transition: transform 300ms ease;
+            transition: none;
         }
 
         .toggle-text {
@@ -716,7 +715,7 @@
             background: var(--card-bg);
             cursor: pointer;
             user-select: none;
-            transition: background 0.15s ease;
+            transition: none;
         }
 
         .word-list-header:hover {
@@ -753,7 +752,7 @@
 
         .word-list-table tr {
             cursor: pointer;
-            transition: background 0.15s ease;
+            transition: none;
         }
 
         .word-list-table tr:hover {
@@ -792,7 +791,7 @@
         .word-list-en-cell {
             position: relative;
             cursor: pointer;
-            transition: filter 0.2s ease;
+            transition: none;
         }
 
         .word-list-en-blurred {
@@ -965,7 +964,7 @@
             background: rgba(2, 8, 23, 0.5);
             backdrop-filter: blur(2px);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: none;
             cursor: default;
         }
 
@@ -1007,17 +1006,15 @@
             border: none;
             border-top: 1px solid var(--card-border);
             background: var(--card-bg);
-            transform: translateY(100%);
-            opacity: 0;
-            animation: slideOutDown 0.25s ease-in forwards;
+            transform: none;
+            opacity: 1;
             box-sizing: border-box;
         }
 
         .modal--multi.is-open .modal__dialog {
-            transform: translateY(0);
+            transform: none;
             opacity: 1;
-            animation: slideInUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-            transition: height 0.25s ease, min-height 0.25s ease, max-height 0.25s ease;
+            transition: none;
         }
 
         .modal--multi.is-closing .modal__dialog {
@@ -1097,7 +1094,7 @@
         }
 
         .multi-deck-list {
-            transition: opacity 0.2s ease, transform 0.2s ease, max-height 0.25s ease;
+            transition: none;
         }
 
         .multi-deck-folder {
@@ -1107,7 +1104,7 @@
             padding: 16px;
             border-radius: 12px;
             cursor: default;
-            transition: background 0.15s ease;
+            transition: none;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
         }
@@ -1168,7 +1165,7 @@
             border-radius: 10px;
             height: 44px;
             box-shadow: none !important;
-            transition: background 0.15s ease, transform 0.1s ease;
+            transition: none;
             cursor: default;
             -webkit-tap-highlight-color: transparent;
             width: auto;
@@ -1188,7 +1185,7 @@
             border-radius: 10px;
             height: 44px;
             box-shadow: none !important;
-            transition: background 0.15s ease, transform 0.1s ease;
+            transition: none;
             cursor: default;
             -webkit-tap-highlight-color: transparent;
             width: auto;
@@ -1208,7 +1205,7 @@
             border-radius: 10px;
             height: 44px;
             box-shadow: none !important;
-            transition: background 0.15s ease, transform 0.1s ease;
+            transition: none;
             cursor: default;
             -webkit-tap-highlight-color: transparent;
         }
@@ -1236,7 +1233,7 @@
             cursor: default;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
-            transition: background 0.15s ease;
+            transition: none;
         }
 
         .multi-deck-item:active {
@@ -3873,19 +3870,14 @@
         const videoBtn = document.getElementById('videoBtn');
         if (videoBtn) videoBtn.addEventListener('click', () => {
             showLoader();
-            // Short delay to allow loader to render before navigation freezes UI
-            setTimeout(() => {
-                window.location.href = '/video';
-            }, 50);
+            window.location.href = '/video';
         });
 
         // Story mode: navigate to story page
         const storyBtn = document.getElementById('storyBtn');
         if (storyBtn) storyBtn.addEventListener('click', () => {
             showLoader();
-            setTimeout(() => {
-                window.location.href = '/story';
-            }, 50);
+            window.location.href = '/story';
         });
 
 
@@ -4687,11 +4679,7 @@
                 row.appendChild(label);
                 row.appendChild(arrow);
                 row.addEventListener('click', () => {
-                    multiDeckList.classList.add('is-transitioning');
-                    setTimeout(() => {
-                        populateMultiDeckFolderLevel(name);
-                        multiDeckList.classList.remove('is-transitioning');
-                    }, 150);
+                    populateMultiDeckFolderLevel(name);
                 });
                 multiDeckList.appendChild(row);
 
@@ -4741,11 +4729,7 @@
                 row.appendChild(label);
                 row.appendChild(arrow);
                 row.addEventListener('click', () => {
-                    multiDeckList.classList.add('is-transitioning');
-                    setTimeout(() => {
-                        populateMultiDeckDecks(name);
-                        multiDeckList.classList.remove('is-transitioning');
-                    }, 150);
+                    populateMultiDeckDecks(name);
                 });
                 multiDeckList.appendChild(row);
             });
@@ -4852,18 +4836,12 @@
         }
 
         function closeMultiDeckModal() {
-            // Add closing class to trigger exit animation
-            multiDeckModal.classList.add('is-closing');
-
-            // Wait for animation to complete before hiding
-            setTimeout(() => {
-                multiDeckModal.classList.remove('is-open');
-                multiDeckModal.classList.remove('is-closing');
-                multiDeckModal.setAttribute('aria-hidden', 'true');
-                multiDeckSelectedFolder = null;
-                multiDeckSelectedNames = new Set();
-                updateMultiDeckSelectedNames();
-            }, 250); // Match animation duration
+            multiDeckModal.classList.remove('is-open');
+            multiDeckModal.classList.remove('is-closing');
+            multiDeckModal.setAttribute('aria-hidden', 'true');
+            multiDeckSelectedFolder = null;
+            multiDeckSelectedNames = new Set();
+            updateMultiDeckSelectedNames();
         }
 
         async function loadWordsForDecks(deckNames) {
@@ -4923,12 +4901,7 @@
         });
         if (multiDeckCancelBtn) multiDeckCancelBtn.addEventListener('click', closeMultiDeckModal);
         if (multiDeckBackBtn) multiDeckBackBtn.addEventListener('click', () => {
-            // Add transition animation (reverse direction)
-            multiDeckList.classList.add('is-transitioning-back');
-            setTimeout(() => {
-                populateMultiDeckFolders();
-                multiDeckList.classList.remove('is-transitioning-back');
-            }, 150);
+            populateMultiDeckFolders();
         });
         multiDeckModal.addEventListener('click', (e) => {
             if (e.target.dataset.closeMulti === 'true') closeMultiDeckModal();
