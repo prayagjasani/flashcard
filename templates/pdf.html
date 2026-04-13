@@ -931,6 +931,12 @@
                 <label for="createPdfFolderNameInput">Folder name</label>
                 <input id="createPdfFolderNameInput" type="text">
             </div>
+            <div class="modal__field" style="margin-top: 12px; margin-bottom: 4px;">
+                <label for="createPdfFolderParentSelect">Parent Folder (optional)</label>
+                <select id="createPdfFolderParentSelect" style="width: 100%; border: 1px solid var(--card-border); padding: 8px; border-radius: 8px; margin-top: 4px; background: transparent;">
+                    <option value="">None (Top Level)</option>
+                </select>
+            </div>
             <div class="modal__actions">
                 <button class="btn" id="createPdfFolderCancelBtn" type="button">Cancel</button>
                 <button class="btn btn--primary" id="createPdfFolderSaveBtn" type="button">Create</button>
@@ -1187,6 +1193,23 @@
         function openCreateFolderModal() {
             createPdfFolderStatus.textContent = '';
             createPdfFolderNameInput.value = '';
+            
+            const parentSelect = document.getElementById('createPdfFolderParentSelect');
+            if (parentSelect) {
+                parentSelect.innerHTML = '<option value="">None (Top Level)</option>';
+                if (window.folderItems) {
+                    window.folderItems.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f.name;
+                        opt.textContent = f.name;
+                        parentSelect.appendChild(opt);
+                    });
+                }
+                if (window.selectedFolder) {
+                    parentSelect.value = window.selectedFolder;
+                }
+            }
+            
             createPdfFolderModal.classList.add('is-open');
             createPdfFolderModal.setAttribute('aria-hidden', 'false');
         }
@@ -1201,6 +1224,9 @@
         });
         async function doCreateFolder() {
             const raw = (createPdfFolderNameInput.value || '').trim();
+            const parentSelect = document.getElementById('createPdfFolderParentSelect');
+            const parent = parentSelect ? parentSelect.value : null;
+
             if (!raw) {
                 createPdfFolderStatus.textContent = 'Enter folder name';
                 return;
@@ -1215,7 +1241,8 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        name: raw
+                        name: raw,
+                        parent: parent
                     })
                 });
                 const out = await resp.json().catch(() => ({}));

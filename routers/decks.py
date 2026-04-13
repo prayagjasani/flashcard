@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from gtts import gTTS
 from botocore.exceptions import ClientError
 
-from models import DeckCreate, DeckUpdate, DeckDelete, DeckRename, DeckMove, DeckOrderUpdate
+from models import DeckCreate, DeckUpdate, DeckDelete, DeckRename, DeckMove, DeckOrderUpdate, DecksMoveBulk
 from services.storage import (
     r2_client, R2_BUCKET_NAME, 
     order_decks_key as _order_decks_key
@@ -601,6 +601,84 @@ def deck_move(payload: DeckMove):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"ok": True, "name": name, "folder": folder or None}
+
+@router.post("/decks/move-bulk")
+def deck_move_bulk(payload: DecksMoveBulk):
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+    if not payload.names:
+        return {"ok": True, "count": 0}
+        
+    names = [_safe_deck_name(n) for n in payload.names if _safe_deck_name(n)]
+    target_folder = _safe_deck_name(payload.folder) if payload.folder else None
+    
+    idx_key = f"{R2_BUCKET_NAME}/csv/index.json"
+    try:
+        idx_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=idx_key)
+        idx_data = idx_obj["Body"].read().decode("utf-8")
+        parsed = json.loads(idx_data)
+        
+        folders_affected = set()
+        if target_folder:
+            folders_affected.add(target_folder)
+        else:
+            folders_affected.add("root")
+            
+        if isinstance(parsed, list):
+            prev_folders = {}
+            for d in parsed:
+                if isinstance(d, dict) and d.get("name") in names:
+                    prev = d.get("folder")
+                    prev_folders[d["name"]] = prev
+                    if prev:
+                        folders_affected.add(prev)
+                    else:
+                        folders_affected.add("root")
+                        
+                    if target_folder:
+                        d["folder"] = target_folder
+                    else:
+                        d.pop("folder", None)
+            
+            r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=idx_key, Body=json.dumps(parsed).encode("utf-8"), ContentType="application/json")
+            
+            # Update deck order lists efficiently
+            order_lists = {}
+            for f in folders_affected:
+                okey = _order_decks_key(f if f != "root" else None)
+                try:
+                    o_obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=okey)
+                    o_data = o_obj["Body"].read().decode("utf-8")
+                    o_parsed = json.loads(o_data)
+                    order_lists[f] = o_parsed if isinstance(o_parsed, list) else []
+                except Exception:
+                    order_lists[f] = []
+                    
+            for name in names:
+                prev = prev_folders.get(name)
+                prev_scope = prev if prev else "root"
+                target_scope = target_folder if target_folder else "root"
+                
+                # Remove from previous
+                if name in order_lists[prev_scope]:
+                    order_lists[prev_scope] = [x for x in order_lists[prev_scope] if x != name]
+                
+                # Add to target
+                if name not in order_lists[target_scope]:
+                    order_lists[target_scope].append(name)
+                    
+            # Save updated orders back
+            for f in folders_affected:
+                okey = _order_decks_key(f if f != "root" else None)
+                r2_client.put_object(Bucket=R2_BUCKET_NAME, Key=okey, Body=json.dumps(order_lists[f]).encode("utf-8"), ContentType="application/json")
+                invalidate_cache(f"decks:order:{_safe_deck_name(f)}")
+                
+            invalidate_cache("folders:")
+            invalidate_cache("home:")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "count": len(names), "folder": target_folder}
 
 @router.post("/decks/index/rebuild")
 def rebuild_deck_index():

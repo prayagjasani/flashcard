@@ -179,9 +179,32 @@ def folder_create(payload: FolderCreate):
         Body=json.dumps(items).encode("utf-8"), 
         ContentType="application/json"
     )
+    
+    if payload.parent:
+        parent = _safe_deck_name(payload.parent)
+        if parent and parent != name:
+            parents_key = f"{R2_BUCKET_NAME}/folders/parents.json"
+            parents_data = {}
+            try:
+                obj = r2_client.get_object(Bucket=R2_BUCKET_NAME, Key=parents_key)
+                data = obj["Body"].read().decode("utf-8")
+                parsed = json.loads(data)
+                if isinstance(parsed, dict):
+                    parents_data = parsed
+            except Exception:
+                pass
+            
+            parents_data[name] = parent
+            r2_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=parents_key,
+                Body=json.dumps(parents_data).encode("utf-8"),
+                ContentType="application/json"
+            )
+
     invalidate_cache("folders:")
     invalidate_cache("home:")
-    return {"ok": True, "name": name}
+    return {"ok": True, "name": name, "parent": payload.parent}
 
 
 @router.post("/folder/rename")

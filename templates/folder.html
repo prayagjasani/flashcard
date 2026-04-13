@@ -559,12 +559,21 @@
                 <div class="deck-grid" id="subFolderGrid"></div>
             </section>
             <section class="deck-list">
-                <div id="decksHeader" style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
+                <div id="decksHeader" style="display:flex; align-items:center; justify-content:space-between; margin:0 0 12px 0; padding:0 2px;">
                     <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Decks</h2>
+                    <button class="btn btn--pill" id="bulkSelectModeBtn" type="button" style="padding: 4px 12px; font-size: 0.85rem; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--text-primary); border-radius: 99px;">Select</button>
                 </div>
                 <div class="deck-grid" id="deckList"></div>
             </section>
         </main>
+    </div>
+    
+    <div id="bulkActionBar" style="display:none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 99px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 8px 16px; align-items: center; gap: 16px; z-index: 5000;">
+        <span id="bulkActionCount" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">0 selected</span>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn--pill" id="bulkActionCancelBtn" type="button" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 99px;">Cancel</button>
+            <button class="btn btn--pill btn--primary" id="bulkActionMoveBtn" type="button" style="padding: 6px 16px; font-size: 0.85rem; background: var(--accent); color: white; border: none; border-radius: 99px;">Move...</button>
+        </div>
     </div>
     <div class="modal modal--center-actions" id="chooseActionModal" aria-hidden="true">
         <div class="modal__backdrop" data-close="true"></div>
@@ -1585,6 +1594,54 @@
             } catch {}
         }
 
+        let isBulkSelectMode = false;
+        let bulkSelectedDecks = new Set();
+        let isBulkMoveOperation = false;
+        
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const info = document.getElementById('bulkActionCount');
+            const btn = document.getElementById('bulkSelectModeBtn');
+            if (isBulkSelectMode) {
+                bar.style.display = 'flex';
+                info.textContent = `${bulkSelectedDecks.size} selected`;
+                if(btn) btn.textContent = 'Done';
+            } else {
+                bar.style.display = 'none';
+                if(btn) btn.textContent = 'Select';
+                bulkSelectedDecks.clear();
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const bulkSelectBtn = document.getElementById('bulkSelectModeBtn');
+            const bulkCancelBtn = document.getElementById('bulkActionCancelBtn');
+            const bulkMoveBtn = document.getElementById('bulkActionMoveBtn');
+            
+            if (bulkSelectBtn) {
+                bulkSelectBtn.addEventListener('click', () => {
+                    isBulkSelectMode = !isBulkSelectMode;
+                    updateBulkActionBar();
+                    loadDecks();
+                });
+            }
+            if (bulkCancelBtn) {
+                bulkCancelBtn.addEventListener('click', () => {
+                    isBulkSelectMode = false;
+                    updateBulkActionBar();
+                    loadDecks();
+                });
+            }
+            if (bulkMoveBtn) {
+                bulkMoveBtn.addEventListener('click', () => {
+                    if (bulkSelectedDecks.size === 0) return;
+                    selectedDeckForAction = null;
+                    isBulkMoveOperation = true;
+                    openMoveDeckModal(); 
+                });
+            }
+        });
+
         function renderList(items) {
             deckList.innerHTML = '';
             if (!items.length) {
@@ -1601,6 +1658,21 @@
                 title.textContent = d.name;
                 wrap.appendChild(title);
                 wrap.addEventListener('click', () => {
+                    if (isBulkSelectMode) {
+                        if (bulkSelectedDecks.has(d.name)) {
+                            bulkSelectedDecks.delete(d.name);
+                            wrap.classList.remove('is-selected');
+                            wrap.style.border = '';
+                            wrap.style.background = '';
+                        } else {
+                            bulkSelectedDecks.add(d.name);
+                            wrap.classList.add('is-selected');
+                            wrap.style.border = '2px solid var(--accent)';
+                            wrap.style.background = 'rgba(56, 189, 248, 0.05)';
+                        }
+                        updateBulkActionBar();
+                        return;
+                    }
                     selectedDeckForAction = d.name;
                     const ttl = document.getElementById('chooseActionTitle');
                     if (ttl) ttl.textContent = d.name;
@@ -1780,7 +1852,7 @@
             if (e.target && (e.target.dataset.close === 'true')) closeMoveDeckModal();
         });
         if (moveDeckSaveBtn) moveDeckSaveBtn.addEventListener('click', async() => {
-            if (!selectedDeckForAction) return;
+            if (!selectedDeckForAction && (!isBulkMoveOperation || bulkSelectedDecks.size === 0)) return;
             if (!moveDeckBrowserCursor || moveDeckBrowserCursor === MOVE_BROWSER_ROOT) {
                 moveDeckStatus.textContent = 'Choose a folder first';
                 return;
@@ -1789,21 +1861,39 @@
             moveDeckSaveBtn.disabled = true;
             moveDeckSaveBtn.textContent = 'Moving...';
             try {
-                const resp = await fetch('/deck/move', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: selectedDeckForAction,
-                        folder: targetFolder === 'Uncategorized' ? null : targetFolder
-                    })
-                });
-                const out = await resp.json().catch(() => ({
-                    ok: false
-                }));
-                if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
-                moveDeckStatus.textContent = 'Moved';
+                if (isBulkMoveOperation) {
+                    const resp = await fetch('/decks/move-bulk', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            names: Array.from(bulkSelectedDecks),
+                            folder: targetFolder === 'Uncategorized' ? null : targetFolder
+                        })
+                    });
+                    const out = await resp.json().catch(() => ({ ok: false }));
+                    if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to bulk move');
+                    moveDeckStatus.textContent = `Moved ${out.count} items`;
+                    isBulkSelectMode = false;
+                    isBulkMoveOperation = false;
+                    bulkSelectedDecks.clear();
+                    updateBulkActionBar();
+                } else {
+                    const resp = await fetch('/deck/move', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: selectedDeckForAction,
+                            folder: targetFolder === 'Uncategorized' ? null : targetFolder
+                        })
+                    });
+                    const out = await resp.json().catch(() => ({ ok: false }));
+                    if (!resp.ok || !out.ok) throw new Error(out.detail || 'Failed to move');
+                    moveDeckStatus.textContent = 'Moved';
+                }
                 await loadDecks();
                 closeMoveDeckModal();
                 chooseActionModal.classList.remove('is-open');

@@ -16,6 +16,10 @@ class DeckRename(BaseModel):
     old_name: str
     new_name: str
 
+class DecksMoveBulk(BaseModel):
+    names: list[str]
+    folder: str | None = None
+
 class AudioRebuildRequest(BaseModel):
     text: str
     lang: str = "de"
@@ -23,6 +27,7 @@ class AudioRebuildRequest(BaseModel):
 
 class FolderCreate(BaseModel):
     name: str
+    parent: str | None = None
 
 class FolderRename(BaseModel):
     old_name: str
@@ -68,6 +73,7 @@ class PdfOrderUpdate(BaseModel):
 
 class PdfFolderCreate(BaseModel):
     name: str
+    parent: str | None = None
 
 
 class PdfFolderRename(BaseModel):

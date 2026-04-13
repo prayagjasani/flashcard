@@ -3,6 +3,7 @@ import os
 import re
 import json
 import csv
+import hashlib
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from gtts import gTTS
@@ -217,3 +218,90 @@ def audio_cleanup(dry_run: bool = False):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cleanup audio: {e}")
+
+@router.post("/audio/migrate")
+def audio_migrate(dry_run: bool = False):
+    """Migrate flat TTS audio files to prefix-routed structure."""
+    if not r2_client or not R2_BUCKET_NAME:
+        raise HTTPException(status_code=400, detail="Cloudflare R2 is not configured")
+        
+    try:
+        migrated = 0
+        skipped = 0
+        errors = 0
+        
+        for lang in ["de", "en"]:
+            prefix = f"{R2_BUCKET_NAME}/tts/{lang}/"
+            continuation = None
+            
+            while True:
+                kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": prefix}
+                if continuation:
+                    kwargs["ContinuationToken"] = continuation
+                    
+                resp = r2_client.list_objects_v2(**kwargs)
+                contents = resp.get("Contents", [])
+                
+                for obj in contents:
+                    key = obj.get("Key", "")
+                    if not key.endswith(".mp3"):
+                        continue
+                        
+                    # Extract the part after f"{R2_BUCKET_NAME}/tts/{lang}/"
+                    path_part = key[len(prefix):]
+                    
+                    # If it already contains a slash, it means it's in a subfolder (migrated)
+                    if "/" in path_part:
+                        skipped += 1
+                        continue
+                        
+                    # Original logic was just safe+".mp3"
+                    safe = path_part[:-4]
+                    if not safe:
+                        continue
+                        
+                    # Calculate new path exactly as in safe_tts_key
+                    safe_hash = hashlib.md5(safe.encode("utf-8")).hexdigest()
+                    sub_prefix = safe_hash[0:2]
+                    short_safe = safe[:30]
+                    new_key = f"{R2_BUCKET_NAME}/tts/{lang}/{sub_prefix}/{short_safe}_{safe_hash[-8:]}.mp3"
+                    
+                    if not dry_run:
+                        try:
+                            # Use S3 copy object then delete
+                            # AWS requires the source bucket to be included in the CopySource dictionary for boto3 if provided as dict
+                            copy_source = {
+                                'Bucket': R2_BUCKET_NAME,
+                                'Key': key
+                            }
+                            r2_client.copy_object(
+                                Bucket=R2_BUCKET_NAME,
+                                CopySource=copy_source,
+                                Key=new_key
+                            )
+                            r2_client.delete_object(
+                                Bucket=R2_BUCKET_NAME,
+                                Key=key
+                            )
+                            migrated += 1
+                        except Exception as e:
+                            print(f"Error migrating {key} to {new_key}: {e}")
+                            errors += 1
+                    else:
+                        migrated += 1
+                        
+                if resp.get("IsTruncated"):
+                    continuation = resp.get("NextContinuationToken")
+                else:
+                    break
+                    
+        return {
+            "ok": True,
+            "dry_run": dry_run,
+            "migrated": migrated,
+            "skipped": skipped,
+            "errors": errors
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to migrate audio: {e}")
+
