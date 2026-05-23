@@ -1,16 +1,18 @@
 // Service Worker for Flashcard App - Enables offline support
 
-const CACHE_NAME = 'flashcard-v2';
+const CACHE_NAME = 'flashcard-v3';
 const STATIC_ASSETS = [
     '/',
     '/static/manifest.json',
 ];
 
 // API routes to cache (matches pathname prefix)
-const API_CACHE_NAME = 'flashcard-api-v1';
+const API_CACHE_NAME = 'flashcard-api-v2';
 const CACHEABLE_APIS = [
     '/order/folders',
     '/order/decks',
+    '/pdfs',
+    '/pdf/folders',
 ];
 
 // Install Service Worker

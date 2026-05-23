@@ -985,7 +985,10 @@
             window.location.href = '/?mode=flash';
         });
         if (pdfNavBtn) pdfNavBtn.addEventListener('click', () => {
-            showLoader();
+            if (window.location.pathname === '/pdf' || window.location.pathname === '/pdf/') {
+                navigateToFolder('');
+                return;
+            }
             window.location.href = '/pdf';
         });
         if (randomNavBtn) randomNavBtn.addEventListener('click', () => {
@@ -1072,9 +1075,31 @@
             uploadPdfModal.classList.remove('is-open');
             uploadPdfModal.setAttribute('aria-hidden', 'true');
         }
+        function navigateToFolder(folderName) {
+            selectedFolder = folderName || '';
+            const params = new URLSearchParams(window.location.search);
+            if (selectedFolder) {
+                params.set('folder', selectedFolder);
+            } else {
+                params.delete('folder');
+            }
+            const newUrl = params.toString() ? `/pdf?${params.toString()}` : '/pdf';
+            window.history.pushState({folder: selectedFolder}, '', newUrl);
+            updatePdfHeader();
+            renderPdfList();
+            buildRootFolderGrid();
+        }
+
+        window.addEventListener('popstate', () => {
+            selectedFolder = new URLSearchParams(window.location.search).get('folder') || '';
+            updatePdfHeader();
+            renderPdfList();
+            buildRootFolderGrid();
+        });
+
         if (pdfBackBtn) {
             pdfBackBtn.addEventListener('click', () => {
-                window.location.href = '/pdf';
+                navigateToFolder('');
             });
         }
         if (uploadPdfBtn) uploadPdfBtn.addEventListener('click', openUploadModal);
@@ -1318,7 +1343,7 @@
                     return;
                 }
                 if (selectedFolder === safe) {
-                    window.location.href = '/pdf';
+                    navigateToFolder('');
                     return;
                 }
                 await Promise.all([loadFolders(), loadPdfs()]);
@@ -1634,7 +1659,7 @@
                 }
                 tile.addEventListener('click', (e) => {
                     if (e.target.closest('.kebab-btn') || e.target.closest('.kebab-menu')) return;
-                    window.location.href = `/pdf?folder=${encodeURIComponent(f.name)}`;
+                    navigateToFolder(f.name);
                 });
                 pdfRootFolderGrid.appendChild(tile);
             });
@@ -1962,23 +1987,35 @@
                 attachPdfDnD(tile, p.name, scope);
             });
         }
-        async function loadPdfs() {
+        async function loadPdfs(skipRender) {
             try {
                 const resp = await fetch('/pdfs');
                 const data = await resp.json().catch(() => []);
-                pdfItems = Array.isArray(data) ? data : [];
-                renderPdfList();
-                buildRootFolderGrid();
+                const fresh = Array.isArray(data) ? data : [];
+                const freshJson = JSON.stringify(fresh);
+                const oldJson = JSON.stringify(pdfItems);
+                pdfItems = fresh;
+                sessionStorage.setItem('pdfs_cache', freshJson);
+                if (!skipRender && freshJson !== oldJson) {
+                    renderPdfList();
+                    buildRootFolderGrid();
+                }
             } catch (e) { }
         }
-        async function loadFolders() {
+        async function loadFolders(skipRender) {
             try {
                 const resp = await fetch('/pdf/folders');
                 const data = await resp.json().catch(() => ({
                     folders: []
                 }));
-                folderItems = Array.isArray(data.folders) ? data.folders : [];
-                buildRootFolderGrid();
+                const fresh = Array.isArray(data.folders) ? data.folders : [];
+                const freshJson = JSON.stringify(fresh);
+                const oldJson = JSON.stringify(folderItems);
+                folderItems = fresh;
+                sessionStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: folderItems }));
+                if (!skipRender && freshJson !== oldJson) {
+                    buildRootFolderGrid();
+                }
             } catch (e) { }
         }
 
@@ -2020,13 +2057,51 @@
         }
 
         function init() {
-            showLoader();
-            Promise.all([loadPdfs(), loadFolders()]).finally(() => {
+            // Step 1: Try to render instantly from sessionStorage cache
+            let hasCache = false;
+            try {
+                const cachedPdfs = sessionStorage.getItem('pdfs_cache');
+                const cachedFolders = sessionStorage.getItem('pdf_folders_cache');
+                if (cachedPdfs) {
+                    const parsed = JSON.parse(cachedPdfs);
+                    if (Array.isArray(parsed)) {
+                        pdfItems = parsed;
+                        hasCache = true;
+                    }
+                }
+                if (cachedFolders) {
+                    const parsed = JSON.parse(cachedFolders);
+                    if (Array.isArray(parsed.folders)) {
+                        folderItems = parsed.folders;
+                        hasCache = true;
+                    }
+                }
+            } catch (e) { }
+
+            if (hasCache) {
+                // Render immediately from cache — no loader, no wait
                 updatePdfHeader();
-                hideLoader();
-            });
+                renderPdfList();
+                buildRootFolderGrid();
+                // Silently refresh in background (only re-renders if data changed)
+                loadPdfs();
+                loadFolders();
+            } else {
+                // No cache — show loader and wait for network
+                showLoader();
+                Promise.all([loadPdfs(true), loadFolders(true)]).finally(() => {
+                    updatePdfHeader();
+                    renderPdfList();
+                    buildRootFolderGrid();
+                    hideLoader();
+                });
+            }
         }
-        window.addEventListener('load', init);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.kebab-btn') && !e.target.closest('.kebab-menu')) {
                 document.querySelectorAll('.kebab-menu.is-open').forEach(m => {
