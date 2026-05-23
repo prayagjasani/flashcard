@@ -960,15 +960,30 @@
         const decksHeader = document.getElementById('decksHeader');
 
         const params = new URLSearchParams(location.search);
-        const folder = params.get('name') || 'Uncategorized';
+        let folder = params.get('name') || 'Uncategorized';
         folderTitle.textContent = folder;
 
         let allFolders = [];
         let parentFolder = null;
 
+        function navigateToFolder(folderName) {
+            folder = folderName || 'Uncategorized';
+            folderTitle.textContent = folder;
+            const newUrl = `/folder?name=${encodeURIComponent(folder)}`;
+            window.history.pushState({ folder: folder }, '', newUrl);
+            loadDecks();
+        }
+
+        window.addEventListener('popstate', () => {
+            const currentParams = new URLSearchParams(window.location.search);
+            folder = currentParams.get('name') || 'Uncategorized';
+            folderTitle.textContent = folder;
+            loadDecks();
+        });
+
         backBtn.addEventListener('click', () => {
             if (parentFolder) {
-                location.href = `/folder?name=${encodeURIComponent(parentFolder)}`;
+                navigateToFolder(parentFolder);
             } else {
                 location.href = '/';
             }
@@ -1329,7 +1344,7 @@
                 tile.addEventListener('click', (e) => {
                     if (tile.classList.contains('folder-drop-target')) return;
                     if (e.target === kebab || menu.contains(e.target)) return;
-                    location.href = `/folder?name=${encodeURIComponent(f.name)}`;
+                    navigateToFolder(f.name);
                 });
 
                 // Attach drag-and-drop for reordering
@@ -1418,11 +1433,17 @@
         const CACHE_DECKS = 'flashcard_decks_cache';
 
         function saveCache(key, data) {
-            return;
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch { }
         }
 
         function getCache(key) {
-            return null;
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch { return null; }
         }
 
         async function loadDecks() {
@@ -1431,26 +1452,20 @@
             const cachedDecks = getCache(CACHE_DECKS);
 
             if (cachedFolders && cachedDecks) {
-                // Show cached data immediately - NO background refresh, NO flicker
+                // Show cached data immediately — no network, no loader
                 allFolders = Array.isArray(cachedFolders.data || cachedFolders) ? (cachedFolders.data || cachedFolders) : [];
                 const allDecks = Array.isArray(cachedDecks.data || cachedDecks) ? (cachedDecks.data || cachedDecks) : [];
 
-                // Fetch deck order for this folder (always needed for correct sorting)
-                try {
-                    const deckOrderResp = await fetch(`/order/decks?scope=${encodeURIComponent(folder)}`);
-                    const deckOrderData = await deckOrderResp.json().catch(() => []);
-                    ordersCache.decks[folder] = Array.isArray(deckOrderData) ? deckOrderData : [];
-                } catch {
-                    ordersCache.decks[folder] = [];
-                }
-
-                // Build UI with cached data
+                // Build UI instantly from cache
                 buildBreadcrumb();
                 renderSubFolders();
                 const list = allDecks.filter(d => ((d.folder || 'Uncategorized') === folder));
                 const ordered = applyOrder(list, 'deck', folder);
                 renderList(ordered);
-                return; // Done - use cache for entire session
+
+                // Silently refresh in background (only re-renders if data changed)
+                refreshDecksInBackground();
+                return;
             }
 
             // No cache - show loader and fetch fresh data

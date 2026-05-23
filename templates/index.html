@@ -1853,6 +1853,13 @@
     <div class="loading-overlay is-active" id="globalLoader" aria-hidden="false">
         <div class="loading-dots"><span></span><span></span><span></span></div>
     </div>
+    <script>
+        try {
+            if (localStorage.getItem('flashcard_home_cache_v1')) {
+                document.getElementById('globalLoader').classList.remove('is-active');
+            }
+        } catch(e){}
+    </script>
     <section class="deck-list" id="homeDeckList">
         <div style="display:flex; align-items:center; justify-content:flex-start; margin:0 0 12px 0; padding:0 2px;">
             <h2 style="margin:0; font-size:1rem; font-weight:600; color:var(--text);">Folders</h2>
@@ -2209,8 +2216,11 @@
                 });
                 if (resp.ok) {
                     ordersCache.folders = Array.isArray(names) ? names.slice() : [];
-                    // Clear localStorage home cache so next load reflects new order
+                    // Clear localStorage & sessionStorage caches so next load reflects new order
                     try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
+                    try { localStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
+                    try { localStorage.removeItem(CACHE_KEY_DECKS); } catch { }
+                    try { localStorage.removeItem('flashcard_folder_order_cache'); } catch { }
                     try { sessionStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
                     try { sessionStorage.removeItem(CACHE_KEY_DECKS); } catch { }
                     try { sessionStorage.removeItem('flashcard_folder_order_cache'); } catch { }
@@ -2232,8 +2242,11 @@
                 });
                 if (resp.ok) {
                     ordersCache.decks[key] = Array.isArray(names) ? names.slice() : [];
-                    // Clear localStorage home cache so next load reflects new order
+                    // Clear localStorage & sessionStorage caches so next load reflects new order
                     try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
+                    try { localStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
+                    try { localStorage.removeItem(CACHE_KEY_DECKS); } catch { }
+                    try { localStorage.removeItem('flashcard_folder_order_cache'); } catch { }
                     try { sessionStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
                     try { sessionStorage.removeItem(CACHE_KEY_DECKS); } catch { }
                     try { sessionStorage.removeItem('flashcard_folder_order_cache'); } catch { }
@@ -2937,11 +2950,7 @@
                 const raw = localStorage.getItem(key);
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
-                if (!parsed || !parsed.ts || !parsed.data) return null;
-                if (Date.now() - parsed.ts > CACHE_EXPIRY) {
-                    localStorage.removeItem(key);
-                    return null;
-                }
+                if (!parsed || !parsed.data) return null;
                 return parsed.data;
             } catch { return null; }
         }
@@ -2951,11 +2960,13 @@
             try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
             try { localStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
             try { localStorage.removeItem(CACHE_KEY_DECKS); } catch { }
+            try { localStorage.removeItem('pdfs_cache'); } catch { }
+            try { localStorage.removeItem('pdf_folders_cache'); } catch { }
         }
 
         // Fast home screen loader: single /home-data request + localStorage cache
         async function loadAllData() {
-            // Check localStorage for fresh cached data (5-min TTL)
+            // Check localStorage for cached data (show instantly)
             const cached = getFromCache(CACHE_KEY_HOME);
             if (cached) {
                 cachedFolderList = cached.folders || [];
@@ -2967,10 +2978,14 @@
                 populateDeckSelect();
                 handleUrlParams();
                 requestAnimationFrame(() => hideLoader());
+                // Refresh data silently in background
+                refreshDataInBackground();
+                preloadPdfsInBackground();
                 return; // Instant — no network needed
             }
 
             // Cache miss: single combined request to backend
+            showLoader();
             try {
                 const resp = await fetch('/home-data');
                 const data = resp.ok ? await resp.json().catch(() => ({})) : {};
@@ -2994,6 +3009,7 @@
             renderDeckGrid();
             populateDeckSelect();
             handleUrlParams();
+            preloadPdfsInBackground();
         }
 
         // Background refresh - updates cache and UI if data changed
@@ -3058,6 +3074,13 @@
                     }
                 }
 
+                // Always save updated data to home cache to keep it in sync
+                saveToCache(CACHE_KEY_HOME, {
+                    folders: cachedFolderList,
+                    decks: cachedDeckList,
+                    folder_order: ordersCache.folders,
+                });
+
                 // Re-render only if structure actually changed
                 if (needsRerender) {
                     renderFolderGrid();
@@ -3065,6 +3088,23 @@
                 }
             } catch { }
         }
+
+        // Preload PDF folders and PDFs in background so /pdf is instant
+        async function preloadPdfsInBackground() {
+            try {
+                const [pdfsResp, pdfFoldersResp] = await Promise.all([
+                    fetch('/pdfs').then(r => r.json()).catch(() => null),
+                    fetch('/pdf/folders').then(r => r.json()).catch(() => null)
+                ]);
+                if (pdfsResp) {
+                    localStorage.setItem('pdfs_cache', JSON.stringify(pdfsResp));
+                }
+                if (pdfFoldersResp && pdfFoldersResp.folders) {
+                    localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: pdfFoldersResp.folders }));
+                }
+            } catch (e) { }
+        }
+
 
         function populateDeckSelect() {
             deckSelect.innerHTML = '';

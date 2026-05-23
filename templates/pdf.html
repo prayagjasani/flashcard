@@ -1995,7 +1995,7 @@
                 const freshJson = JSON.stringify(fresh);
                 const oldJson = JSON.stringify(pdfItems);
                 pdfItems = fresh;
-                sessionStorage.setItem('pdfs_cache', freshJson);
+                localStorage.setItem('pdfs_cache', freshJson);
                 if (!skipRender && freshJson !== oldJson) {
                     renderPdfList();
                     buildRootFolderGrid();
@@ -2012,7 +2012,7 @@
                 const freshJson = JSON.stringify(fresh);
                 const oldJson = JSON.stringify(folderItems);
                 folderItems = fresh;
-                sessionStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: folderItems }));
+                localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: folderItems }));
                 if (!skipRender && freshJson !== oldJson) {
                     buildRootFolderGrid();
                 }
@@ -2057,11 +2057,11 @@
         }
 
         function init() {
-            // Step 1: Try to render instantly from sessionStorage cache
+            // Step 1: Try to render instantly from localStorage cache
             let hasCache = false;
             try {
-                const cachedPdfs = sessionStorage.getItem('pdfs_cache');
-                const cachedFolders = sessionStorage.getItem('pdf_folders_cache');
+                const cachedPdfs = localStorage.getItem('pdfs_cache');
+                const cachedFolders = localStorage.getItem('pdf_folders_cache');
                 if (cachedPdfs) {
                     const parsed = JSON.parse(cachedPdfs);
                     if (Array.isArray(parsed)) {
