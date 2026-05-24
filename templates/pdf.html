@@ -1987,6 +1987,15 @@
                 attachPdfDnD(tile, p.name, scope);
             });
         }
+        function updateFullCache() {
+            try {
+                localStorage.setItem('pdf_full_cache', JSON.stringify({
+                    pdfs: pdfItems,
+                    folders: folderItems
+                }));
+            } catch (e) { }
+        }
+
         async function loadPdfs(skipRender) {
             try {
                 const resp = await fetch('/pdfs');
@@ -1995,7 +2004,7 @@
                 const freshJson = JSON.stringify(fresh);
                 const oldJson = JSON.stringify(pdfItems);
                 pdfItems = fresh;
-                localStorage.setItem('pdfs_cache', freshJson);
+                updateFullCache();
                 if (!skipRender && freshJson !== oldJson) {
                     renderPdfList();
                     buildRootFolderGrid();
@@ -2012,7 +2021,7 @@
                 const freshJson = JSON.stringify(fresh);
                 const oldJson = JSON.stringify(folderItems);
                 folderItems = fresh;
-                localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: folderItems }));
+                updateFullCache();
                 if (!skipRender && freshJson !== oldJson) {
                     buildRootFolderGrid();
                 }
@@ -2060,18 +2069,11 @@
             // Step 1: Try to render instantly from localStorage cache
             let hasCache = false;
             try {
-                const cachedPdfs = localStorage.getItem('pdfs_cache');
-                const cachedFolders = localStorage.getItem('pdf_folders_cache');
-                if (cachedPdfs) {
-                    const parsed = JSON.parse(cachedPdfs);
-                    if (Array.isArray(parsed)) {
-                        pdfItems = parsed;
-                        hasCache = true;
-                    }
-                }
-                if (cachedFolders) {
-                    const parsed = JSON.parse(cachedFolders);
-                    if (Array.isArray(parsed.folders)) {
+                const fullCache = localStorage.getItem('pdf_full_cache');
+                if (fullCache) {
+                    const parsed = JSON.parse(fullCache);
+                    if (Array.isArray(parsed.pdfs) && Array.isArray(parsed.folders)) {
+                        pdfItems = parsed.pdfs;
                         folderItems = parsed.folders;
                         hasCache = true;
                     }

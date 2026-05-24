@@ -2960,8 +2960,7 @@
             try { localStorage.removeItem(CACHE_KEY_HOME); } catch { }
             try { localStorage.removeItem(CACHE_KEY_FOLDERS); } catch { }
             try { localStorage.removeItem(CACHE_KEY_DECKS); } catch { }
-            try { localStorage.removeItem('pdfs_cache'); } catch { }
-            try { localStorage.removeItem('pdf_folders_cache'); } catch { }
+            try { localStorage.removeItem('pdf_full_cache'); } catch { }
         }
 
         // Fast home screen loader: single /home-data request + localStorage cache
@@ -3098,11 +3097,11 @@
                     fetch('/pdfs').then(r => r.json()).catch(() => null),
                     fetch('/pdf/folders').then(r => r.json()).catch(() => null)
                 ]);
-                if (pdfsResp) {
-                    localStorage.setItem('pdfs_cache', JSON.stringify(pdfsResp));
-                }
-                if (pdfFoldersResp && pdfFoldersResp.folders) {
-                    localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: pdfFoldersResp.folders }));
+                if (pdfsResp && pdfFoldersResp && pdfFoldersResp.folders) {
+                    localStorage.setItem('pdf_full_cache', JSON.stringify({
+                        pdfs: pdfsResp,
+                        folders: pdfFoldersResp.folders
+                    }));
                 }
             } catch (e) { }
         }
