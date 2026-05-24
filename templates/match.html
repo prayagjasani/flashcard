@@ -294,6 +294,13 @@
         <div id="globalLoader" class="loading-overlay is-active" aria-hidden="false">
             <div class="loading-dots"><span></span><span></span><span></span></div>
         </div>
+        <script>
+            try {
+                if (localStorage.getItem('flashcard_decks_cache')) {
+                    document.getElementById('globalLoader').classList.remove('is-active');
+                }
+            } catch(e){}
+        </script>
         <main class="mx-auto max-w-2xl p-2 w-full">
 
             <div id="matchBody">
@@ -717,7 +724,7 @@
         // Cross-page cache
         function getCache(key) {
             try {
-                const d = sessionStorage.getItem(key);
+                const d = localStorage.getItem(key);
                 return d ? JSON.parse(d) : null;
             } catch {
                 return null;
@@ -726,7 +733,7 @@
 
         function saveCache(key, data) {
             try {
-                sessionStorage.setItem(key, JSON.stringify(data));
+                localStorage.setItem(key, JSON.stringify(data));
             } catch {}
         }
 

@@ -3000,6 +3000,8 @@
                     decks: cachedDeckList,
                     folder_order: ordersCache.folders,
                 });
+                saveToCache(CACHE_KEY_FOLDERS, cachedFolderList);
+                saveToCache(CACHE_KEY_DECKS, cachedDeckList);
 
                 updateDeckCounts();
             } catch { }
