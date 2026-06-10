@@ -1596,12 +1596,12 @@
                 const subFolderCount = allFolders.filter(x => x.parent === f.name).length;
                 const totalPdfs = getTotalPdfCount(f.name);
                 if (subFolderCount > 0) {
-                    sub.textContent = `${subFolderCount} folder${subFolderCount === 1 ? '' : 's'} · ${totalPdfs} PDF${totalPdfs === 1 ? '' : 's'}`;
+                    sub.textContent = `${subFolderCount} folder${subFolderCount === 1 ? '' : 's'}`;
+                    main.appendChild(title);
+                    main.appendChild(sub);
                 } else {
-                    sub.textContent = `${totalPdfs} PDF${totalPdfs === 1 ? '' : 's'}`;
+                    main.appendChild(title);
                 }
-                main.appendChild(title);
-                main.appendChild(sub);
                 tile.appendChild(main);
                 if (f.name !== 'Uncategorized') {
                     const kebab = document.createElement('button');
