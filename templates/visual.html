@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#08111f">
+    <title>Project Map · Flashcards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/visual.css">
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <a class="brand" href="/" aria-label="Back to flashcards">
+                <span class="brand-mark">F</span>
+                <span><strong>Flashcards</strong><small>Project architecture</small></span>
+            </a>
+            <div class="top-actions">
+                <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="Find a file…" autocomplete="off"><kbd>/</kbd></label>
+                <button class="icon-button" id="fitButton" title="Fit graph" aria-label="Fit graph">⌗</button>
+                <button class="understand-button" id="understandButton"><span>✦</span> Understand project</button>
+                <button class="preview-toggle" id="previewToggle"><span>◉</span> Live preview</button>
+                <button class="refresh-button" id="refreshButton"><span>↻</span> Refresh map</button>
+            </div>
+        </header>
+
+        <section class="workspace">
+            <aside class="sidebar">
+                <div class="sidebar-heading"><span>Explorer</span><span id="visibleCount">—</span></div>
+                <div class="filter-list" id="filters"></div>
+                <div class="legend">
+                    <p>Relationships</p>
+                    <div><i class="line imports"></i> Imports</div>
+                    <div><i class="line calls"></i> API call</div>
+                    <div><i class="line loads"></i> Loads / serves</div>
+                </div>
+                <div class="help"><span>Tip</span><p>Drag nodes to rearrange. Scroll to zoom and drag the background to pan.</p></div>
+            </aside>
+
+            <section class="center-stage">
+            <section class="canvas-wrap" id="canvasWrap">
+                <div class="canvas-meta">
+                    <span class="live-dot"></span><span id="statusText">Reading project…</span>
+                </div>
+                <aside class="guide-panel" id="guidePanel" hidden>
+                    <div class="guide-head"><div><small>Project guide</small><h2>Understand the architecture</h2></div><button id="guideClose" aria-label="Close guide">×</button></div>
+                    <p class="guide-summary" id="guideSummary">Reading the project structure…</p>
+                    <div class="layer-flow" id="layerFlow"></div>
+                    <div class="guide-section-title"><span>Guided flows</span><small>Click one to animate it</small></div>
+                    <div class="flow-cards" id="flowCards"></div>
+                    <div class="guide-note"><strong>How to read the graph</strong><p>An arrow points from the file doing the work to the file it depends on. Select any node for a plain-English explanation.</p></div>
+                </aside>
+                <div class="tour-status" id="tourStatus" hidden>
+                    <div class="tour-progress"><i id="tourProgress"></i></div>
+                    <button class="tour-nav" id="tourBack">← Back</button>
+                    <div class="tour-copy"><small id="tourCounter">Step 1 of 1</small><span id="tourStep">Starting guided flow…</span></div>
+                    <button class="tour-nav tour-play" id="tourPlay">▶ Play</button>
+                    <button class="tour-nav" id="tourNext">Next →</button>
+                    <button class="tour-close" id="tourStop" aria-label="Close walkthrough">×</button>
+                </div>
+                <svg id="graph" role="img" aria-label="Interactive project file dependency graph">
+                    <defs>
+                        <filter id="glow"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker>
+                    </defs>
+                    <g id="viewport"><g id="edges"></g><g id="nodes"></g></g>
+                </svg>
+                <div class="empty" id="emptyState" hidden>No files match your filters.</div>
+                <div class="zoom-controls">
+                    <button data-zoom="1.22" aria-label="Zoom in">+</button>
+                    <button data-zoom="0.82" aria-label="Zoom out">−</button>
+                </div>
+                <div class="minimap"><div class="minimap-label">PROJECT MAP</div><svg id="minimapGraph"></svg></div>
+            </section>
+
+            <section class="runtime" id="runtime">
+                <div class="runtime-toolbar">
+                    <div class="runtime-title"><span class="runtime-dot"></span><strong>Live app</strong><small>Interactions are traced into the graph</small></div>
+                    <form class="address" id="previewAddressForm">
+                        <span>localhost:8000</span><input id="previewPath" value="/" aria-label="Preview route">
+                        <button type="submit">Go</button>
+                    </form>
+                    <button class="runtime-action" id="previewReload" title="Reload preview">↻</button>
+                    <button class="runtime-action" id="clearTrace" title="Clear activity">Clear</button>
+                    <button class="runtime-action" id="runtimeClose" title="Close preview">×</button>
+                </div>
+                <div class="runtime-body">
+                    <div class="preview-frame-wrap">
+                        <div class="preview-loading" id="previewLoading">Loading app preview…</div>
+                        <iframe id="appPreview" title="Live Flashcards app preview" src="/"></iframe>
+                    </div>
+                    <aside class="activity-panel">
+                        <div class="activity-heading">
+                            <span>Data flow</span>
+                            <div class="flow-view-toggle"><button id="diagramView" class="active">Diagram</button><button id="eventView">Events</button></div>
+                            <span id="activityCount">0 events</span>
+                        </div>
+                        <div class="activity-list" id="activityList">
+                            <div class="activity-empty"><span>⌁</span><p>Click or perform an action in the preview to trace it here.</p></div>
+                        </div>
+                        <div class="flow-diagram" id="flowDiagram">
+                            <div class="activity-empty"><span>⇣</span><p>Use the app preview to generate a data-flow diagram.</p></div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+            </section>
+
+            <aside class="details" id="details">
+                <button class="details-close" id="detailsClose" aria-label="Close details">×</button>
+                <div class="details-empty" id="detailsEmpty"><span>◇</span><h2>Select a file</h2><p>Choose any node to inspect its relationships and project role.</p></div>
+                <div id="detailsContent" hidden></div>
+            </aside>
+        </section>
+    </main>
+    <script src="/static/js/visual.js"></script>
+</body>
+</html>
