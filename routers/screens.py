@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, Response
 
-from services.project_graph import build_project_graph
-
 router = APIRouter()
 
 @router.get("/")
@@ -48,15 +46,6 @@ def pdf_screen():
 @router.get("/create")
 def create_screen():
     return FileResponse('templates/create.html')
-
-@router.get("/visual")
-def visual_screen():
-    return FileResponse('templates/visual.html')
-
-@router.get("/api/project-graph")
-def project_graph():
-    """Return the local source tree and its detected file-to-file relationships."""
-    return build_project_graph()
 
 @router.head("/")
 def head_root():
