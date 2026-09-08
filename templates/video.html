@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
     <meta name="color-scheme" content="light">
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <style>
         /* Base styles inherited from the app theme */
         :root {
@@ -168,8 +165,7 @@
             border-radius: 14px;
             border: 1px solid var(--card-border);
             box-shadow: var(--shadow);
-            height: 800px;
-            overflow-y: auto;
+            height: auto;
             text-align: left;
         }
 
@@ -526,7 +522,15 @@
         .player-controls button svg {
             width: 24px;
             height: 24px;
+            flex-shrink: 0;
             fill: currentColor;
+        }
+
+        .ui-app.ui-page-video .player-controls .btn-secondary {
+            width: 48px;
+            min-width: 48px;
+            height: 48px;
+            padding: 0;
         }
 
         .player-controls button:active {
@@ -580,9 +584,12 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/static/css/app-theme.css?v=1">
+    <script defer src="/static/js/app-shell.js?v=1"></script>
 </head>
 
-<body>
+<body class="ui-app ui-page-video">
+    <study-navigation page="video"></study-navigation>
     <header class="site-header" role="banner">
         <div class="header__inner">
             <div class="header__actions">

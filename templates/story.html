@@ -8,8 +8,6 @@
     <meta name="theme-color" content="#ffffff" />
     <title>Story Mode</title>
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         :root {
             --bg: #f6f7fb;
@@ -993,9 +991,12 @@
             transform: translate(-50%, -100%) translateY(0);
         }
     </style>
+    <link rel="stylesheet" href="/static/css/app-theme.css?v=1">
+    <script defer src="/static/js/app-shell.js?v=1"></script>
 </head>
 
-<body>
+<body class="ui-app ui-page-story">
+    <study-navigation page="story"></study-navigation>
     <header class="site-header">
         <div class="header__inner">
             <button class="back-btn" id="backBtn">
@@ -1032,8 +1033,7 @@
 
         <!-- Story list -->
         <div id="storyListView" style="display: none;">
-            <div
-                style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+            <div class="ui-story-tools">
                 <span style="font-size:0.9rem; color: var(--muted);">Stories</span>
                 <div style="display:flex; gap: 8px;">
                     <button id="youtubeLinkBtn"
@@ -1543,7 +1543,7 @@
                 return `
                     <div class="story-item tile-enter" style="animation-delay: ${delay}ms;" data-deck="${s.deck}" data-title="${title}">
                         ${level ? `<span class="story-item__level">${level}</span>` : ''}
-                        <!-- <h3 class="story-item__title">${title}</h3> -->
+                        <h3 class="story-item__title"></h3>
                         ${subtitle ? `<p class="story-item__subtitle">${subtitle}</p>` : ''}
                     </div>
                 `;
@@ -1551,6 +1551,7 @@
 
             // Add click and long-press handlers
             storyList.querySelectorAll('.story-item').forEach(item => {
+                item.querySelector('.story-item__title').textContent = item.dataset.title;
                 // Click to open
                 item.addEventListener('click', (e) => {
                     if (longPressTimer) return; // Ignore if long press was triggered

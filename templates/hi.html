@@ -12,41 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>Flashcard Deck Screen</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com" rel="preconnect" />
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#007AFF",
-                        "background-light": "#F9F9F9",
-                        "background-dark": "#101922",
-                        "card-light": "#FFFFFF",
-                        "card-dark": "#19242E",
-                        "text-primary-light": "#333333",
-                        "text-primary-dark": "#E5E7EB",
-                        "text-secondary-light": "#8E8E93",
-                        "text-secondary-dark": "#92adc9",
-                        "destructive": "#FF3B30",
-                    },
-                    fontFamily: {
-                        "display": ["Lexend", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
+    <link rel="stylesheet" href="/static/css/legacy-utilities.css?v=1">
     <style>
          :root {
             --loading-dot-size: 8px;
@@ -157,9 +123,12 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/static/css/app-theme.css?v=1">
+    <script defer src="/static/js/app-shell.js?v=1"></script>
 </head>
 
-<body class="bg-background-light dark:bg-background-dark font-display">
+<body class="ui-app ui-page-learn bg-background-light dark:bg-background-dark font-display">
+    <study-navigation page="library"></study-navigation>
     <div class="relative flex min-h-screen w-full flex-col">
         <!-- Main container -->
         <div class="flex-1 pb-24">

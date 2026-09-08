@@ -1,0 +1,22 @@
+/* Keep the original index.css study controls, with the shared bottom navigation. */
+body.ui-page-flashcards {
+  --bg: #f6f7fb;
+  --text: #0f172a;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --shadow: 0 8px 20px rgba(2, 8, 23, 0.06);
+  --accent: #3b82f6;
+  --success: #10b981;
+  --danger: #ef4444;
+  --muted: #64748b;
+  display: block;
+  padding: 24px 12px calc(var(--ui-nav-height) + 24px);
+}
+.ui-page-flashcards .app { margin: 24px auto; }
+.ui-page-flashcards .site-header { position: relative; inset: auto; transform: none; width: 100%; margin: 0 auto; background: transparent; border: 0; box-shadow: none; }
+.ui-page-flashcards .header__inner { padding: 0; justify-content: flex-end; }
+.ui-page-flashcards .header__actions { display: flex; flex-direction: row; padding: 0; }
+.ui-page-flashcards .header__actions > button:not(#flashMultiBtn) { display: none; }
+.ui-page-flashcards .ui-navigation { font-family: var(--ui-font); line-height: 1.5; }
+.ui-page-flashcards #bulkActionBar { bottom: calc(var(--ui-nav-height) + 20px) !important; }
+.ui-page-flashcards .fab-btn { bottom: calc(var(--ui-nav-height) + 20px); }

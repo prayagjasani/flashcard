@@ -6,10 +6,8 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <meta name="color-scheme" content="light" />
     <title>Manage Flashcards</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap"
+    <link rel="stylesheet" href="/static/css/legacy-utilities.css?v=1">
         rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -20,32 +18,6 @@
             color-scheme: light;
         }
     </style>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#007AFF",
-                        "background-light": "#F9F9F9",
-                        "background-dark": "#101622",
-                        "neutral-gray": "#8E8E93",
-                        "destructive-red": "#FF3B30",
-                        "near-black": "#1C1C1E"
-                    },
-                    fontFamily: {
-                        "display": ["Lexend", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "0.75rem",
-                        "xl": "1rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
     <style>
         body {
             min-height: max(884px, 100dvh);
@@ -150,9 +122,12 @@
             display: none;
         }
     </style>
+    <link rel="stylesheet" href="/static/css/app-theme.css?v=1">
+    <script defer src="/static/js/app-shell.js?v=1"></script>
 </head>
 
-<body class="font-display bg-background-light dark:bg-background-dark">
+<body class="ui-app ui-page-edit font-display bg-background-light dark:bg-background-dark">
+    <study-navigation page="create"></study-navigation>
     <div class="relative flex min-h-screen w-full flex-col">
         <header
             class="sticky top-0 z-10 border-b border-gray-200 bg-background-light dark:border-gray-800 dark:bg-background-dark">

@@ -1,10 +1,16 @@
+from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, Response
 
 router = APIRouter()
 
+REACT_INDEX = Path(__file__).resolve().parent.parent / 'static' / 'react' / 'index.html'
+
 @router.get("/")
-def read_root():
+def read_root(mode: str = '', deck: str = ''):
+    # Existing links open the established flashcard engine using these parameters.
+    if not mode and not deck and REACT_INDEX.is_file():
+        return FileResponse(REACT_INDEX, headers={'Cache-Control': 'no-cache'})
     return FileResponse('templates/index.html')
 
 @router.get("/learn")
@@ -32,7 +38,9 @@ def story_screen():
     return FileResponse('templates/story.html')
 
 @router.get("/folder")
-def folder_screen():
+def folder_screen(legacy: bool = False):
+    if not legacy and REACT_INDEX.is_file():
+        return FileResponse(REACT_INDEX, headers={'Cache-Control': 'no-cache'})
     return FileResponse('templates/folder.html')
 
 @router.get("/edit")

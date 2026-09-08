@@ -481,6 +481,7 @@ def order_folders_set(payload: FolderOrderUpdate):
             ContentType="application/json"
         )
         invalidate_cache("folders:")
+        invalidate_cache("home:")
         return {"ok": True, "order": names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

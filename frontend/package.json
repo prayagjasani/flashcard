@@ -1,0 +1,24 @@
+{
+  "name": "flashcards-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/copy-fonts.mjs && npm run build:legacy && vite build",
+    "build:legacy": "tailwindcss -c legacy-tailwind.config.cjs -i src/legacy-utilities.css -o ../static/css/legacy-utilities.css --minify",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/nunito": "^5.3.0",
+    "@fontsource/material-symbols-outlined": "^5.3.5",
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/forms": "^0.5.11",
+    "tailwindcss": "^3.4.19",
+    "vite": "^7.0.0"
+  }
+}

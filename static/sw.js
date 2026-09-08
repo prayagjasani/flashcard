@@ -1,6 +1,6 @@
 // Service Worker for Flashcard App - Enables offline support
 
-const CACHE_NAME = 'flashcard-v3';
+const CACHE_NAME = 'flashcard-v5';
 const STATIC_ASSETS = [
     '/',
     '/static/manifest.json',
@@ -45,6 +45,9 @@ self.addEventListener('fetch', (event) => {
 
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
+
+    // Library data must reflect creates, moves, and renames immediately.
+    if (url.pathname === '/home-data' || url.pathname === '/folders' || url.pathname === '/decks') return;
 
     // Handle API requests with network-first strategy
     if (CACHEABLE_APIS.some(api => url.pathname === api || url.pathname.startsWith(api))) {

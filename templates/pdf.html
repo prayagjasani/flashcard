@@ -12,9 +12,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <style>
         :root {
             --bg: #f6f7fb;
@@ -832,9 +829,12 @@
             line-clamp: 2;
         }
     </style>
+    <link rel="stylesheet" href="/static/css/app-theme.css?v=1">
+    <script defer src="/static/js/app-shell.js?v=1"></script>
 </head>
 
-<body>
+<body class="ui-app ui-page-pdf">
+    <study-navigation page="pdf"></study-navigation>
     <header class="site-header" role="banner">
         <div class="header__inner">
             <div class="header__actions">
