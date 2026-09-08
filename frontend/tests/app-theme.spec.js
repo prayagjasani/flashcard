@@ -140,6 +140,40 @@ test('multiple PDFs use individual filenames and retry only failures', async ({ 
   expect(uploads[2]).toContain('name="name"\r\n\r\nPractice\r\n');
 });
 
+test('PDF network failure keeps remaining files queued and retries with buffered bytes', async ({ page }) => {
+  await mockData(page);
+  let attempts = 0;
+  await page.route('**/pdf/upload', route => {
+    attempts++;
+    expect(route.request().postDataBuffer().toString()).toContain('filename="document.pdf"');
+    return route.abort('failed');
+  });
+  await page.goto('/templates/pdf.html');
+  await page.locator('#uploadPdfBtn').click();
+  await page.locator('#uploadPdfFileInput').setInputFiles([
+    { name: 'Folgen ausdrücken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') },
+    { name: 'Next.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') },
+  ]);
+  await page.locator('#uploadPdfSaveBtn').click();
+  await expect(page.locator('#uploadPdfStatus')).toContainText('2 remaining', { timeout: 10000 });
+  expect(attempts).toBe(3);
+  await expect(page.locator('#uploadPdfStatus')).toContainText('Cannot reach the upload server');
+  await page.route('**/pdf/upload', route => route.fulfill({ json: { ok: true } }));
+  await page.locator('#uploadPdfSaveBtn').click();
+  await expect(page.locator('#uploadPdfModal')).not.toHaveClass(/is-open/);
+});
+
+test('PDF unreadable phone file shows a reselection message without sending it', async ({ page }) => {
+  await mockData(page);
+  await page.goto('/templates/pdf.html');
+  await page.locator('#uploadPdfBtn').click();
+  await page.locator('#uploadPdfFileInput').setInputFiles({ name: 'Cloud.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
+  await page.evaluate(() => { File.prototype.arrayBuffer = () => Promise.reject(new DOMException('Unavailable', 'NotReadableError')); });
+  await page.locator('#uploadPdfSaveBtn').click();
+  await expect(page.locator('#uploadPdfStatus')).toContainText('Download it to your phone');
+  await expect(page.locator('#uploadPdfChooseBtn')).toBeEnabled();
+});
+
 test('video and story creation dialogs use the shared form styling', async ({ page }) => {
   await mockData(page);
   await page.goto('/templates/video.html');

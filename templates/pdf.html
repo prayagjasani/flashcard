@@ -1154,10 +1154,19 @@
                 try {
                 if (!/\.pdf$/i.test(file.name)) throw new Error('Please choose a PDF file');
                 if (file.size > 25 * 1024 * 1024) throw new Error('File exceeds 25 MB');
+                let bytes;
+                try {
+                    bytes = await file.arrayBuffer();
+                } catch (_) {
+                    throw new Error('Cannot read this file. Download it to your phone, then choose it again.');
+                }
+                if (!bytes.byteLength) throw new Error('This PDF is empty');
                 const form = new FormData();
                 form.append('name', (useCustomName && name) || file.name.replace(/\.pdf$/i, ''));
                 if (selectedFolder) form.append('folder', selectedFolder);
-                form.append('file', file);
+                // Detach the upload from Android/cloud-provider file handles.
+                // The visible title stays in the name field, including Unicode characters.
+                form.append('file', new Blob([bytes], { type: 'application/pdf' }), 'document.pdf');
                 let resp;
                 let lastError;
                 for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -1176,7 +1185,11 @@
                         }
                     }
                 }
-                if (!resp) throw lastError || new Error('Could not connect to the upload server');
+                if (!resp) {
+                    const error = new Error(lastError?.message === 'Upload timed out after 2 minutes' ? lastError.message : 'Cannot reach the upload server. Check your connection and retry.');
+                    error.connectionFailure = true;
+                    throw error;
+                }
                 const out = await resp.json().catch(() => ({}));
                 if (!resp.ok || !out.ok) {
                     throw new Error(out.detail || 'Upload failed');
@@ -1184,10 +1197,12 @@
                 pendingPdfFiles = pendingPdfFiles.filter(item => item !== file);
                 } catch (error) {
                     failures.push(`${file.name}: ${error.message || 'Upload failed'}`);
+                    // Keep the remaining files queued instead of repeating a network error for every PDF.
+                    if (error.connectionFailure) break;
                 }
               }
                 await loadPdfs();
-                uploadPdfStatus.textContent = failures.length ? `${files.length - failures.length} uploaded. ${failures.join('; ')}. Retry uploads only the failed files.` : `${files.length} PDFs uploaded.`;
+                uploadPdfStatus.textContent = failures.length ? `${files.length - pendingPdfFiles.length} uploaded. ${pendingPdfFiles.length} remaining. ${failures.slice(0, 3).join('; ')}${failures.length > 3 ? `; ${failures.length - 3} more files failed` : ''}. Retry uploads only the remaining files.` : `${files.length} PDFs uploaded.`;
             } catch (e) {
                 uploadPdfStatus.textContent = `Could not refresh the library: ${e.message}. Reload to see uploaded PDFs.`;
             } finally {

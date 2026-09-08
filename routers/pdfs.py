@@ -1,4 +1,6 @@
 import json
+import threading
+from contextlib import closing
 from datetime import datetime, timezone
 from io import BytesIO
 
@@ -28,6 +30,8 @@ from utils import safe_deck_name as _safe_name
 router = APIRouter()
 
 PDF_ORDER_CACHE_TTL = 30
+PDF_UPLOAD_MAX_BYTES = 25 * 1024 * 1024
+_PDF_RENDER_LOCK = threading.Lock()
 
 
 def _pdf_index_key() -> str:
@@ -48,15 +52,20 @@ def _build_thumb(content: bytes, safe_name: str) -> str | None:
     if not content:
         return None
     try:
-        doc = pdfium.PdfDocument(BytesIO(content))
-        if len(doc) == 0:
-            return None
-        page = doc[0]
-        image = page.render(scale=3.0).to_pil()
-        image.thumbnail((1024, 1024), Image.LANCZOS)
-        buf = BytesIO()
-        image.save(buf, format="JPEG", quality=95, subsampling=0, optimize=True)
-        data = buf.getvalue()
+        # PDFium rendering is serialized; large pages must not allocate huge bitmaps.
+        with _PDF_RENDER_LOCK:
+            with pdfium.PdfDocument(BytesIO(content)) as doc:
+                if len(doc) == 0:
+                    return None
+                with closing(doc[0]) as page:
+                    width, height = page.get_size()
+                    scale = min(3.0, 1024 / max(width, height, 1))
+                    with closing(page.render(scale=scale)) as bitmap:
+                        with bitmap.to_pil() as image:
+                            image.thumbnail((1024, 1024), Image.LANCZOS)
+                            with BytesIO() as buf:
+                                image.save(buf, format="JPEG", quality=90)
+                                data = buf.getvalue()
         key = _thumb_key(safe_name)
         r2_client.put_object(
             Bucket=R2_BUCKET_NAME,
@@ -399,7 +408,7 @@ def list_pdfs():
 
 
 @router.post("/pdf/upload")
-async def upload_pdf(
+def upload_pdf(
     name: str = Form(...),
     folder: str | None = Form(None),
     file: UploadFile = File(...),
@@ -409,7 +418,10 @@ async def upload_pdf(
     safe_name = _safe_name(name)
     if not safe_name:
         raise HTTPException(status_code=400, detail="PDF name required")
-    content = await file.read()
+    # A sync FastAPI endpoint runs blocking rendering and R2 I/O in its worker pool.
+    content = file.file.read(PDF_UPLOAD_MAX_BYTES + 1)
+    if len(content) > PDF_UPLOAD_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="PDF exceeds 25 MB")
     if not content:
         raise HTTPException(status_code=400, detail="Empty PDF")
     key = f"{R2_BUCKET_NAME}/pdf/{safe_name}.pdf"
