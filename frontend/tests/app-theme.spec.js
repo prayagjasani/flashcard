@@ -79,6 +79,30 @@ for (const width of [390, 1280]) {
   }
 }
 
+test('navigation progress loops during a pending page change and clears on arrival', async ({ page }) => {
+  await mockData(page);
+  await page.goto('/static/react/index.html');
+  await expect(page.locator('#navigation-progress')).toBeHidden();
+  let observed;
+  await page.exposeFunction('reportNavigationProgress', state => { observed = state; });
+  await page.evaluate(() => {
+    const bar = document.getElementById('navigation-progress');
+    new MutationObserver(() => window.reportNavigationProgress({ hidden: bar.hidden, loop: getComputedStyle(bar.firstElementChild).animationIterationCount })).observe(bar, { attributes: true, attributeFilter: ['hidden'] });
+  });
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  await page.route('**/pdf', async route => {
+    await pending;
+    await route.fulfill({ contentType: 'text/html', body: '<body><script src="/static/js/app-shell.js"></script></body>' });
+  });
+  try {
+    await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'PDF', exact: true }).click({ noWaitAfter: true });
+    await expect.poll(() => observed).toEqual({ hidden: false, loop: 'infinite' });
+  } finally { release(); }
+  await page.waitForURL('**/pdf');
+  await expect(page.locator('#navigation-progress')).toBeHidden();
+});
+
 test('spelling feedback and real session progress retain their behaviour', async ({ page }) => {
   await mockData(page);
   await page.goto('/templates/spelling.html?deck=Greetings');

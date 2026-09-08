@@ -1,5 +1,41 @@
 /* This small shared shell is used by React and the original HTML pages. */
 (() => {
+  // Indeterminate navigation progress shared by React and the HTML pages.
+  if (!document.getElementById('navigation-progress')) {
+    const progress = document.createElement('div');
+    progress.id = 'navigation-progress';
+    progress.className = 'ui-navigation-progress';
+    progress.setAttribute('role', 'progressbar');
+    progress.setAttribute('aria-label', 'Loading page');
+    progress.innerHTML = '<span></span>';
+    progress.hidden = document.readyState === 'complete';
+    document.body.append(progress);
+    let timeout;
+    const finish = () => { progress.hidden = true; clearTimeout(timeout); };
+    const start = () => {
+      progress.hidden = false;
+      clearTimeout(timeout);
+      // Recover if the browser cancels a navigation without firing an error.
+      timeout = setTimeout(finish, 30000);
+    };
+    window.addEventListener('load', finish);
+    window.addEventListener('pageshow', finish);
+    if (window.navigation) {
+      window.navigation.addEventListener('navigate', event => {
+        if (!event.hashChange && !event.downloadRequest && !event.defaultPrevented) start();
+      });
+      window.navigation.addEventListener('navigateerror', finish);
+      window.navigation.addEventListener('navigatesuccess', finish);
+    } else {
+      document.addEventListener('click', event => {
+        const link = event.target.closest?.('a[href]');
+        if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+        const destination = new URL(link.href, location.href);
+        if (destination.origin === location.origin && (destination.pathname !== location.pathname || destination.search !== location.search)) start();
+      });
+      window.addEventListener('beforeunload', start);
+    }
+  }
   const paths = {
     library: '<path d="M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7"/>',
     create: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
