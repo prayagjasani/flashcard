@@ -1158,10 +1158,25 @@
                 form.append('name', (useCustomName && name) || file.name.replace(/\.pdf$/i, ''));
                 if (selectedFolder) form.append('folder', selectedFolder);
                 form.append('file', file);
-                const resp = await fetch('/pdf/upload', {
-                    method: 'POST',
-                    body: form
-                });
+                let resp;
+                let lastError;
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 120000);
+                    try {
+                        resp = await fetch('/pdf/upload', { method: 'POST', body: form, signal: controller.signal });
+                        clearTimeout(timeout);
+                        break;
+                    } catch (error) {
+                        clearTimeout(timeout);
+                        lastError = error.name === 'AbortError' ? new Error('Upload timed out after 2 minutes') : error;
+                        if (attempt < 2) {
+                            uploadPdfStatus.textContent = `${file.name} connection interrupted. Retrying (${attempt + 2}/3)…`;
+                            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                        }
+                    }
+                }
+                if (!resp) throw lastError || new Error('Could not connect to the upload server');
                 const out = await resp.json().catch(() => ({}));
                 if (!resp.ok || !out.ok) {
                     throw new Error(out.detail || 'Upload failed');
