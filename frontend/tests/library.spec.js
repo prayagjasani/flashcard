@@ -24,6 +24,17 @@ async function openLibrary(page, data = fixture, query = '') {
   await expect(page.getByText('Loading your library…', { exact: true })).toHaveCount(0);
 }
 
+test('dialogs preload after the library is ready and are reused when opened', async ({ page }) => {
+  const requests = [];
+  page.on('request', request => { if (/\/dialogs-[^/]+\.js$/.test(request.url())) requests.push(request.url()); });
+  const loaded = page.waitForResponse(response => /\/dialogs-[^/]+\.js$/.test(response.url()) && response.ok());
+  await openLibrary(page);
+  await loaded;
+  await page.getByRole('button', { name: 'New folder' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  expect(requests).toHaveLength(1);
+});
+
 test('mobile library has no overflow and searches nested folders and decks', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = [];

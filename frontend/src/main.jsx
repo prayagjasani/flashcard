@@ -1,113 +1,38 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { deckFolder, descendants, folderUrl, normalizeLibrary, orderedFolders, request } from './library';
 import './styles.css';
 import '../../static/css/app-theme.css';
 import '../../static/js/app-shell.js';
 
-function Icon({ name = 'folder', ...props }) {
-  const paths = {
-    folder: <path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z" />,
-    cards: <><rect x="7" y="6" width="13" height="15" rx="2" /><path d="M4 17V4a1 1 0 0 1 1-1h11" /></>,
-    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
-    arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
-    plus: <path d="M12 5v14M5 12h14" />,
-    pdf: <><path d="M14 3H5v18h14V8l-5-5Zm0 0v5h5M8 12h8M8 16h5" /></>,
-    video: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="m10 9 5 3-5 3V9Z" /></>,
-    story: <><path d="M12 5v16M12 5C9 3 6 3 3 4v15c3-1 6-1 9 2 3-3 6-3 9-2V4c-3-1-6-1-9 1Z" /></>,
-  };
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]}</svg>;
-}
-
-function Modal({ title, children, onClose, busy = false }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const active = document.activeElement;
-    const previous = active?.closest('details')?.querySelector('summary') || active;
-    ref.current.showModal();
-    return () => { previous?.focus(); };
-  }, []);
-  return <dialog ref={ref} aria-labelledby="modal-title" onCancel={event => { event.preventDefault(); if (!busy) onClose(); }} onClick={event => { if (event.target === ref.current && !busy) onClose(); }}>
-    <div className="dialog-header"><h2 id="modal-title">{title}</h2><button className="icon-button" aria-label="Close dialog" onClick={onClose} disabled={busy}>×</button></div>
-    {children}
-  </dialog>;
-}
-
-function FolderLocation({ folders, excluded, value, onChange, disabled }) {
-  const available = folders.filter(folder => !excluded.has(folder.name) && folder.name !== 'Uncategorized');
-  const path = [];
-  const seen = new Set();
-  let current = available.find(folder => folder.name === value);
-  while (current && !seen.has(current.name)) {
-    seen.add(current.name);
-    path.unshift(current);
-    current = available.find(folder => folder.name === current.parent);
-  }
-  const levels = ['', ...path.map(folder => folder.name)];
-  return <div className="folder-location">
-    {levels.map((parentName, index) => {
-      const children = available.filter(folder => (folder.parent || '') === parentName && !path.slice(0, index).some(ancestor => ancestor.name === folder.name));
-      if (index > 0 && !children.length) return null;
-      return <label className="field" key={parentName || 'library-root'}>
-        {index === 0 ? 'Location' : `Subfolder in ${parentName}`}
-        <select aria-label={index === 0 ? 'Location' : `Subfolder in ${parentName}`} disabled={disabled} value={path[index]?.name || ''} onChange={event => onChange(event.target.value || parentName)}>
-          <option value="">{index === 0 ? 'Your library' : `Use ${parentName}`}</option>
-          {children.map(folder => <option key={folder.name} value={folder.name}>{folder.name}</option>)}
-        </select>
-      </label>;
-    })}
-  </div>;
-}
-
-function FolderForm({ action, folders, onClose, onSaved }) {
-  const [name, setName] = useState(action.folder?.name || '');
-  const [parent, setParent] = useState(action.folder?.parent || action.parent || '');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const excluded = action.folder ? descendants(action.folder.name, folders) : new Set();
-  const titles = { create: 'New folder', rename: 'Rename folder', move: 'Move folder', delete: 'Delete folder?' };
-  async function submit(event) {
-    event.preventDefault();
-    setBusy(true); setError('');
-    const payload = action.type === 'create' ? { name: name.trim(), parent: parent || null }
-      : action.type === 'rename' ? { old_name: action.folder.name, new_name: name.trim() }
-      : action.type === 'move' ? { name: action.folder.name, parent: parent || null }
-      : { name: action.folder.name };
-    try {
-      await request(`/folder/${action.type}`, {
-        method: action.type === 'delete' ? 'DELETE' : 'POST',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-      });
-      onSaved();
-    } catch (err) { setError(err.message); setBusy(false); }
-  }
-  return <Modal title={titles[action.type]} onClose={onClose} busy={busy}>
-    <form onSubmit={submit}>
-      {['create', 'rename'].includes(action.type) && <label className="field">Folder name<input autoFocus required maxLength={50} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. German A1" /></label>}
-      {['create', 'move'].includes(action.type) && <FolderLocation folders={folders} excluded={excluded} value={parent} onChange={setParent} disabled={busy} />}
-      {action.type === 'delete' && <p>Delete “{name}”? Its decks will move to Uncategorized and its subfolders will move to your library.</p>}
-      {error && <p className="error" role="alert">{error}</p>}
-      <div className="dialog-actions"><button type="button" className="secondary" onClick={onClose} disabled={busy}>Cancel</button><button className={action.type === 'delete' ? 'danger' : 'primary'} disabled={busy || (['create', 'rename'].includes(action.type) && !name.trim())}>{busy ? 'Saving…' : action.type === 'delete' ? 'Delete folder' : 'Save folder'}</button></div>
-    </form>
-  </Modal>;
-}
-
-function StudyPicker({ decks, initialDeck, onClose }) {
-  const [selected, setSelected] = useState(initialDeck || '');
-  const [query, setQuery] = useState('');
-  const modes = [['Flashcards', '/?mode=flash&deck='], ['Learn', '/learn?deck='], ['Spelling', '/spelling?deck='], ['Match', '/match?deck='], ['Line', '/line?deck=']];
-  return <Modal title={selected || 'Choose a deck'} onClose={onClose}>
-    {selected ? <><p className="muted">How would you like to practice?</p><div className="study-modes">{modes.map(([label, url], i) => <a className={i === 0 ? 'primary' : 'secondary'} key={label} href={url + encodeURIComponent(selected)}>{label}<Icon name="arrow" /></a>)}</div><div className="section-header"><button className="text-button" onClick={() => setSelected('')}>Choose another deck</button><a className="text-button" href={`/edit?deck=${encodeURIComponent(selected)}`}>Edit deck</a></div></> : <>
-      <label className="search"><Icon name="search" /><input autoFocus aria-label="Find a study deck" placeholder="Find a deck…" value={query} onChange={e => setQuery(e.target.value)} /></label>
-      <div className="deck-picker">{decks.filter(d => d.name.toLowerCase().includes(query.toLowerCase())).map(d => <button className="picker-row" key={d.name} onClick={() => setSelected(d.name)}><span>{d.name}<small>{deckFolder(d)}</small></span><Icon name="arrow" /></button>)}</div>
-      {!decks.some(d => d.name.toLowerCase().includes(query.toLowerCase())) && <p className="empty">No decks found.</p>}
-    </>}
-  </Modal>;
-}
+import { Icon } from './ui';
+let dialogsPromise;
+const loadDialogs = () => {
+  if (!dialogsPromise) dialogsPromise = import('./dialogs').catch(error => { dialogsPromise = null; throw error; });
+  return dialogsPromise;
+};
+const FolderForm = lazy(() => loadDialogs().then(module => ({ default: module.FolderForm })));
+const StudyPicker = lazy(() => loadDialogs().then(module => ({ default: module.StudyPicker })));
 
 function App() {
   const folderName = new URLSearchParams(location.search).get('name') || '';
   const [library, setLibrary] = useState(null);
+  useEffect(() => {
+    const connection = navigator.connection;
+    if (!library || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return;
+    let idle;
+    const timer = setTimeout(() => {
+      const warm = () => {
+        if (document.visibilityState === 'visible' && navigator.onLine) loadDialogs().catch(() => {});
+      };
+      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(warm, { timeout: 3000 });
+      else warm();
+    }, 1000);
+    return () => {
+      clearTimeout(timer);
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+    };
+  }, [Boolean(library)]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -173,8 +98,10 @@ function App() {
       </section>
       <footer>Small steps. Lasting progress.</footer>
     </main>
+    <Suspense fallback={<p role="status">Opening dialog…</p>}>
     {action && <FolderForm action={action} folders={folders} onClose={() => setAction(null)} onSaved={() => { setAction(null); setNotice('Folder updated.'); refresh(); }} />}
     {study !== null && <StudyPicker decks={studyDecks} initialDeck={study} onClose={() => setStudy(null)} />}
+    </Suspense>
   </div></>;
 }
 

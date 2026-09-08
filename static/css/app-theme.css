@@ -182,21 +182,8 @@ study-navigation { display: block; }
   border-radius: 13px; font-size: 25px; font-weight: 800; line-height: 1;
 }
 
-/* React library: a bright unit banner and colourful, tactile folder tiles. */
+/* React library and folder tiles. */
 .ui-app .app-shell { max-width: 940px; padding: 0 28px; }
-.ui-app .topbar { display: none; }
-.ui-app .intro { position: relative; display: flex; align-items: center; gap: 24px; padding: 28px; margin: 28px 0 24px; border: 2px solid #45a300; border-radius: 22px; background: var(--ui-green); box-shadow: 0 5px 0 #46a302; }
-.ui-app .intro h1 { color: #173600; font-size: clamp(25px, 3vw, 32px); font-weight: 900; letter-spacing: -.7px; }
-.ui-app .intro .eyebrow { color: #244e00; font-size: 12px; font-weight: 900; letter-spacing: 1.3px; }
-.ui-app .intro-description { color: #244e00; font-size: 15px; font-weight: 700; }
-.ui-app .intro .study-button { color: var(--ui-green-ink) !important; background: white !important; border: 2px solid white !important; box-shadow: 0 4px 0 #c5e6a8 !important; padding: 12px 18px; }
-.ui-app .tools { border-bottom: 2px solid var(--ui-line); padding-bottom: 24px; gap: 12px; }
-.ui-app .tools > span { color: var(--ui-muted); font-size: 13px; font-weight: 800; }
-.ui-app .tools a { border: 2px solid var(--ui-line); border-radius: 14px; background: white; box-shadow: 0 3px 0 var(--ui-line); font-size: 14px; font-weight: 800; min-height: 48px; }
-.ui-app .tools a:nth-of-type(1) { color: #a46700; }
-.ui-app .tools a:nth-of-type(2) { color: #087caf; }
-.ui-app .tools a:nth-of-type(3) { color: #7952ac; }
-.ui-app .tools a > svg:last-child { display: none; }
 .ui-app .section-header h2 { font-size: 24px; font-weight: 900; }
 .ui-app .library-actions { display: flex; align-items: center; gap: 18px; }
 .ui-app .count { font-size: 13px; color: var(--ui-muted); font-weight: 700; }
@@ -228,9 +215,6 @@ study-navigation { display: block; }
 
 @media (max-width: 760px) {
   .ui-app .app-shell { padding: 0 18px; }
-  .ui-app .intro { flex-direction: column; align-items: flex-start; padding: 23px; margin-top: 22px; gap: 22px; }
-  .ui-app .intro .study-button { width: 100%; }
-  .ui-app .intro h1 { font-size: 27px; }
   .ui-app .folder-grid { gap: 13px; }
   .ui-app.ui-app :where(.page, .main-content) { padding: 24px 18px 60px; }
   .ui-app .folder-link { min-height: 98px; }
