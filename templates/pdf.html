@@ -883,10 +883,10 @@
     <div class="modal" id="uploadPdfModal" aria-hidden="true">
         <div class="modal__backdrop" data-close-upload="true"></div>
         <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="uploadPdfTitle">
-            <h2 id="uploadPdfTitle" class="modal__title">Upload your File!</h2>
+            <h2 id="uploadPdfTitle" class="modal__title">Upload PDFs</h2>
             <p class="modal__subtitle">Let’s get this learning started</p>
             <div class="modal__field">
-                <span class="modal__field-label">Name your document</span>
+                <label for="uploadPdfNameInput" class="modal__field-label">Document name (optional for one PDF)</label>
                 <input id="uploadPdfNameInput" type="text" placeholder="e.g., French Homework...">
             </div>
             <div class="upload-modal-label">Attachment</div>
@@ -894,11 +894,13 @@
                 <div class="upload-dropzone-icon">
                     <span class="material-symbols-outlined" aria-hidden="true">upload</span>
                 </div>
-                <div class="upload-dropzone-title">Tap to choose a PDF</div>
+                <div class="upload-dropzone-title">Tap to choose PDFs</div>
                 <div class="upload-dropzone-subtitle">Max file size 25MB</div>
                 <div class="upload-dropzone-filename" id="uploadPdfFileName">No file chosen</div>
             </button>
             <input id="uploadPdfFileInput" type="file" accept="application/pdf" multiple>
+            <p>When selecting multiple PDFs, each uses its filename without .pdf as its title.</p>
+            <p id="uploadPdfStatus" class="modal__status" role="status" aria-live="polite"></p>
             <div class="modal__actions">
                 <button class="btn btn--upload-primary" id="uploadPdfSaveBtn" type="button">
                     Upload PDF
@@ -1061,16 +1063,23 @@
             }
         }
 
+        let pendingPdfFiles = [];
+        let pdfUploadBusy = false;
+        const uploadPdfStatus = document.getElementById('uploadPdfStatus');
         function openUploadModal() {
             if (!uploadPdfModal) return;
             uploadPdfNameInput.value = '';
             uploadPdfFileInput.value = '';
+            pendingPdfFiles = [];
+            uploadPdfNameInput.disabled = false;
+            uploadPdfStatus.textContent = '';
             if (uploadPdfFileName) uploadPdfFileName.textContent = 'No file chosen';
             uploadPdfModal.classList.add('is-open');
             uploadPdfModal.setAttribute('aria-hidden', 'false');
         }
 
         function closeUploadModal() {
+            if (pdfUploadBusy) return;
             if (!uploadPdfModal) return;
             uploadPdfModal.classList.remove('is-open');
             uploadPdfModal.setAttribute('aria-hidden', 'true');
@@ -1116,24 +1125,37 @@
         }
         if (uploadPdfFileInput && uploadPdfFileName) {
             uploadPdfFileInput.addEventListener('change', () => {
-                const file = uploadPdfFileInput.files && uploadPdfFileInput.files[0];
-                uploadPdfFileName.textContent = file ? file.name : 'No file chosen';
+                pendingPdfFiles = Array.from(uploadPdfFileInput.files || []);
+                uploadPdfFileName.textContent = pendingPdfFiles.length ? pendingPdfFiles.map(file => file.name).join(', ') : 'No file chosen';
+                uploadPdfNameInput.disabled = pendingPdfFiles.length > 1;
+                uploadPdfNameInput.value = pendingPdfFiles.length === 1 ? pendingPdfFiles[0].name.replace(/\.pdf$/i, '') : '';
+                uploadPdfStatus.textContent = '';
             });
         }
         async function doUploadPdf() {
+            if (pdfUploadBusy) return;
             const name = (uploadPdfNameInput.value || '').trim();
-            const file = uploadPdfFileInput.files && uploadPdfFileInput.files[0];
-            if (!name) {
+            const files = [...pendingPdfFiles];
+            if (!files.length) {
+                uploadPdfStatus.textContent = 'Choose one or more PDFs first.';
                 return;
             }
-            if (!file) {
-                return;
-            }
+            const useCustomName = !uploadPdfNameInput.disabled && files.length === 1;
+            pdfUploadBusy = true;
             uploadPdfSaveBtn.disabled = true;
-            uploadPdfSaveBtn.textContent = 'Uploading...';
+            uploadPdfChooseBtn.disabled = true;
+            uploadPdfFileInput.disabled = true;
+            uploadPdfCancelBtn.disabled = true;
+            const failures = [];
             try {
+              for (const [index, file] of files.entries()) {
+                uploadPdfSaveBtn.textContent = `Uploading ${index + 1} of ${files.length}…`;
+                uploadPdfStatus.textContent = `Uploading ${file.name}`;
+                try {
+                if (!/\.pdf$/i.test(file.name)) throw new Error('Please choose a PDF file');
+                if (file.size > 25 * 1024 * 1024) throw new Error('File exceeds 25 MB');
                 const form = new FormData();
-                form.append('name', name);
+                form.append('name', (useCustomName && name) || file.name.replace(/\.pdf$/i, ''));
                 if (selectedFolder) form.append('folder', selectedFolder);
                 form.append('file', file);
                 const resp = await fetch('/pdf/upload', {
@@ -1144,11 +1166,23 @@
                 if (!resp.ok || !out.ok) {
                     throw new Error(out.detail || 'Upload failed');
                 }
+                pendingPdfFiles = pendingPdfFiles.filter(item => item !== file);
+                } catch (error) {
+                    failures.push(`${file.name}: ${error.message || 'Upload failed'}`);
+                }
+              }
                 await loadPdfs();
-                closeUploadModal();
-            } catch (e) { } finally {
+                uploadPdfStatus.textContent = failures.length ? `${files.length - failures.length} uploaded. ${failures.join('; ')}. Retry uploads only the failed files.` : `${files.length} PDFs uploaded.`;
+            } catch (e) {
+                uploadPdfStatus.textContent = `Could not refresh the library: ${e.message}. Reload to see uploaded PDFs.`;
+            } finally {
+                pdfUploadBusy = false;
                 uploadPdfSaveBtn.disabled = false;
-                uploadPdfSaveBtn.textContent = 'Upload';
+                uploadPdfChooseBtn.disabled = false;
+                uploadPdfFileInput.disabled = false;
+                uploadPdfCancelBtn.disabled = false;
+                uploadPdfSaveBtn.textContent = pendingPdfFiles.length ? 'Upload PDFs' : 'Upload';
+                if (!pendingPdfFiles.length) closeUploadModal();
             }
         }
         if (uploadPdfSaveBtn) uploadPdfSaveBtn.addEventListener('click', () => {

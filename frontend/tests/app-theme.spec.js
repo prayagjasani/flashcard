@@ -115,6 +115,31 @@ test('spelling feedback and real session progress retain their behaviour', async
   await expect(page.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute('aria-valuenow', '2');
 });
 
+test('multiple PDFs use individual filenames and retry only failures', async ({ page }) => {
+  await mockData(page);
+  const uploads = [];
+  await page.route('**/pdf/upload', route => {
+    const body = route.request().postDataBuffer().toString();
+    uploads.push(body);
+    return route.fulfill(uploads.length === 2 ? { status: 500, json: { detail: 'Try again' } } : { json: { ok: true } });
+  });
+  await page.goto('/templates/pdf.html');
+  await page.locator('#uploadPdfBtn').click();
+  await page.locator('#uploadPdfFileInput').setInputFiles([
+    { name: 'German basics.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') },
+    { name: 'Practice.PDF', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') },
+  ]);
+  await expect(page.locator('#uploadPdfNameInput')).toBeDisabled();
+  await page.locator('#uploadPdfSaveBtn').click();
+  await expect(page.locator('#uploadPdfStatus')).toContainText('1 uploaded');
+  expect(uploads[0]).toContain('name="name"\r\n\r\nGerman basics\r\n');
+  expect(uploads[1]).toContain('name="name"\r\n\r\nPractice\r\n');
+  await page.locator('#uploadPdfSaveBtn').click();
+  await expect(page.locator('#uploadPdfModal')).not.toHaveClass(/is-open/);
+  expect(uploads).toHaveLength(3);
+  expect(uploads[2]).toContain('name="name"\r\n\r\nPractice\r\n');
+});
+
 test('video and story creation dialogs use the shared form styling', async ({ page }) => {
   await mockData(page);
   await page.goto('/templates/video.html');
