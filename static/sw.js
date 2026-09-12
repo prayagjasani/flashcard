@@ -1,8 +1,7 @@
 // Service Worker for Flashcard App - Enables offline support
 
-const CACHE_NAME = 'flashcard-v5';
+const CACHE_NAME = 'flashcard-v6';
 const STATIC_ASSETS = [
-    '/',
     '/static/manifest.json',
 ];
 
@@ -71,10 +70,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Handle page navigation requests
+    // Always prefer the current HTML shell. A cached shell can reference hashed
+    // JavaScript files that no longer exist after a deployment.
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request, { cache: 'no-store' })
                 .then((response) => {
                     // Cache successful page loads
                     if (response.ok) {
@@ -89,7 +89,6 @@ self.addEventListener('fetch', (event) => {
                     // Offline - serve from cache
                     return caches.match(event.request).then((cached) => {
                         if (cached) return cached;
-                        // Fallback to homepage
                         return caches.match('/');
                     });
                 })
@@ -97,11 +96,9 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For other assets (CSS, JS, images) - cache first, network fallback
+    // For versioned assets, prefer the deployment and use cache only offline.
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            return fetch(event.request).then((response) => {
+        fetch(event.request).then((response) => {
                 // Cache successful fetches
                 if (response.ok && url.origin === self.location.origin) {
                     const responseClone = response.clone();
@@ -110,8 +107,7 @@ self.addEventListener('fetch', (event) => {
                     });
                 }
                 return response;
-            });
-        })
+            }).catch(() => caches.match(event.request))
     );
 });
 

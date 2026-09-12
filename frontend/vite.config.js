@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   base: '/static/react/',
-  build: { outDir: '../static/react', emptyOutDir: true },
+  build: { outDir: '../static/react', emptyOutDir: true, target: 'es2018' },
   server: {
     host: '127.0.0.1',
     proxy: {

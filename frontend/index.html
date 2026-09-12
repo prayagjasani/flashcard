@@ -9,8 +9,14 @@
     <title>Flashcards · Your library</title>
   </head>
   <body class="ui-app ui-page-library">
-    <div id="root"></div>
+    <div id="root"><p id="boot-status" role="status" style="padding:2rem;text-align:center;font-family:system-ui,sans-serif;color:#56605a">Opening your library…</p></div>
     <noscript>Please enable JavaScript to open your flashcard library.</noscript>
+    <script>
+      window.setTimeout(function () {
+        var status = document.getElementById('boot-status');
+        if (status) status.textContent = 'The app could not start. Close it and open it again to refresh.';
+      }, 8000);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

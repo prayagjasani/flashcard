@@ -96,7 +96,6 @@ function App() {
         {visibleDecks.length > 0 && <><h3 className="list-label">Decks</h3><div className="folder-grid">{visibleDecks.map(deck => <button className="deck-row" key={deck.name} onClick={() => setStudy(deck.name)}><span className="folder-icon"><Icon name="cards" /></span><span><strong>{deck.name}</strong><small>{deckFolder(deck)}</small></span><Icon name="arrow" /></button>)}</div></>}
         {!loading && library && !visibleFolders.length && !visibleDecks.length && !error && <div className="empty"><Icon name="cards" width="32" height="32" /><h3>{search ? 'No matches yet' : 'Room for something new'}</h3><p>{search ? 'Try another folder or deck name.' : 'Create a deck to start your next study session.'}</p>{search ? <button className="secondary" onClick={() => setQuery('')}>Clear search</button> : <a className="primary" href="/create">Create your first deck</a>}</div>}
       </section>
-      <footer>Small steps. Lasting progress.</footer>
     </main>
     <Suspense fallback={<p role="status">Opening dialog…</p>}>
     {action && <FolderForm action={action} folders={folders} onClose={() => setAction(null)} onSaved={() => { setAction(null); setNotice('Folder updated.'); refresh(); }} />}
@@ -107,5 +106,5 @@ function App() {
 
 createRoot(document.getElementById('root')).render(<App />);
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/static/sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('/static/sw.js', { updateViaCache: 'none' }).catch(() => {}));
 }
