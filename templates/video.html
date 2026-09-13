@@ -614,6 +614,13 @@
     </header>
 
     <div class="loading-overlay is-active" id="globalLoader" aria-hidden="false"></div>
+    <script>
+        try {
+            if (localStorage.getItem('videos_cache')) {
+                document.getElementById('globalLoader').classList.remove('is-active');
+            }
+        } catch(e) {}
+    </script>
 
     <div class="page" id="listView">
         <div class="page-header">
@@ -753,17 +760,23 @@
         let lastPlayedIdx = -1;
         let lastAutoStoppedIdx = -1;
 
-        async function loadVideos() {
+        async function loadVideos(skipRender = false) {
             try {
                 // Cache-busting parameter to ensure we get fresh data after creating/deleting videos
                 const resp = await fetch(`/videos?t=${Date.now()}`);
                 const data = await resp.json();
-                videos = data.videos || [];
-                renderGrid();
+                const fresh = data.videos || [];
+                const freshJson = JSON.stringify(fresh);
+                const oldJson = JSON.stringify(videos);
+                videos = fresh;
+                try { localStorage.setItem('videos_cache', freshJson); } catch (e) {}
+                if (!skipRender || freshJson !== oldJson) {
+                    renderGrid();
+                }
             } catch (err) {
                 console.error("Failed to load videos:", err);
             } finally {
-                globalLoader.classList.remove('is-active');
+                if (globalLoader) globalLoader.classList.remove('is-active');
             }
         }
 
@@ -1321,9 +1334,32 @@
 
         // Start polling if any video is translating after initial load
         async function initApp() {
-            await loadVideos();
-            if (videos.some(v => v.translating)) {
-                startTranslatingPoll();
+            let hasCache = false;
+            try {
+                const cached = localStorage.getItem('videos_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    const list = Array.isArray(parsed) ? parsed : (parsed.videos || []);
+                    if (Array.isArray(list) && list.length > 0) {
+                        videos = list;
+                        hasCache = true;
+                    }
+                }
+            } catch (e) {}
+
+            if (hasCache) {
+                renderGrid();
+                if (globalLoader) globalLoader.classList.remove('is-active');
+                loadVideos(true).then(() => {
+                    if (videos.some(v => v.translating)) {
+                        startTranslatingPoll();
+                    }
+                });
+            } else {
+                await loadVideos(false);
+                if (videos.some(v => v.translating)) {
+                    startTranslatingPoll();
+                }
             }
         }
         initApp();

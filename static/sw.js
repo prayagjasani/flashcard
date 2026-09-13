@@ -12,6 +12,8 @@ const CACHEABLE_APIS = [
     '/order/decks',
     '/pdfs',
     '/pdf/folders',
+    '/videos',
+    '/stories/list',
 ];
 
 // Install Service Worker

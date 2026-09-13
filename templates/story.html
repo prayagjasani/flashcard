@@ -1030,6 +1030,14 @@
             </div>
             <p style="color: var(--muted);" id="loadingText">Loading stories...</p>
         </div>
+        <script>
+            try {
+                if ((sessionStorage.getItem('cached_stories') || localStorage.getItem('cached_stories')) && !location.search.includes('deck=')) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('storyListView').style.display = 'block';
+                }
+            } catch(e) {}
+        </script>
 
         <!-- Story list -->
         <div id="storyListView" style="display: none;">
@@ -1418,8 +1426,8 @@
         async function loadStoryList() {
             // Check cache first for instant rendering
             try {
-                const cachedStories = sessionStorage.getItem('cached_stories');
-                const cachedDecks = sessionStorage.getItem('cached_decks_for_stories');
+                const cachedStories = sessionStorage.getItem('cached_stories') || localStorage.getItem('cached_stories');
+                const cachedDecks = sessionStorage.getItem('cached_decks_for_stories') || localStorage.getItem('cached_decks_for_stories');
 
                 if (cachedStories && cachedDecks) {
                     allStories = JSON.parse(cachedStories);
@@ -1490,8 +1498,12 @@
 
                 // Update cache
                 try {
-                    sessionStorage.setItem('cached_stories', JSON.stringify(allStories));
-                    sessionStorage.setItem('cached_decks_for_stories', JSON.stringify(allDecks));
+                    const storiesJson = JSON.stringify(allStories);
+                    const decksJson = JSON.stringify(allDecks);
+                    sessionStorage.setItem('cached_stories', storiesJson);
+                    sessionStorage.setItem('cached_decks_for_stories', decksJson);
+                    localStorage.setItem('cached_stories', storiesJson);
+                    localStorage.setItem('cached_decks_for_stories', decksJson);
                 } catch (e) { }
 
                 loadingState.style.display = 'none';

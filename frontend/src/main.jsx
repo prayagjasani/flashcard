@@ -16,7 +16,12 @@ const StudyPicker = lazy(() => loadDialogs().then(module => ({ default: module.S
 
 function App() {
   const folderName = new URLSearchParams(location.search).get('name') || '';
-  const [library, setLibrary] = useState(null);
+  const [library, setLibrary] = useState(() => {
+    try {
+      const cached = localStorage.getItem('flashcard_home_cache_v1') || localStorage.getItem('home_data_cache');
+      return cached ? normalizeLibrary(JSON.parse(cached)) : null;
+    } catch { return null; }
+  });
   useEffect(() => {
     const connection = navigator.connection;
     if (!library || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return;
@@ -34,19 +39,29 @@ function App() {
     };
   }, [Boolean(library)]);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !library);
   const [query, setQuery] = useState('');
   const [action, setAction] = useState(null);
   const [study, setStudy] = useState(null);
   const [notice, setNotice] = useState('');
   const [reordering, setReordering] = useState(false);
-  async function refresh() {
-    setLoading(true); setError('');
-    try { setLibrary(normalizeLibrary(await request('/home-data'))); }
-    catch (err) { setError(err.message); }
+  async function refresh(isBackground = false) {
+    if (!isBackground) setLoading(true);
+    setError('');
+    try {
+      const data = await request('/home-data');
+      if (data) {
+        try {
+          localStorage.setItem('flashcard_home_cache_v1', JSON.stringify(data));
+          localStorage.setItem('home_data_cache', JSON.stringify(data));
+        } catch (e) {}
+      }
+      setLibrary(normalizeLibrary(data));
+    }
+    catch (err) { if (!library) setError(err.message); }
     finally { setLoading(false); }
   }
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { refresh(Boolean(library)); }, []);
   const folders = orderedFolders(library?.folders || [], library?.folder_order);
   const decks = library?.decks || [];
   const current = folders.find(f => f.name === folderName);

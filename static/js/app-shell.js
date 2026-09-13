@@ -55,9 +55,129 @@
             ['pdf', 'PDF', '/pdf', '#d6a300'], ['video', 'Video', '/video', '#e67e66'], ['story', 'Stories', '/story', '#9069cd'],
           ].map(([key, title, href, color]) => `<a class="ui-nav-link" href="${href}" aria-label="${title}" style="--nav-color:${color}" ${key === page ? 'aria-current="page"' : ''}>${icon(key)}<span class="ui-nav-label-${key}">${title}</span></a>`).join('')}</div>
         </nav>`;
+
+      // Pre-warm route when hovering or touching any navigation link
+      this.querySelectorAll('.ui-nav-link').forEach(link => {
+        const prewarm = () => {
+          const href = link.getAttribute('href');
+          if (href && !document.querySelector(`link[rel="prefetch"][href="${href}"]`)) {
+            const l = document.createElement('link');
+            l.rel = 'prefetch';
+            l.href = href;
+            l.as = 'document';
+            document.head.appendChild(l);
+          }
+        };
+        link.addEventListener('pointerenter', prewarm, { passive: true, once: true });
+        link.addEventListener('touchstart', prewarm, { passive: true, once: true });
+      });
     }
   }
   if (!customElements.get('study-navigation')) customElements.define('study-navigation', StudyNavigation);
+
+  // Background preloader: once app loads, fetch and cache data for all navigation buttons
+  let isPreloading = false;
+  function preloadAllButtonData() {
+    if (isPreloading) return;
+    const now = Date.now();
+    const lastPreload = Number(sessionStorage.getItem('last_all_nav_preload') || 0);
+    // Don't repeat if done within last 10 seconds in this session
+    if (now - lastPreload < 10000) return;
+    isPreloading = true;
+    sessionStorage.setItem('last_all_nav_preload', String(now));
+
+    // 1. Pre-warm HTML pages
+    const routes = ['/', '/create', '/pdf', '/video', '/story'];
+    routes.forEach(path => {
+      try {
+        if (!document.querySelector(`link[rel="prefetch"][href="${path}"]`)) {
+          const l = document.createElement('link');
+          l.rel = 'prefetch';
+          l.href = path;
+          l.as = 'document';
+          document.head.appendChild(l);
+        }
+      } catch (e) {}
+    });
+
+    // 2. Preload data for all buttons in background concurrently
+    // Learn: /home-data
+    fetch('/home-data')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && (data.folders || data.decks)) {
+          localStorage.setItem('flashcard_home_cache_v1', JSON.stringify(data));
+          localStorage.setItem('home_data_cache', JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
+
+    // PDF: /pdfs and /pdf/folders
+    fetch('/pdfs')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data)) {
+          localStorage.setItem('pdfs_cache', JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/pdf/folders')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.folders)) {
+          localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: data.folders }));
+        }
+      })
+      .catch(() => {});
+
+    // Video: /videos
+    fetch('/videos')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.videos)) {
+          localStorage.setItem('videos_cache', JSON.stringify(data.videos));
+        }
+      })
+      .catch(() => {});
+
+    // Stories: /stories/list and /decks
+    fetch('/stories/list')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.stories)) {
+          const json = JSON.stringify(data.stories);
+          try { sessionStorage.setItem('cached_stories', json); } catch (e) {}
+          try { localStorage.setItem('cached_stories', json); } catch (e) {}
+        }
+      })
+      .catch(() => {});
+
+    fetch('/decks')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data)) {
+          const json = JSON.stringify(data);
+          try { sessionStorage.setItem('cached_decks_for_stories', json); } catch (e) {}
+          try { localStorage.setItem('cached_decks_for_stories', json); } catch (e) {}
+        }
+      })
+      .catch(() => {});
+  }
+
+  const schedulePreload = () => {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(preloadAllButtonData, { timeout: 2000 });
+    } else {
+      setTimeout(preloadAllButtonData, 400);
+    }
+  };
+
+  if (document.readyState === 'complete') {
+    schedulePreload();
+  } else {
+    window.addEventListener('load', schedulePreload, { once: true });
+  }
 
   function initializePage() {
     const main = document.querySelector('main, #flashApp, #homeDeckList');
