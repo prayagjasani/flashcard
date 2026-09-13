@@ -36,6 +36,13 @@ cards = Table('fc_cards', metadata,
 state = Table('fc_state', metadata, Column('key', Text, primary_key=True), Column('value', Text, nullable=False))
 
 
+def init_schema(drop_existing=False):
+    eng = engine()
+    if drop_existing:
+        metadata.drop_all(eng)
+    metadata.create_all(eng)
+
+
 def enabled():
     return os.getenv('FLASHCARD_STORAGE', 'r2').lower() == 'postgres'
 

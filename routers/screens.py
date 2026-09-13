@@ -5,6 +5,27 @@ from fastapi.responses import FileResponse, Response
 router = APIRouter()
 
 REACT_INDEX = Path(__file__).resolve().parent.parent / 'static' / 'react' / 'index.html'
+REACT_ASSETS = Path(__file__).resolve().parent.parent / 'static' / 'react' / 'assets'
+
+@router.get("/static/react/assets/{filename}")
+def serve_react_asset(filename: str):
+    target = REACT_ASSETS / filename
+    if target.is_file():
+        return FileResponse(target)
+    # Stale asset requested by a cached HTML from a previous deployment
+    if filename.startswith("index-") and filename.endswith(".js"):
+        current = next(REACT_ASSETS.glob("index-*.js"), None)
+        if current and current.is_file():
+            return FileResponse(current, headers={'Cache-Control': 'no-cache'})
+    elif filename.startswith("index-") and filename.endswith(".css"):
+        current = next(REACT_ASSETS.glob("index-*.css"), None)
+        if current and current.is_file():
+            return FileResponse(current, headers={'Cache-Control': 'no-cache'})
+    elif filename.startswith("dialogs-") and filename.endswith(".js"):
+        current = next(REACT_ASSETS.glob("dialogs-*.js"), None)
+        if current and current.is_file():
+            return FileResponse(current, headers={'Cache-Control': 'no-cache'})
+    return Response(status_code=404)
 
 @router.get("/")
 def read_root(mode: str = '', deck: str = ''):

@@ -12,10 +12,41 @@
     <div id="root"><p id="boot-status" role="status" style="padding:2rem;text-align:center;font-family:system-ui,sans-serif;color:#56605a">Opening your library…</p></div>
     <noscript>Please enable JavaScript to open your flashcard library.</noscript>
     <script>
+      window.cleanAndReload = function () {
+        var status = document.getElementById('boot-status');
+        if (status) status.textContent = 'Updating app to latest version…';
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }).finally(function () {
+            if ('caches' in window) {
+              caches.keys().then(function (names) {
+                return Promise.all(names.map(function (n) { return caches.delete(n); }));
+              }).finally(function () {
+                window.location.href = '/?refresh=' + Date.now();
+              });
+            } else {
+              window.location.href = '/?refresh=' + Date.now();
+            }
+          });
+        } else {
+          window.location.href = '/?refresh=' + Date.now();
+        }
+      };
+
+      window.addEventListener('error', function (e) {
+        if (e && e.target && e.target.tagName === 'SCRIPT') {
+          console.warn('Script failed to load, triggering recovery');
+          window.cleanAndReload();
+        }
+      }, true);
+
       window.setTimeout(function () {
         var status = document.getElementById('boot-status');
-        if (status) status.textContent = 'The app could not start. Close it and open it again to refresh.';
-      }, 8000);
+        if (status) {
+          status.innerHTML = 'The app could not start.<br><button style="margin-top:14px;padding:10px 22px;border-radius:12px;background:#58b614;color:#fff;border:none;font-weight:600;font-size:1rem;cursor:pointer;" onclick="window.cleanAndReload()">Refresh App</button>';
+        }
+      }, 7000);
     </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>

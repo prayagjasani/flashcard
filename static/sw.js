@@ -1,6 +1,6 @@
 // Service Worker for Flashcard App - Enables offline support
 
-const CACHE_NAME = 'flashcard-v6';
+const CACHE_NAME = 'flashcard-v7';
 const STATIC_ASSETS = [
     '/static/manifest.json',
 ];

@@ -80,11 +80,16 @@
   function preloadAllButtonData() {
     if (isPreloading) return;
     const now = Date.now();
-    const lastPreload = Number(sessionStorage.getItem('last_all_nav_preload') || 0);
+    let lastPreload = 0;
+    try {
+      lastPreload = Number(sessionStorage.getItem('last_all_nav_preload') || 0);
+    } catch (e) {}
     // Don't repeat if done within last 10 seconds in this session
     if (now - lastPreload < 10000) return;
     isPreloading = true;
-    sessionStorage.setItem('last_all_nav_preload', String(now));
+    try {
+      sessionStorage.setItem('last_all_nav_preload', String(now));
+    } catch (e) {}
 
     // 1. Pre-warm HTML pages
     const routes = ['/', '/create', '/pdf', '/video', '/story'];
@@ -106,8 +111,10 @@
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && (data.folders || data.decks)) {
-          localStorage.setItem('flashcard_home_cache_v1', JSON.stringify(data));
-          localStorage.setItem('home_data_cache', JSON.stringify(data));
+          try {
+            localStorage.setItem('flashcard_home_cache_v1', JSON.stringify(data));
+            localStorage.setItem('home_data_cache', JSON.stringify(data));
+          } catch (e) {}
         }
       })
       .catch(() => {});
@@ -117,7 +124,7 @@
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (Array.isArray(data)) {
-          localStorage.setItem('pdfs_cache', JSON.stringify(data));
+          try { localStorage.setItem('pdfs_cache', JSON.stringify(data)); } catch (e) {}
         }
       })
       .catch(() => {});
@@ -126,7 +133,7 @@
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && Array.isArray(data.folders)) {
-          localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: data.folders }));
+          try { localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: data.folders })); } catch (e) {}
         }
       })
       .catch(() => {});
@@ -136,7 +143,7 @@
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && Array.isArray(data.videos)) {
-          localStorage.setItem('videos_cache', JSON.stringify(data.videos));
+          try { localStorage.setItem('videos_cache', JSON.stringify(data.videos)); } catch (e) {}
         }
       })
       .catch(() => {});
