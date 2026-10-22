@@ -585,7 +585,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/css/app-theme.css?v=1">
-    <script defer src="/static/js/app-shell.js?v=1"></script>
+    <script defer src="/static/js/app-shell.js?v=2"></script>
 </head>
 
 <body class="ui-app ui-page-video">
@@ -1340,7 +1340,7 @@
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     const list = Array.isArray(parsed) ? parsed : (parsed.videos || []);
-                    if (Array.isArray(list) && list.length > 0) {
+                    if (Array.isArray(list)) {
                         videos = list;
                         hasCache = true;
                     }

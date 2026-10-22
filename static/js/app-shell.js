@@ -75,116 +75,49 @@
   }
   if (!customElements.get('study-navigation')) customElements.define('study-navigation', StudyNavigation);
 
-  // Background preloader: once app loads, fetch and cache data for all navigation buttons
+  // Warm navigation targets and their initial data only from the home screen.
+  // Destinations render these localStorage values immediately, then refresh quietly.
   let isPreloading = false;
-  function preloadAllButtonData() {
-    if (isPreloading) return;
-    const now = Date.now();
-    let lastPreload = 0;
-    try {
-      lastPreload = Number(sessionStorage.getItem('last_all_nav_preload') || 0);
-    } catch (e) {}
-    // Don't repeat if done within last 10 seconds in this session
-    if (now - lastPreload < 10000) return;
+  function preloadHomeNavigation() {
+    if (isPreloading || location.pathname !== '/' || new URLSearchParams(location.search).has('mode') || new URLSearchParams(location.search).has('deck')) return;
     isPreloading = true;
-    try {
-      sessionStorage.setItem('last_all_nav_preload', String(now));
-    } catch (e) {}
 
-    // 1. Pre-warm HTML pages
-    const routes = ['/', '/create', '/pdf', '/video', '/story'];
-    routes.forEach(path => {
-      try {
-        if (!document.querySelector(`link[rel="prefetch"][href="${path}"]`)) {
-          const l = document.createElement('link');
-          l.rel = 'prefetch';
-          l.href = path;
-          l.as = 'document';
-          document.head.appendChild(l);
-        }
-      } catch (e) {}
+    ['/create', '/pdf', '/video', '/story'].forEach(path => {
+      if (document.querySelector(`link[rel="prefetch"][href="${path}"]`)) return;
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = path;
+      link.as = 'document';
+      document.head.appendChild(link);
     });
 
-    // 2. Preload data for all buttons in background concurrently
-    // Learn: /home-data
-    fetch('/home-data')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && (data.folders || data.decks)) {
-          try {
-            localStorage.setItem('flashcard_home_cache_v1', JSON.stringify(data));
-            localStorage.setItem('home_data_cache', JSON.stringify(data));
-          } catch (e) {}
-        }
-      })
+    const backgroundFetch = (url, save) => fetch(url, { priority: 'low' })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (data !== null) save(data); })
       .catch(() => {});
+    const saveLocal = (key, value) => {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+    };
+    const saveBoth = (sessionKey, localKey, value) => {
+      const json = JSON.stringify(value);
+      try { sessionStorage.setItem(sessionKey, json); } catch (e) {}
+      try { localStorage.setItem(localKey, json); } catch (e) {}
+    };
 
-    // PDF: /pdfs and /pdf/folders
-    fetch('/pdfs')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (Array.isArray(data)) {
-          try { localStorage.setItem('pdfs_cache', JSON.stringify(data)); } catch (e) {}
-        }
-      })
-      .catch(() => {});
-
-    fetch('/pdf/folders')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && Array.isArray(data.folders)) {
-          try { localStorage.setItem('pdf_folders_cache', JSON.stringify({ folders: data.folders })); } catch (e) {}
-        }
-      })
-      .catch(() => {});
-
-    // Video: /videos
-    fetch('/videos')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && Array.isArray(data.videos)) {
-          try { localStorage.setItem('videos_cache', JSON.stringify(data.videos)); } catch (e) {}
-        }
-      })
-      .catch(() => {});
-
-    // Stories: /stories/list and /decks
-    fetch('/stories/list')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && Array.isArray(data.stories)) {
-          const json = JSON.stringify(data.stories);
-          try { sessionStorage.setItem('cached_stories', json); } catch (e) {}
-          try { localStorage.setItem('cached_stories', json); } catch (e) {}
-        }
-      })
-      .catch(() => {});
-
-    fetch('/decks')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (Array.isArray(data)) {
-          const json = JSON.stringify(data);
-          try { sessionStorage.setItem('cached_decks_for_stories', json); } catch (e) {}
-          try { localStorage.setItem('cached_decks_for_stories', json); } catch (e) {}
-        }
-      })
-      .catch(() => {});
+    // The home screen loads /home-data itself. Preload the other destinations' data.
+    backgroundFetch('/pdfs', data => { if (Array.isArray(data)) saveLocal('pdfs_cache', data); });
+    backgroundFetch('/pdf/folders', data => { if (Array.isArray(data.folders)) saveLocal('pdf_folders_cache', { folders: data.folders }); });
+    backgroundFetch('/videos', data => { if (Array.isArray(data.videos)) saveLocal('videos_cache', data.videos); });
+    backgroundFetch('/stories/list', data => { if (Array.isArray(data.stories)) saveBoth('cached_stories', 'cached_stories', data.stories); });
+    backgroundFetch('/decks', data => { if (Array.isArray(data)) saveBoth('cached_decks_for_stories', 'cached_decks_for_stories', data); });
   }
 
   const schedulePreload = () => {
-    if (window.requestIdleCallback) {
-      window.requestIdleCallback(preloadAllButtonData, { timeout: 2000 });
-    } else {
-      setTimeout(preloadAllButtonData, 400);
-    }
+    // Start as soon as the initial document is usable; each request is low priority.
+    setTimeout(preloadHomeNavigation, 100);
   };
-
-  if (document.readyState === 'complete') {
-    schedulePreload();
-  } else {
-    window.addEventListener('load', schedulePreload, { once: true });
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedulePreload, { once: true });
+  else schedulePreload();
 
   function initializePage() {
     const main = document.querySelector('main, #flashApp, #homeDeckList');
