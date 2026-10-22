@@ -1,6 +1,6 @@
 // Service Worker for Flashcard App - Enables offline support
 
-const CACHE_NAME = 'flashcard-v7';
+const CACHE_NAME = 'flashcard-v8';
 const STATIC_ASSETS = [
     '/static/manifest.json',
 ];
@@ -72,28 +72,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Always prefer the current HTML shell. A cached shell can reference hashed
-    // JavaScript files that no longer exist after a deployment.
+    // Serve a warmed page immediately while checking the origin in the background.
+    // This makes home-page route prefetch useful on slower hosted connections.
     if (event.request.mode === 'navigate') {
+        const cachePromise = caches.open(CACHE_NAME);
+        const networkPromise = fetch(event.request, { cache: 'no-store' }).then((response) => {
+            if (response.ok) {
+                return cachePromise
+                    .then((cache) => cache.put(event.request, response.clone()))
+                    .catch(() => {})
+                    .then(() => response);
+            }
+            return response;
+        });
+        event.waitUntil(networkPromise.then(() => {}).catch(() => {}));
         event.respondWith(
-            fetch(event.request, { cache: 'no-store' })
-                .then((response) => {
-                    // Cache successful page loads
-                    if (response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Offline - serve from cache
-                    return caches.match(event.request).then((cached) => {
-                        if (cached) return cached;
-                        return caches.match('/');
-                    });
-                })
+            cachePromise
+                .then((cache) => cache.match(event.request))
+                .then((cached) => cached || networkPromise)
+                .catch(() => networkPromise)
+                .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/')))
         );
         return;
     }

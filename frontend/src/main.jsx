@@ -121,5 +121,5 @@ function App() {
 
 createRoot(document.getElementById('root')).render(<App />);
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/static/sw.js', { updateViaCache: 'none' }).catch(() => {}));
+  navigator.serviceWorker.register('/static/sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
