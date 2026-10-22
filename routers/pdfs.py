@@ -373,28 +373,9 @@ def list_pdfs():
                                 "thumb": thumb,
                             }
                         )
-            try:
-                if not any(it.get("last_modified") for it in items):
-                    lm_map = {}
-                    continuation = None
-                    while True:
-                        kwargs = {"Bucket": R2_BUCKET_NAME, "Prefix": f"{R2_BUCKET_NAME}/pdf/"}
-                        if continuation:
-                            kwargs["ContinuationToken"] = continuation
-                        resp = r2_client.list_objects_v2(**kwargs)
-                        for o in resp.get("Contents", []):
-                            lm = o.get("LastModified")
-                            lm_map[o.get("Key", "")] = lm.isoformat() if lm else ""
-                        if resp.get("IsTruncated"):
-                            continuation = resp.get("NextContinuationToken")
-                        else:
-                            break
-                    for it in items:
-                        file = it.get("file", "")
-                        full_key = file if "/pdf/" in file else f"{R2_BUCKET_NAME}/{file}"
-                        it["last_modified"] = lm_map.get(full_key, it.get("last_modified", ""))
-            except Exception:
-                pass
+            # Avoid listing every object in R2 just to backfill timestamps on
+            # legacy index entries. New uploads write last_modified directly
+            # into the index; entries without it retain their index order below.
             items.sort(key=lambda x: x.get("last_modified") or "", reverse=True)
             return items
         return []
