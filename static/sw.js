@@ -72,6 +72,30 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // PDF previews are small and reusable; PDFs themselves are deliberately not cached here.
+    const objectKey = url.pathname === '/r2/get' ? (url.searchParams.get('key') || '') : '';
+    if (/\/pdf\/thumbs\/[^/]+\.jpg$/i.test(objectKey)) {
+        const cachePromise = caches.open(CACHE_NAME);
+        const networkPromise = fetch(event.request).then((response) => {
+            if (response.ok) {
+                return cachePromise
+                    .then((cache) => cache.put(event.request, response.clone()))
+                    .catch(() => {})
+                    .then(() => response);
+            }
+            return response;
+        });
+        event.waitUntil(networkPromise.then(() => {}).catch(() => {}));
+        event.respondWith(
+            cachePromise
+                .then((cache) => cache.match(event.request))
+                .then((cached) => cached || networkPromise)
+                .catch(() => networkPromise)
+                .catch(() => caches.match(event.request).then((cached) => cached || new Response('', { status: 504 })))
+        );
+        return;
+    }
+
     // Serve a warmed page immediately while checking the origin in the background.
     // This makes home-page route prefetch useful on slower hosted connections.
     if (event.request.mode === 'navigate') {

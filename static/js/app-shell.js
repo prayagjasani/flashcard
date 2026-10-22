@@ -77,6 +77,7 @@
 
   // Warm navigation targets and their initial data only from the home screen.
   // Destinations render these localStorage values immediately, then refresh quietly.
+  const NAVIGATION_CACHE_NAME = 'flashcard-v8';
   let isPreloading = false;
   function preloadHomeNavigation() {
     if (isPreloading || location.pathname !== '/' || new URLSearchParams(location.search).has('mode') || new URLSearchParams(location.search).has('deck')) return;
@@ -103,9 +104,34 @@
       try { sessionStorage.setItem(sessionKey, json); } catch (e) {}
       try { localStorage.setItem(localKey, json); } catch (e) {}
     };
+    const preloadPdfThumbnails = items => {
+      if (!('caches' in window) || navigator.connection?.saveData || /(^|-)2g$/.test(navigator.connection?.effectiveType || '')) return;
+      const urls = [...new Set(items.map(item => {
+        const key = (item?.thumb || '').replace(/^\//, '');
+        return key ? `/r2/get?key=${encodeURIComponent(key)}` : '';
+      }).filter(Boolean))];
+      let next = 0;
+      const warmNext = async () => {
+        while (next < urls.length) {
+          const url = urls[next++];
+          try {
+            const cache = await caches.open(NAVIGATION_CACHE_NAME);
+            if (await cache.match(url)) continue;
+            const response = await fetch(url, { priority: 'low' });
+            if (response.ok) await cache.put(url, response.clone());
+          } catch (e) {}
+        }
+      };
+      void Promise.all(Array.from({ length: Math.min(3, urls.length) }, warmNext));
+    };
 
     // The home screen loads /home-data itself. Preload the other destinations' data.
-    backgroundFetch('/pdfs', data => { if (Array.isArray(data)) saveLocal('pdfs_cache', data); });
+    backgroundFetch('/pdfs', data => {
+      if (Array.isArray(data)) {
+        saveLocal('pdfs_cache', data);
+        preloadPdfThumbnails(data);
+      }
+    });
     backgroundFetch('/pdf/folders', data => { if (Array.isArray(data.folders)) saveLocal('pdf_folders_cache', { folders: data.folders }); });
     backgroundFetch('/videos', data => { if (Array.isArray(data.videos)) saveLocal('videos_cache', data.videos); });
     backgroundFetch('/stories/list', data => { if (Array.isArray(data.stories)) saveBoth('cached_stories', 'cached_stories', data.stories); });
