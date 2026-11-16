@@ -15,7 +15,30 @@ const FolderForm = lazy(() => loadDialogs().then(module => ({ default: module.Fo
 const StudyPicker = lazy(() => loadDialogs().then(module => ({ default: module.StudyPicker })));
 
 function App() {
-  const folderName = new URLSearchParams(location.search).get('name') || '';
+  const [folderName, setFolderName] = useState(() => new URLSearchParams(location.search).get('name') || '');
+  // Library and folder screens switch instantly in-page instead of reloading the app.
+  useEffect(() => {
+    const sync = () => { setFolderName(new URLSearchParams(location.search).get('name') || ''); setQuery(''); };
+    const onClick = event => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target.closest?.('a[href]');
+      if (!link || (link.target && link.target !== '_self') || link.hasAttribute('download')) return;
+      const url = new URL(link.href, location.href);
+      if (url.origin !== location.origin) return;
+      const params = url.searchParams;
+      const inApp = (url.pathname === '/' && !params.has('mode') && !params.has('deck'))
+        || (url.pathname === '/folder' && !params.has('legacy'));
+      if (!inApp) return;
+      event.preventDefault();
+      if (url.pathname + url.search !== location.pathname + location.search) history.pushState(null, '', url.pathname + url.search);
+      sync();
+      window.scrollTo(0, 0);
+    };
+    document.addEventListener('click', onClick);
+    window.addEventListener('popstate', sync);
+    return () => { document.removeEventListener('click', onClick); window.removeEventListener('popstate', sync); };
+  }, []);
+  useEffect(() => { document.title = folderName ? `Flashcards · ${folderName}` : 'Flashcards · Your library'; }, [folderName]);
   const [library, setLibrary] = useState(() => {
     try {
       const cached = localStorage.getItem('flashcard_home_cache_v1') || localStorage.getItem('home_data_cache');
@@ -28,11 +51,11 @@ function App() {
     let idle;
     const timer = setTimeout(() => {
       const warm = () => {
-        if (document.visibilityState === 'visible' && navigator.onLine) loadDialogs().catch(() => {});
+        if (navigator.onLine) loadDialogs().catch(() => {});
       };
-      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(warm, { timeout: 3000 });
+      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(warm, { timeout: 500 });
       else warm();
-    }, 1000);
+    }, 0);
     return () => {
       clearTimeout(timer);
       if (idle !== undefined) window.cancelIdleCallback(idle);
@@ -80,12 +103,14 @@ function App() {
     const order = folders.map(f => f.name);
     const a = order.indexOf(folder.name), b = order.indexOf(neighbor.name);
     [order[a], order[b]] = [order[b], order[a]];
+    const previousOrder = library.folder_order;
+    // Move it on screen immediately; undo only if the server rejects it.
+    setLibrary(prev => ({ ...prev, folder_order: order }));
     setReordering(true); setError('');
     try {
       await request('/order/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) });
-      setLibrary(prev => ({ ...prev, folder_order: order }));
       setNotice('Folder order updated.');
-    } catch (err) { setError(err.message); }
+    } catch (err) { setLibrary(prev => ({ ...prev, folder_order: previousOrder })); setError(err.message); }
     finally { setReordering(false); }
   }
   const studyDecks = scopedNames ? decks.filter(d => scopedNames.has(deckFolder(d))) : decks;
@@ -97,7 +122,7 @@ function App() {
         {folderName && <a className="text-button" href={`${folderUrl(folderName)}&legacy=1`}>Manage decks</a>}
         <label className="search"><Icon name="search" /><input type="search" aria-label="Search folders and decks" placeholder="Search folders and decks…" value={query} onChange={e => setQuery(e.target.value)} /></label>
         {notice && <p className="notice" role="status">{notice}</p>}
-        {error && <div className="error" role="alert"><span>{error}</span><button onClick={refresh} disabled={loading}>Try again</button></div>}
+        {error && <div className="error" role="alert"><span>{error}</span><button onClick={() => refresh()} disabled={loading}>Try again</button></div>}
         {loading && <p className="empty" role="status">Loading your library…</p>}
         {!loading && library && folderName && !current && <p className="empty">This folder no longer exists. <a href="/">Back to your library</a></p>}
         {library && <div className="folder-grid">{visibleFolders.map((folder, index) => {
@@ -112,8 +137,8 @@ function App() {
         {!loading && library && !visibleFolders.length && !visibleDecks.length && !error && <div className="empty"><Icon name="cards" width="32" height="32" /><h3>{search ? 'No matches yet' : 'Room for something new'}</h3><p>{search ? 'Try another folder or deck name.' : 'Create a deck to start your next study session.'}</p>{search ? <button className="secondary" onClick={() => setQuery('')}>Clear search</button> : <a className="primary" href="/create">Create your first deck</a>}</div>}
       </section>
     </main>
-    <Suspense fallback={<p role="status">Opening dialog…</p>}>
-    {action && <FolderForm action={action} folders={folders} onClose={() => setAction(null)} onSaved={() => { setAction(null); setNotice('Folder updated.'); refresh(); }} />}
+    <Suspense fallback={null}>
+    {action && <FolderForm action={action} folders={folders} onClose={() => setAction(null)} onSaved={() => { setAction(null); setNotice('Folder updated.'); refresh(true); }} />}
     {study !== null && <StudyPicker decks={studyDecks} initialDeck={study} onClose={() => setStudy(null)} />}
     </Suspense>
   </div></>;

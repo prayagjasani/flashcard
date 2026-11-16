@@ -14,15 +14,15 @@ def serve_react_asset(filename: str):
         return FileResponse(target)
     # Stale asset requested by a cached HTML from a previous deployment
     if filename.startswith("index-") and filename.endswith(".js"):
-        current = next(REACT_ASSETS.glob("index-*.js"), None)
+        current = max(REACT_ASSETS.glob("index-*.js"), key=lambda f: f.stat().st_mtime, default=None)
         if current and current.is_file():
             return FileResponse(current, headers={'Cache-Control': 'no-cache'})
     elif filename.startswith("index-") and filename.endswith(".css"):
-        current = next(REACT_ASSETS.glob("index-*.css"), None)
+        current = max(REACT_ASSETS.glob("index-*.css"), key=lambda f: f.stat().st_mtime, default=None)
         if current and current.is_file():
             return FileResponse(current, headers={'Cache-Control': 'no-cache'})
     elif filename.startswith("dialogs-") and filename.endswith(".js"):
-        current = next(REACT_ASSETS.glob("dialogs-*.js"), None)
+        current = max(REACT_ASSETS.glob("dialogs-*.js"), key=lambda f: f.stat().st_mtime, default=None)
         if current and current.is_file():
             return FileResponse(current, headers={'Cache-Control': 'no-cache'})
     return Response(status_code=404)

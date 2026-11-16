@@ -10,10 +10,12 @@
     progress.innerHTML = '<span></span>';
     progress.hidden = document.readyState === 'complete';
     document.body.append(progress);
-    let timeout;
-    const finish = () => { progress.hidden = true; clearTimeout(timeout); };
+    let timeout, showTimer;
+    const finish = () => { progress.hidden = true; clearTimeout(timeout); clearTimeout(showTimer); };
     const start = () => {
-      progress.hidden = false;
+      // Only show the bar if the page is genuinely slow, so fast clicks feel instant.
+      clearTimeout(showTimer);
+      showTimer = setTimeout(() => { progress.hidden = false; }, 400);
       clearTimeout(timeout);
       // Recover if the browser cancels a navigation without firing an error.
       timeout = setTimeout(finish, 30000);
@@ -22,7 +24,7 @@
     window.addEventListener('pageshow', finish);
     if (window.navigation) {
       window.navigation.addEventListener('navigate', event => {
-        if (!event.hashChange && !event.downloadRequest && !event.defaultPrevented) start();
+        if (!event.hashChange && !event.downloadRequest && !event.defaultPrevented && !event.destination?.sameDocument) start();
       });
       window.navigation.addEventListener('navigateerror', finish);
       window.navigation.addEventListener('navigatesuccess', finish);
@@ -35,6 +37,23 @@
       });
       window.addEventListener('beforeunload', start);
     }
+  }
+  // Prerender same-site pages on hover / press so the next screen is already open on click.
+  if (window.HTMLScriptElement?.supports?.('speculationrules') && !document.getElementById('app-speculation-rules')) {
+    const rules = document.createElement('script');
+    rules.type = 'speculationrules';
+    rules.id = 'app-speculation-rules';
+    rules.textContent = JSON.stringify({
+      prerender: [{
+        where: { and: [
+          { href_matches: '/*' },
+          { not: { href_matches: '/static/*' } },
+          { not: { selector_matches: '[download], [target=_blank], [data-no-prerender]' } },
+        ] },
+        eagerness: 'moderate',
+      }],
+    });
+    document.head.append(rules);
   }
   const paths = {
     library: '<path d="M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7"/>',

@@ -1,6 +1,6 @@
 // Service Worker for Flashcard App - Enables offline support
 
-const CACHE_NAME = 'flashcard-v7';
+const CACHE_NAME = 'flashcard-v8';
 const STATIC_ASSETS = [
     '/static/manifest.json',
 ];
@@ -72,45 +72,51 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Always prefer the current HTML shell. A cached shell can reference hashed
-    // JavaScript files that no longer exist after a deployment.
+    // Show what we already have instantly, then update the cache in the background.
+    const staleWhileRevalidate = (request, cacheName) => caches.open(cacheName).then((cache) =>
+        cache.match(request, { ignoreVary: true }).then((cached) => {
+            const network = fetch(request).then((response) => {
+                if (response.ok) cache.put(request, response.clone());
+                return response;
+            });
+            if (cached) {
+                event.waitUntil(network.catch(() => {}));
+                return cached;
+            }
+            return network.catch(() => caches.match('/'));
+        })
+    );
+
+    // Pages: open instantly from cache (including pages prefetched on hover).
+    // Hashed assets of older pages stay cached below, so a stale page still works.
     if (event.request.mode === 'navigate') {
+        event.respondWith(staleWhileRevalidate(event.request, CACHE_NAME));
+        return;
+    }
+
+    if (url.origin !== self.location.origin) return;
+
+    // Content-hashed build files never change: cache first, no network round trip.
+    if (url.pathname.startsWith('/static/react/assets/') || url.pathname.startsWith('/static/fonts/')) {
         event.respondWith(
-            fetch(event.request, { cache: 'no-store' })
-                .then((response) => {
-                    // Cache successful page loads
-                    if (response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Offline - serve from cache
-                    return caches.match(event.request).then((cached) => {
-                        if (cached) return cached;
-                        return caches.match('/');
-                    });
-                })
+            caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+                if (response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                }
+                return response;
+            }))
         );
         return;
     }
 
-    // For versioned assets, prefer the deployment and use cache only offline.
-    event.respondWith(
-        fetch(event.request).then((response) => {
-                // Cache successful fetches
-                if (response.ok && url.origin === self.location.origin) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return response;
-            }).catch(() => caches.match(event.request))
-    );
+    // Other static files (CSS/JS for the HTML pages) and prefetched documents.
+    if (url.pathname.startsWith('/static/') || event.request.destination === 'document' || event.request.destination === '') {
+        if (url.pathname.startsWith('/static/') || ['/', '/create', '/pdf', '/video', '/story', '/learn', '/match', '/spelling', '/line', '/folder', '/edit'].includes(url.pathname)) {
+            event.respondWith(staleWhileRevalidate(event.request, CACHE_NAME));
+            return;
+        }
+    }
 });
 
 // Listen for messages from the app
