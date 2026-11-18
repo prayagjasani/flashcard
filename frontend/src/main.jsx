@@ -13,12 +13,14 @@ const loadDialogs = () => {
 };
 const FolderForm = lazy(() => loadDialogs().then(module => ({ default: module.FolderForm })));
 const StudyPicker = lazy(() => loadDialogs().then(module => ({ default: module.StudyPicker })));
+const Streaks = lazy(() => import('./streaks'));
 
 function App() {
+  const [path, setPath] = useState(() => location.pathname);
   const [folderName, setFolderName] = useState(() => new URLSearchParams(location.search).get('name') || '');
   // Library and folder screens switch instantly in-page instead of reloading the app.
   useEffect(() => {
-    const sync = () => { setFolderName(new URLSearchParams(location.search).get('name') || ''); setQuery(''); };
+    const sync = () => { setPath(location.pathname); setFolderName(new URLSearchParams(location.search).get('name') || ''); setQuery(''); };
     const onClick = event => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = event.target.closest?.('a[href]');
@@ -27,7 +29,8 @@ function App() {
       if (url.origin !== location.origin) return;
       const params = url.searchParams;
       const inApp = (url.pathname === '/' && !params.has('mode') && !params.has('deck'))
-        || (url.pathname === '/folder' && !params.has('legacy'));
+        || (url.pathname === '/folder' && !params.has('legacy'))
+        || url.pathname === '/streaks';
       if (!inApp) return;
       event.preventDefault();
       if (url.pathname + url.search !== location.pathname + location.search) history.pushState(null, '', url.pathname + url.search);
@@ -38,7 +41,7 @@ function App() {
     window.addEventListener('popstate', sync);
     return () => { document.removeEventListener('click', onClick); window.removeEventListener('popstate', sync); };
   }, []);
-  useEffect(() => { document.title = folderName ? `Flashcards · ${folderName}` : 'Flashcards · Your library'; }, [folderName]);
+  useEffect(() => { document.title = path === '/streaks' ? 'Flashcards · Streaks' : folderName ? `Flashcards · ${folderName}` : 'Flashcards · Your library'; }, [folderName, path]);
   const [library, setLibrary] = useState(() => {
     try {
       const cached = localStorage.getItem('flashcard_home_cache_v1') || localStorage.getItem('home_data_cache');
@@ -114,11 +117,14 @@ function App() {
     finally { setReordering(false); }
   }
   const studyDecks = scopedNames ? decks.filter(d => scopedNames.has(deckFolder(d))) : decks;
-  return <><study-navigation page="library" /><div className="app-shell">
+  if (path === '/streaks') return <><study-navigation key="streaks" page="streaks" /><Suspense fallback={<p className="empty" role="status">Opening your streaks…</p>}><Streaks /></Suspense></>;
+  const closeMenu = event => { event.currentTarget.closest('details').open = false; };
+  return <><study-navigation key="library" page="library" /><div className="app-shell">
     <main id="ui-main" tabIndex="-1">
+      <div className="page-topbar"><details className="create-menu"><summary aria-label="Create">{<Icon name="plus" />}</summary><div className="menu-panel"><a href="/create" onClick={closeMenu}><Icon name="cards" />New deck</a><button onClick={e => { closeMenu(e); setAction({ type: 'create', parent: folderName }); }} disabled={!library}><Icon />New folder</button></div></details></div>
       {folderName && <nav className="breadcrumb" aria-label="Breadcrumb"><a href="/">Library</a><span>/</span>{current?.parent && <><a href={folderUrl(current.parent)}>{current.parent}</a><span>/</span></>}<span aria-current="page">{folderName}</span></nav>}
       {folderName && <h1 className="folder-page-title">{folderName}</h1>}
-      <section className="library" aria-labelledby="library-title"><div className="section-header"><h2 id="library-title">{folderName ? 'In this folder' : 'Your library'}{library && <span className="count">{folderName ? studyDecks.length : decks.length} decks</span>}</h2><div className="library-actions"><button className="text-button" onClick={() => setAction({ type: 'create', parent: folderName })} disabled={!library}><Icon name="plus" />New folder</button></div></div>
+      <section className="library" aria-labelledby="library-title"><div className="section-header"><h2 id="library-title">{folderName ? 'In this folder' : 'Your library'}{library && <span className="count">{folderName ? studyDecks.length : decks.length} decks</span>}</h2></div>
         {folderName && <a className="text-button" href={`${folderUrl(folderName)}&legacy=1`}>Manage decks</a>}
         <label className="search"><Icon name="search" /><input type="search" aria-label="Search folders and decks" placeholder="Search folders and decks…" value={query} onChange={e => setQuery(e.target.value)} /></label>
         {notice && <p className="notice" role="status">{notice}</p>}

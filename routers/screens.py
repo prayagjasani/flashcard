@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, Response
@@ -21,10 +22,13 @@ def serve_react_asset(filename: str):
         current = max(REACT_ASSETS.glob("index-*.css"), key=lambda f: f.stat().st_mtime, default=None)
         if current and current.is_file():
             return FileResponse(current, headers={'Cache-Control': 'no-cache'})
-    elif filename.startswith("dialogs-") and filename.endswith(".js"):
-        current = max(REACT_ASSETS.glob("dialogs-*.js"), key=lambda f: f.stat().st_mtime, default=None)
-        if current and current.is_file():
-            return FileResponse(current, headers={'Cache-Control': 'no-cache'})
+    else:
+        # Lazy chunks (dialogs-*.js, streaks-*.js) from an older build
+        match = re.match(r"^([a-z]+)-[^.]+\.(js|css)$", filename)
+        if match:
+            current = max(REACT_ASSETS.glob(f"{match.group(1)}-*.{match.group(2)}"), key=lambda f: f.stat().st_mtime, default=None)
+            if current and current.is_file():
+                return FileResponse(current, headers={'Cache-Control': 'no-cache'})
     return Response(status_code=404)
 
 @router.get("/")
@@ -63,6 +67,12 @@ def folder_screen(legacy: bool = False):
     if not legacy and REACT_INDEX.is_file():
         return FileResponse(REACT_INDEX, headers={'Cache-Control': 'no-cache'})
     return FileResponse('templates/folder.html')
+
+@router.get("/streaks")
+def streaks_screen():
+    if REACT_INDEX.is_file():
+        return FileResponse(REACT_INDEX, headers={'Cache-Control': 'no-cache'})
+    return FileResponse('templates/index.html')
 
 @router.get("/edit")
 def edit_screen():

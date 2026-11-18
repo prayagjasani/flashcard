@@ -58,6 +58,7 @@
   const paths = {
     library: '<path d="M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7"/>',
     create: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
+    streaks: '<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5.2 1.7 1 2.8 2 3.2C10.5 8.6 11 5.6 12 3Z"/>',
     pdf: '<path d="M14 3H5v18h14V8l-5-5ZM14 3v5h5M8 12h8M8 16h5"/>',
     video: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="m10 9 5 3-5 3V9Z"/>',
     story: '<path d="M12 5v16M12 5C9 3 6 3 3 4v15c3-1 6-1 9 2 3-3 6-3 9-2V4c-3-1-6-1-9 1Z"/>',
@@ -70,7 +71,7 @@
       this.innerHTML = `<a class="ui-skip-link" href="#ui-main">Skip to content</a>
         <nav class="ui-navigation" aria-label="Main navigation">
           <div class="ui-nav-links">${[
-            ['library', 'Learn', '/', '#58b614'], ['create', 'Create deck', '/create', '#1cb0f6'],
+            ['library', 'Learn', '/', '#58b614'], ['streaks', 'Streaks', '/streaks', '#ff9600'],
             ['pdf', 'PDF', '/pdf', '#d6a300'], ['video', 'Video', '/video', '#e67e66'], ['story', 'Stories', '/story', '#9069cd'],
           ].map(([key, title, href, color]) => `<a class="ui-nav-link" href="${href}" aria-label="${title}" style="--nav-color:${color}" ${key === page ? 'aria-current="page"' : ''}>${icon(key)}<span class="ui-nav-label-${key}">${title}</span></a>`).join('')}</div>
         </nav>`;

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from services.storage import r2_client, R2_BUCKET_NAME
 from services.executor import shutdown_executor
-from routers import screens, decks, folders, cards, system, pdfs, videos, stories
+from routers import screens, decks, folders, cards, system, pdfs, videos, stories, habits
 
 # Load env
 load_dotenv(override=True)
@@ -55,6 +55,7 @@ app.include_router(cards.router)
 app.include_router(system.router)
 app.include_router(pdfs.router)
 app.include_router(videos.router)
+app.include_router(habits.router)
 
 # Mount Static
 app.mount("/static", StaticFiles(directory="static"), name="static")

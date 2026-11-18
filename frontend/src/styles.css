@@ -77,3 +77,16 @@ dialog p { font-size: 13px; line-height: 1.6; }
   .count { display: block; margin: 5px 0 0; }
 }
 @media (max-width: 360px) { .app-shell { padding: 0 16px; } }
+
+/* Create button, top right of the library and folder screens. */
+.page-topbar { display: flex; justify-content: flex-end; padding-top: 14px; margin-bottom: -6px; }
+.create-menu { position: relative; z-index: 6; }
+.create-menu summary { display: grid; place-items: center; width: 46px; height: 46px; list-style: none; border-radius: 15px; background: var(--ui-green, #58cc02); color: #fff; box-shadow: 0 4px 0 var(--ui-green-dark, #46a302); }
+.create-menu summary::-webkit-details-marker { display: none; }
+.create-menu summary svg { width: 24px; height: 24px; stroke-width: 3; }
+.create-menu summary:active { translate: 0 3px; box-shadow: none; }
+.create-menu[open] summary { filter: brightness(.96); }
+.create-menu .menu-panel { top: 56px; width: 180px; padding: 6px; background: #fff; box-shadow: 0 8px 28px #0000001a; }
+.create-menu .menu-panel a, .create-menu .menu-panel button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; box-shadow: none; text-align: left; font-size: 15px; font-weight: 800; color: var(--ui-ink, #3c3c3c); }
+.create-menu .menu-panel a:hover, .create-menu .menu-panel button:hover { background: #f7f7f7; }
+.create-menu .menu-panel svg { width: 20px; height: 20px; color: var(--ui-green-dark, #46a302); }
